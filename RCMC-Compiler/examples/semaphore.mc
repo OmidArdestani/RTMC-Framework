@@ -1,0 +1,56 @@
+// Multi-task synchronization example
+// This example demonstrates semaphore usage
+
+int shared_counter = 0;
+int semaphore_handle;
+
+void task1() {
+    int i = 0;
+    while (i < 10) {
+        // Take semaphore
+        RTOS_SEMAPHORE_TAKE(semaphore_handle, 1000);
+        
+        // Critical section
+        shared_counter = shared_counter + 1;
+        DBG_PRINT("Task 1 incremented counter");
+        
+        // Release semaphore
+        RTOS_SEMAPHORE_GIVE(semaphore_handle);
+        
+        RTOS_DELAY_MS(100);
+        i = i + 1;
+    }
+}
+
+void task2() {
+    int i = 0;
+    while (i < 10) {
+        // Take semaphore
+        RTOS_SEMAPHORE_TAKE(semaphore_handle, 1000);
+        
+        // Critical section
+        shared_counter = shared_counter + 2;
+        DBG_PRINT("Task 2 incremented counter");
+        
+        // Release semaphore
+        RTOS_SEMAPHORE_GIVE(semaphore_handle);
+        
+        RTOS_DELAY_MS(150);
+        i = i + 1;
+    }
+}
+
+void main() {
+    // Create semaphore
+    semaphore_handle = RTOS_SEMAPHORE_CREATE();
+    
+    // Create tasks
+    RTOS_CREATE_TASK(task1, "Task1", 512, 5, 0);
+    RTOS_CREATE_TASK(task2, "Task2", 512, 5, 0);
+    
+    // Main loop
+    while (1) {
+        RTOS_DELAY_MS(1000);
+        DBG_PRINT("Main loop");
+    }
+}

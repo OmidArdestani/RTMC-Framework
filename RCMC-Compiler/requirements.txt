@@ -1,0 +1,10 @@
+# Mini-C RTOS Language Compiler Requirements
+
+# No external dependencies required for basic functionality
+# All components are implemented in pure Python
+
+# Optional dependencies for enhanced functionality:
+# pytest>=6.0.0        # For running tests
+# black>=21.0.0         # For code formatting
+# flake8>=3.9.0         # For linting
+# mypy>=0.910           # For type checking
