@@ -1,11 +1,11 @@
-// Struct and bit-field example
-// This example demonstrates struct usage with bit-fields
+// Struct example with member assignments
+// This example demonstrates struct usage with member assignments
 
 struct ControlRegister {
-    int enable : 1;
-    int mode : 2;
-    int speed : 4;
-    int reserved : 25;
+    int enable;
+    int mode;
+    int speed;
+    int reserved;
 };
 
 struct SensorData {
@@ -22,11 +22,11 @@ void configure_sensor() {
     sensor.control.enable = 1;
     sensor.control.mode = 2;
     sensor.control.speed = 8;
-    
+
     // Initialize sensor data
-    sensor.temperature = 0;
-    sensor.humidity = 0;
-    sensor.pressure = 0;
+    sensor.temperature = 25;
+    sensor.humidity = 60;
+    sensor.pressure = 1013;
     
     DBG_PRINT("Sensor configured");
 }

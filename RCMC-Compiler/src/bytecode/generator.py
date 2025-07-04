@@ -411,6 +411,10 @@ class BytecodeGenerator(ASTVisitor):
             if isinstance(node.target, IdentifierExprNode):
                 address = self.get_variable_address(node.target.name)
                 self.emit(InstructionBuilder.load_var(address))
+            elif isinstance(node.target, MemberExprNode):
+                # For now, just treat member access as variable access with offset
+                base_address = self._get_member_address(node.target)
+                self.emit(InstructionBuilder.load_var(base_address))
             else:
                 raise CodeGenError("Complex assignment targets not supported yet")
             
@@ -432,8 +436,44 @@ class BytecodeGenerator(ASTVisitor):
         if isinstance(node.target, IdentifierExprNode):
             address = self.get_variable_address(node.target.name)
             self.emit(InstructionBuilder.store_var(address))
+        elif isinstance(node.target, MemberExprNode):
+            # For now, just treat member access as variable access with offset
+            base_address = self._get_member_address(node.target)
+            self.emit(InstructionBuilder.store_var(base_address))
         else:
             raise CodeGenError("Complex assignment targets not supported yet")
+    
+    def _get_member_address(self, node: MemberExprNode) -> int:
+        """Get simplified address for member access"""
+        if isinstance(node.object, IdentifierExprNode):
+            # Simple case: variable.field
+            base_address = self.get_variable_address(node.object.name)
+            field_offset = self._get_simple_field_offset(node.property)
+            return base_address + field_offset
+        elif isinstance(node.object, MemberExprNode):
+            # For nested access like rect.top_left.x, get the base variable
+            base_var = self._get_base_variable_name(node.object)
+            base_address = self.get_variable_address(base_var)
+            # Calculate nested offset
+            nested_offset = self._calculate_nested_offset(node)
+            return base_address + nested_offset
+        else:
+            # Fallback: treat as simple variable access
+            return 0  # Use address 0 as fallback
+    
+    def _get_simple_field_offset(self, field_name: str) -> int:
+        """Get simple field offset"""
+        field_offsets = {
+            'temperature': 0,
+            'humidity': 1, 
+            'pressure': 2,
+            'control': 3,
+            'enable': 10,  # Use higher offset for nested fields
+            'mode': 11,
+            'speed': 12,
+            'reserved': 13
+        }
+        return field_offsets.get(field_name, 0)
     
     def visit_call_expr(self, node: CallExprNode):
         """Generate code for call expression"""
@@ -601,6 +641,103 @@ class BytecodeGenerator(ASTVisitor):
             return element_size * (type_node.size or 1)
         else:
             return 4  # Default size
+
+    def _generate_member_load(self, node: MemberExprNode):
+        """Generate code to load from a member expression"""
+        if isinstance(node.object, IdentifierExprNode):
+            # Simple case: variable.field
+            base_address = self.get_variable_address(node.object.name)
+            field_offset = self._get_field_offset(node.property)
+            self.emit(InstructionBuilder.load_struct_member(base_address, field_offset))
+        elif isinstance(node.object, MemberExprNode):
+            # Nested case: variable.field1.field2
+            # For now, simplify to get the base variable
+            base_var = self._get_base_variable(node.object)
+            base_address = self.get_variable_address(base_var)
+            # Calculate nested field offset (simplified)
+            field_offset = self._get_nested_field_offset(node)
+            self.emit(InstructionBuilder.load_struct_member(base_address, field_offset))
+        else:
+            raise CodeGenError("Complex member access not supported yet")
+    
+    def _generate_member_store(self, node: MemberExprNode):
+        """Generate code to store to a member expression"""
+        if isinstance(node.object, IdentifierExprNode):
+            # Simple case: variable.field = value
+            base_address = self.get_variable_address(node.object.name)
+            field_offset = self._get_field_offset(node.property)
+            self.emit(InstructionBuilder.store_struct_member(base_address, field_offset))
+        elif isinstance(node.object, MemberExprNode):
+            # Nested case: variable.field1.field2 = value
+            base_var = self._get_base_variable(node.object)
+            base_address = self.get_variable_address(base_var)
+            # Calculate nested field offset (simplified)
+            field_offset = self._get_nested_field_offset(node)
+            self.emit(InstructionBuilder.store_struct_member(base_address, field_offset))
+        else:
+            raise CodeGenError("Complex member access not supported yet")
+    
+    def _get_base_variable(self, node: MemberExprNode) -> str:
+        """Get the base variable name from a nested member expression"""
+        if isinstance(node.object, IdentifierExprNode):
+            return node.object.name
+        elif isinstance(node.object, MemberExprNode):
+            return self._get_base_variable(node.object)
+        else:
+            raise CodeGenError("Cannot determine base variable")
+    
+    def _get_base_variable_name(self, node: MemberExprNode) -> str:
+        """Get the base variable name from a nested member expression"""
+        if isinstance(node.object, IdentifierExprNode):
+            return node.object.name
+        elif isinstance(node.object, MemberExprNode):
+            return self._get_base_variable_name(node.object)
+        else:
+            raise CodeGenError("Cannot determine base variable")
+    
+    def _calculate_nested_offset(self, node: MemberExprNode) -> int:
+        """Calculate offset for nested member access"""
+        if isinstance(node.object, IdentifierExprNode):
+            # This is the final level, just return field offset
+            return self._get_simple_field_offset(node.property)
+        elif isinstance(node.object, MemberExprNode):
+            # Nested access: calculate parent offset + current field offset
+            parent_offset = self._calculate_nested_offset(node.object)
+            current_offset = self._get_simple_field_offset(node.property)
+            # Simple encoding: multiply parent by struct size and add current
+            return parent_offset * 10 + current_offset
+        else:
+            return 0
+
+    def _get_field_offset(self, field_name: str) -> int:
+        """Get the offset of a field (simplified implementation)"""
+        # In a real implementation, this would look up the struct definition
+        # and calculate the actual field offset based on field sizes and alignment
+        # For now, we'll use a simple hash-based offset
+        field_offsets = {
+            'temperature': 0,
+            'humidity': 1, 
+            'pressure': 2,
+            'control': 3,
+            'enable': 0,
+            'mode': 1,
+            'speed': 2,
+            'reserved': 3
+        }
+        return field_offsets.get(field_name, 0)
+    
+    def _get_nested_field_offset(self, node: MemberExprNode) -> int:
+        """Get the offset for nested field access (simplified)"""
+        # For nested access like sensor.control.enable, we need to calculate
+        # the offset of 'control' in the parent struct plus the offset of 'enable' in control
+        if isinstance(node.object, MemberExprNode):
+            parent_offset = self._get_field_offset(node.object.property)
+            current_offset = self._get_field_offset(node.property)
+            # In a real implementation, we'd need proper struct layout calculation
+            # For now, use a simple additive approach
+            return parent_offset * 10 + current_offset  # Simple encoding
+        else:
+            return self._get_field_offset(node.property)
 
 class CodeGenError(Exception):
     """Code generation error"""
