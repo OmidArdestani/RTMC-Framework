@@ -341,6 +341,19 @@ class ConstantFolder(ASTVisitor):
         else:
             return 'int'
 
+    def visit_message_decl(self, node: MessageDeclNode) -> MessageDeclNode:
+        """Message declarations don't need optimization"""
+        return node
+
+    def visit_message_send(self, node: MessageSendNode) -> MessageSendNode:
+        """Optimize message send expression"""
+        optimized_payload = node.payload.accept(self)
+        return MessageSendNode(node.channel, optimized_payload, node.line)
+
+    def visit_message_recv(self, node: MessageRecvNode) -> MessageRecvNode:
+        """Message receive expressions don't need optimization"""
+        return node
+
 class DeadCodeEliminator(ASTVisitor):
     """Dead code elimination optimizer"""
     
@@ -484,6 +497,19 @@ class DeadCodeEliminator(ASTVisitor):
         return node
     
     def visit_literal_expr(self, node: LiteralExprNode) -> LiteralExprNode:
+        return node
+
+    def visit_message_decl(self, node: MessageDeclNode) -> MessageDeclNode:
+        """Message declarations are always needed"""
+        return node
+
+    def visit_message_send(self, node: MessageSendNode) -> MessageSendNode:
+        """Message send expressions are always needed (have side effects)"""
+        optimized_payload = node.payload.accept(self)
+        return MessageSendNode(node.channel, optimized_payload, node.line)
+
+    def visit_message_recv(self, node: MessageRecvNode) -> MessageRecvNode:
+        """Message receive expressions are always needed (have side effects)"""
         return node
 
 class Optimizer:

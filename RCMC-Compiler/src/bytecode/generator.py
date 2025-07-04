@@ -897,7 +897,7 @@ class BytecodeGenerator(ASTVisitor):
         if isinstance(type_node, PrimitiveTypeNode):
             return type_node.type_name
         elif isinstance(type_node, StructTypeNode):
-            return f"struct_{type_node.name}"
+            return f"struct_{type_node.struct_name}"
         elif isinstance(type_node, ArrayTypeNode):
             element_type = self._get_type_name(type_node.element_type)
             return f"{element_type}[{type_node.size or 0}]"

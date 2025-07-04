@@ -109,6 +109,7 @@ class Parser:
                 saved_pos = self.current
                 self.advance()  # consume 'struct'
                 if self.check(TokenType.IDENTIFIER):
+                    struct_name = self.peek().value
                     self.advance()  # consume identifier
                     if self.check(TokenType.LEFT_BRACE):
                         # This is a struct declaration
@@ -267,11 +268,15 @@ class Parser:
             # Variable declaration
             initializer = None
             if self.match(TokenType.ASSIGN):
-                initializer = self.expression()
+                try:
+                    initializer = self.expression()
+                except Exception as e:
+                    raise
             
             self.consume(TokenType.SEMICOLON, "Expected ';' after variable declaration")
             
-            return VariableDeclNode(name, return_type, initializer, is_const)
+            result = VariableDeclNode(name, return_type, initializer, is_const)
+            return result
     
     def parameter(self) -> ParameterNode:
         """Parse function parameter"""
@@ -330,7 +335,33 @@ class Parser:
         if self.match(TokenType.LEFT_BRACE):
             return self.block_statement()
         
+        # Check for variable declaration statements
+        if (self.check(TokenType.CONST) or
+            self.check(TokenType.INT) or
+            self.check(TokenType.FLOAT_TYPE) or
+            self.check(TokenType.CHAR_TYPE) or
+            self.check(TokenType.VOID) or
+            self.check(TokenType.STRUCT)):
+            return self.variable_declaration_statement()
+        
         return self.expression_statement()
+    
+    def variable_declaration_statement(self) -> VariableDeclNode:
+        """Parse variable declaration statement"""
+        is_const = False
+        if self.match(TokenType.CONST):
+            is_const = True
+        
+        var_type = self.type_specifier()
+        name = self.consume(TokenType.IDENTIFIER, "Expected identifier").value
+        
+        initializer = None
+        if self.match(TokenType.ASSIGN):
+            initializer = self.expression()
+        
+        self.consume(TokenType.SEMICOLON, "Expected ';' after variable declaration")
+        
+        return VariableDeclNode(name, var_type, initializer, is_const)
     
     def if_statement(self) -> IfStmtNode:
         """Parse if statement"""
@@ -515,22 +546,23 @@ class Parser:
             if self.match(TokenType.LEFT_PAREN):
                 expr = self.finish_call(expr)
             elif self.match(TokenType.DOT):
-                name = self.consume(TokenType.IDENTIFIER, "Expected property name after '.'").value
-                
-                # Check for message operations
-                if name == "send" and isinstance(expr, IdentifierExprNode):
+                # Handle message operations with special tokens
+                if self.check(TokenType.SEND) and isinstance(expr, IdentifierExprNode):
                     # Parse message send: MessageQueue.send(expr)
+                    self.advance()  # consume 'send'
                     self.consume(TokenType.LEFT_PAREN, "Expected '(' after 'send'")
                     payload = self.expression()
                     self.consume(TokenType.RIGHT_PAREN, "Expected ')' after send payload")
                     return MessageSendNode(expr.name, payload)
-                elif name == "recv" and isinstance(expr, IdentifierExprNode):
+                elif self.check(TokenType.RECV) and isinstance(expr, IdentifierExprNode):
                     # Parse message receive: MessageQueue.recv()
+                    self.advance()  # consume 'recv'
                     self.consume(TokenType.LEFT_PAREN, "Expected '(' after 'recv'")
                     self.consume(TokenType.RIGHT_PAREN, "Expected ')' after 'recv'")
                     return MessageRecvNode(expr.name)
                 else:
                     # Regular member access
+                    name = self.consume(TokenType.IDENTIFIER, "Expected property name after '.'").value
                     expr = MemberExprNode(expr, name, False)
             elif self.match(TokenType.LEFT_BRACKET):
                 index = self.expression()
