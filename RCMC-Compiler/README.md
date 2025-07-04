@@ -1,14 +1,52 @@
-# Mini-C RTOS Language Compiler
+# RT-Micro-C Language Compiler v1.0
 
-A lightweight C-like language compiler targeting real-time operating systems with hardware abstraction support.
+A real-time, embedded domain-specific language (DSL) for microcontroller applications using RTOS. Designed for clarity, efficiency, and direct task-hardware mapping.
 
-## Features
+## 🚀 Language Features
 
-- **Real-time Task Support**: Native RTOS task management with priorities and core affinity
-- **Hardware Abstraction**: Built-in GPIO, Timer, ADC, UART, SPI, I2C support
-- **Bit-field Structs**: Efficient memory layout for embedded systems
-- **Optimized Bytecode**: Compact virtual machine instructions for resource-constrained environments
-- **Class-based Tasks**: Object-oriented approach to task management
+### ✨ **Native Task System**
+```c
+Task<0, 2> BlinkTask {
+    int ledPin = 13;
+    
+    void run() {
+        HW_GPIO_INIT(ledPin, 1);
+        while (1) {
+            HW_GPIO_SET(ledPin, 1);
+            RTOS_DELAY_MS(500);
+            HW_GPIO_SET(ledPin, 0);
+            RTOS_DELAY_MS(500);
+        }
+    }
+}
+```
+
+### 🔧 **Advanced Bit-Fields**
+```c
+struct ControlRegister {
+    int enable : 1;      // 1-bit flag
+    int mode : 2;        // 2-bit mode (0-3)
+    int speed : 4;       // 4-bit speed (0-15)
+    int reserved : 25;   // Remaining bits
+};
+```
+
+### 🏗️ **Complete Struct Support**
+- Regular struct declarations and member access
+- Nested struct member assignments (`rect.point.x = 10`)
+- Bit-field packing with 32-bit alignment
+- Efficient memory layout for embedded systems
+
+### ⚡ **Hardware Abstraction**
+- **GPIO**: `HW_GPIO_INIT`, `HW_GPIO_SET`, `HW_GPIO_GET`
+- **ADC**: `HW_ADC_INIT`, `HW_ADC_READ`
+- **Timers**: `HW_TIMER_INIT`, `HW_TIMER_START`, PWM support
+- **Communication**: UART, SPI, I2C interfaces
+
+### 🔄 **RTOS Integration**
+- Task creation with core and priority assignment
+- Semaphores, delays, task suspension/resumption
+- Real-time scheduling and resource management
 
 ## Architecture
 
