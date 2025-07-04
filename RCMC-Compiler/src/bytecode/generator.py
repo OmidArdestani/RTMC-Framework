@@ -177,18 +177,44 @@ class BytecodeGenerator(ASTVisitor):
         self.parameter_count = old_param_count
     
     def visit_struct_decl(self, node: StructDeclNode):
-        """Generate layout for struct declaration"""
-        field_offsets = {}
-        current_offset = 0
+        """Generate layout for struct declaration with bit-field support"""
+        field_info = {}  # field_name -> byte_offset (for compatibility)
+        bit_field_info = {}  # field_name -> (byte_offset, bit_offset, bit_width)
+        current_byte_offset = 0
+        current_bit_offset = 0
         
         for field in node.fields:
-            field_offsets[field.name] = current_offset
-            
-            # Calculate field size (simplified)
-            field_size = self.get_type_size(field.type)
-            current_offset += field_size
+            if field.bit_width is not None:
+                # Bit-field handling
+                bit_width = field.bit_width
+                
+                # Check if we need to move to next byte
+                if current_bit_offset + bit_width > 32:  # Assume 32-bit alignment
+                    current_byte_offset += 4  # Move to next 32-bit boundary
+                    current_bit_offset = 0
+                
+                field_info[field.name] = current_byte_offset  # For compatibility
+                bit_field_info[field.name] = (current_byte_offset, current_bit_offset, bit_width)
+                
+                current_bit_offset += bit_width
+            else:
+                # Regular field handling
+                # Align to next byte boundary if we have pending bits
+                if current_bit_offset > 0:
+                    current_byte_offset += 4
+                    current_bit_offset = 0
+                
+                field_info[field.name] = current_byte_offset
+                
+                # Calculate field size
+                field_size = self.get_type_size(field.type)
+                current_byte_offset += field_size
         
-        self.struct_layouts[node.name] = field_offsets
+        self.struct_layouts[node.name] = field_info
+        # Store bit-field info separately for now
+        if not hasattr(self, 'bit_field_layouts'):
+            self.bit_field_layouts = {}
+        self.bit_field_layouts[node.name] = bit_field_info
     
     def visit_variable_decl(self, node: VariableDeclNode):
         """Generate code for variable declaration"""
@@ -437,9 +463,8 @@ class BytecodeGenerator(ASTVisitor):
             address = self.get_variable_address(node.target.name)
             self.emit(InstructionBuilder.store_var(address))
         elif isinstance(node.target, MemberExprNode):
-            # For now, just treat member access as variable access with offset
-            base_address = self._get_member_address(node.target)
-            self.emit(InstructionBuilder.store_var(base_address))
+            # Handle struct member assignment (including bit-fields)
+            self._generate_member_store(node.target)
         else:
             raise CodeGenError("Complex assignment targets not supported yet")
     
@@ -647,15 +672,22 @@ class BytecodeGenerator(ASTVisitor):
         if isinstance(node.object, IdentifierExprNode):
             # Simple case: variable.field
             base_address = self.get_variable_address(node.object.name)
-            field_offset = self._get_field_offset(node.property)
-            self.emit(InstructionBuilder.load_struct_member(base_address, field_offset))
+            
+            # Check if this is a bit-field
+            bit_field_info = self._get_bit_field_info(node.property)
+            if bit_field_info:
+                byte_offset, bit_offset, bit_width = bit_field_info
+                self.emit(InstructionBuilder.load_struct_member_bit(
+                    base_address, byte_offset, bit_offset, bit_width))
+            else:
+                # Regular field access
+                field_offset = self._get_simple_field_offset(node.property)
+                self.emit(InstructionBuilder.load_struct_member(base_address, field_offset))
         elif isinstance(node.object, MemberExprNode):
             # Nested case: variable.field1.field2
-            # For now, simplify to get the base variable
-            base_var = self._get_base_variable(node.object)
+            base_var = self._get_base_variable_name(node.object)
             base_address = self.get_variable_address(base_var)
-            # Calculate nested field offset (simplified)
-            field_offset = self._get_nested_field_offset(node)
+            field_offset = self._calculate_nested_offset(node)
             self.emit(InstructionBuilder.load_struct_member(base_address, field_offset))
         else:
             raise CodeGenError("Complex member access not supported yet")
@@ -665,14 +697,22 @@ class BytecodeGenerator(ASTVisitor):
         if isinstance(node.object, IdentifierExprNode):
             # Simple case: variable.field = value
             base_address = self.get_variable_address(node.object.name)
-            field_offset = self._get_field_offset(node.property)
-            self.emit(InstructionBuilder.store_struct_member(base_address, field_offset))
+            
+            # Check if this is a bit-field
+            bit_field_info = self._get_bit_field_info(node.property)
+            if bit_field_info:
+                byte_offset, bit_offset, bit_width = bit_field_info
+                self.emit(InstructionBuilder.store_struct_member_bit(
+                    base_address, byte_offset, bit_offset, bit_width))
+            else:
+                # Regular field access
+                field_offset = self._get_simple_field_offset(node.property)
+                self.emit(InstructionBuilder.store_struct_member(base_address, field_offset))
         elif isinstance(node.object, MemberExprNode):
             # Nested case: variable.field1.field2 = value
-            base_var = self._get_base_variable(node.object)
+            base_var = self._get_base_variable_name(node.object)
             base_address = self.get_variable_address(base_var)
-            # Calculate nested field offset (simplified)
-            field_offset = self._get_nested_field_offset(node)
+            field_offset = self._calculate_nested_offset(node)
             self.emit(InstructionBuilder.store_struct_member(base_address, field_offset))
         else:
             raise CodeGenError("Complex member access not supported yet")
@@ -738,6 +778,29 @@ class BytecodeGenerator(ASTVisitor):
             return parent_offset * 10 + current_offset  # Simple encoding
         else:
             return self._get_field_offset(node.property)
+    
+    def _get_bit_field_info(self, field_name: str) -> Optional[Tuple[int, int, int]]:
+        """Get bit-field information if field is a bit-field"""
+        if hasattr(self, 'bit_field_layouts'):
+            for struct_name, bit_fields in self.bit_field_layouts.items():
+                if field_name in bit_fields:
+                    return bit_fields[field_name]
+        return None
+
+    def _get_field_info(self, struct_var_name: str, field_name: str) -> Optional[Dict]:
+        """Get field information including bit-field details"""
+        # Find the struct type of the variable
+        for struct_name, field_info in self.struct_layouts.items():
+            if field_name in field_info:
+                return field_info[field_name]
+        
+        # Fallback for unknown fields
+        return {
+            'byte_offset': 0,
+            'bit_offset': 0,
+            'bit_width': None,
+            'is_bitfield': False
+        }
 
 class CodeGenError(Exception):
     """Code generation error"""

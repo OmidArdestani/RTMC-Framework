@@ -102,10 +102,11 @@ class StructDeclNode(ASTNode):
 @dataclass
 class FieldNode:
     """Structure field"""
-    name: str
-    type: 'TypeNode'
-    bit_width: Optional[int] = None  # For bit fields
-    line: int = 0
+    def __init__(self, name: str, type: 'TypeNode', bit_width: Optional[int] = None, line: int = 0):
+        self.name = name
+        self.type = type
+        self.bit_width = bit_width
+        self.line = line
 
 class VariableDeclNode(ASTNode):
     """Variable declaration node"""

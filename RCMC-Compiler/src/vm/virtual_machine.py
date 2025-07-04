@@ -223,6 +223,8 @@ class VirtualMachine:
             Opcode.STORE_VAR: self._handle_store_var,
             Opcode.LOAD_STRUCT_MEMBER: self._handle_load_struct_member,
             Opcode.STORE_STRUCT_MEMBER: self._handle_store_struct_member,
+            Opcode.LOAD_STRUCT_MEMBER_BIT: self._handle_load_struct_member_bit,
+            Opcode.STORE_STRUCT_MEMBER_BIT: self._handle_store_struct_member_bit,
             
             Opcode.ADD: self._handle_add,
             Opcode.SUB: self._handle_sub,
@@ -449,6 +451,45 @@ class VirtualMachine:
         value = self._pop()
         self.memory[base_addr + offset] = value
     
+    def _handle_load_struct_member_bit(self, instruction: Instruction):
+        """Handle LOAD_STRUCT_MEMBER_BIT instruction for bit-fields"""
+        base_addr = instruction.operands[0]
+        byte_offset = instruction.operands[1]
+        bit_offset = instruction.operands[2]
+        bit_width = instruction.operands[3]
+        
+        # Load the containing word
+        word_value = self.memory.get(base_addr + byte_offset, 0)
+        
+        # Extract the bit-field value
+        # Create a mask with 'bit_width' number of 1s
+        mask = (1 << bit_width) - 1
+        # Shift the word right to align the field, then mask
+        field_value = (word_value >> bit_offset) & mask
+        
+        self._push(field_value)
+    
+    def _handle_store_struct_member_bit(self, instruction: Instruction):
+        """Handle STORE_STRUCT_MEMBER_BIT instruction for bit-fields"""
+        base_addr = instruction.operands[0]
+        byte_offset = instruction.operands[1]
+        bit_offset = instruction.operands[2]
+        bit_width = instruction.operands[3]
+        new_value = self._pop()
+        
+        # Load the current word
+        word_value = self.memory.get(base_addr + byte_offset, 0)
+        
+        # Create a mask to clear the bit-field
+        mask = (1 << bit_width) - 1
+        clear_mask = ~(mask << bit_offset)
+        
+        # Clear the bit-field and set the new value
+        word_value = (word_value & clear_mask) | ((new_value & mask) << bit_offset)
+        
+        # Store the modified word back
+        self.memory[base_addr + byte_offset] = word_value
+
     def _handle_add(self, instruction: Instruction):
         """Handle ADD instruction"""
         b = self._pop()
