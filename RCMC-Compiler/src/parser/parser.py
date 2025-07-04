@@ -95,6 +95,10 @@ class Parser:
     def declaration(self) -> Optional[ASTNode]:
         """Parse a declaration"""
         try:
+            # Check for Task declaration (Task<core, priority> Name { ... })
+            if self.check(TokenType.TASK):
+                return self.task_declaration()
+            
             # Check for struct declaration (struct Name { ... })
             if self.check(TokenType.STRUCT):
                 # Look ahead to see if this is a struct declaration or variable declaration
@@ -155,6 +159,64 @@ class Parser:
         
         return StructDeclNode(name, fields)
     
+    def task_declaration(self) -> TaskDeclNode:
+        """Parse Task declaration: Task<core, priority> Name { ... }"""
+        self.consume(TokenType.TASK, "Expected 'Task'")
+        self.consume(TokenType.LESS_THAN, "Expected '<' after Task")
+        
+        # Parse core number
+        core_token = self.consume(TokenType.INTEGER, "Expected core number")
+        core = int(core_token.value)
+        
+        self.consume(TokenType.COMMA, "Expected ',' after core number")
+        
+        # Parse priority
+        priority_token = self.consume(TokenType.INTEGER, "Expected priority number")
+        priority = int(priority_token.value)
+        
+        self.consume(TokenType.GREATER_THAN, "Expected '>' after priority")
+        
+        # Parse task name
+        task_name = self.consume(TokenType.IDENTIFIER, "Expected task name").value
+        
+        self.consume(TokenType.LEFT_BRACE, "Expected '{' after task name")
+        
+        # Parse task members (variables and functions)
+        members = []
+        run_function = None
+        
+        while not self.check(TokenType.RIGHT_BRACE) and not self.is_at_end():
+            if self.match(TokenType.NEWLINE):
+                continue
+            
+            # Parse member declaration
+            member = self.task_member_declaration()
+            if member:
+                members.append(member)
+                # Check if this is the run function
+                if (isinstance(member, FunctionDeclNode) and 
+                    member.name == "run" and 
+                    isinstance(member.return_type, PrimitiveTypeNode) and 
+                    member.return_type.type_name == "void"):
+                    run_function = member
+        
+        self.consume(TokenType.RIGHT_BRACE, "Expected '}' after task body")
+        
+        if run_function is None:
+            raise ParseError("Task must have a 'void run()' method")
+        
+        return TaskDeclNode(task_name, core, priority, members, run_function)
+    
+    def task_member_declaration(self) -> Optional[ASTNode]:
+        """Parse a member declaration inside a Task"""
+        try:
+            if self.check_type_specifier():
+                return self.function_or_variable_declaration()
+            return None
+        except ParseError:
+            self.synchronize()
+            return None
+
     def function_or_variable_declaration(self) -> ASTNode:
         """Parse function or variable declaration"""
         is_const = False

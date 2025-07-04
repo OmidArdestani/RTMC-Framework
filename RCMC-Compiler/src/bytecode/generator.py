@@ -216,6 +216,57 @@ class BytecodeGenerator(ASTVisitor):
             self.bit_field_layouts = {}
         self.bit_field_layouts[node.name] = bit_field_info
     
+    def visit_task_decl(self, node: TaskDeclNode):
+        """Generate bytecode for task declaration"""
+        task_name = node.name
+        
+        # Store task info for later reference
+        if not hasattr(self, 'tasks'):
+            self.tasks = {}
+        
+        # Generate code for task members (variables and helper functions)
+        for member in node.members:
+            member.accept(self)
+        
+        # Rename the run function to avoid conflicts
+        original_name = node.run_function.name
+        run_function_name = f"{task_name}_run"
+        node.run_function.name = run_function_name
+        
+        # Generate code for run function
+        run_function_address = self.current_address
+        self.functions[run_function_name] = run_function_address
+        
+        # Visit the run function body
+        node.run_function.accept(self)
+        
+        # Restore original name
+        node.run_function.name = original_name
+        
+        # Store task information for RTOS task creation
+        self.tasks[task_name] = {
+            'core': node.core,
+            'priority': node.priority,
+            'run_function': run_function_name,
+            'stack_size': 1024  # Default stack size
+        }
+        
+        # Generate RTOS task creation bytecode
+        # This will be called at program startup
+        func_id = self.add_constant(f"{task_name}_run")
+        task_name_const = self.add_constant(task_name)
+        stack_const = self.add_constant(1024)  # Default stack size
+        priority_const = self.add_constant(node.priority)
+        core_const = self.add_constant(node.core)
+        
+        # Generate task creation instructions
+        self.emit(InstructionBuilder.load_const(func_id))
+        self.emit(InstructionBuilder.load_const(task_name_const))
+        self.emit(InstructionBuilder.load_const(stack_const))
+        self.emit(InstructionBuilder.load_const(priority_const))
+        self.emit(InstructionBuilder.load_const(core_const))
+        self.emit(Instruction(Opcode.RTOS_CREATE_TASK, []))
+    
     def visit_variable_decl(self, node: VariableDeclNode):
         """Generate code for variable declaration"""
         # Allocate space

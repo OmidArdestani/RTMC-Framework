@@ -26,6 +26,7 @@ class TokenType(Enum):
     VOID = auto()
     CONST = auto()
     STRUCT = auto()
+    TASK = auto()  # New Task keyword
     
     # Control flow
     IF = auto()
@@ -138,6 +139,7 @@ class Tokenizer:
         'void': TokenType.VOID,
         'const': TokenType.CONST,
         'struct': TokenType.STRUCT,
+        'Task': TokenType.TASK,  # New Task keyword
         
         # Control flow
         'if': TokenType.IF,

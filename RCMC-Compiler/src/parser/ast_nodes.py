@@ -15,6 +15,7 @@ class NodeType(Enum):
     FUNCTION_DECL = auto()
     STRUCT_DECL = auto()
     VARIABLE_DECL = auto()
+    TASK_DECL = auto()  # New Task declaration
     
     # Statements
     BLOCK_STMT = auto()
@@ -98,6 +99,21 @@ class StructDeclNode(ASTNode):
     
     def accept(self, visitor):
         return visitor.visit_struct_decl(self)
+
+class TaskDeclNode(ASTNode):
+    """Task declaration node for RT-Micro-C"""
+    
+    def __init__(self, name: str, core: int, priority: int, members: List[ASTNode], 
+                 run_function: 'FunctionDeclNode', line: int = 0):
+        super().__init__(NodeType.TASK_DECL, line)
+        self.name = name
+        self.core = core
+        self.priority = priority
+        self.members = members  # Variable declarations and helper functions
+        self.run_function = run_function  # Required run() method
+    
+    def accept(self, visitor):
+        return visitor.visit_task_decl(self)
 
 @dataclass
 class FieldNode:
@@ -351,6 +367,9 @@ class ASTVisitor(ABC):
     def visit_struct_decl(self, node: StructDeclNode): pass
     
     @abstractmethod
+    def visit_task_decl(self, node: TaskDeclNode): pass
+    
+    @abstractmethod
     def visit_variable_decl(self, node: VariableDeclNode): pass
     
     @abstractmethod
@@ -434,6 +453,17 @@ def ast_to_string(node: ASTNode, indent: int = 0) -> str:
         for field in node.fields:
             bit_info = f":{field.bit_width}" if field.bit_width else ""
             result += f"{indent_str}  {field.name}: {ast_to_string(field.type, 0).strip()}{bit_info}\n"
+        return result
+    
+    elif isinstance(node, TaskDeclNode):
+        result = f"{indent_str}TaskDecl: {node.name}\n"
+        result += f"{indent_str}  Core: {node.core}\n"
+        result += f"{indent_str}  Priority: {node.priority}\n"
+        if node.members:
+            result += f"{indent_str}  Members:\n"
+            for member in node.members:
+                result += f"{indent_str}    {ast_to_string(member, 0).strip()}\n"
+        result += f"{indent_str}  RunFunction: {node.run_function.name}\n"
         return result
     
     elif isinstance(node, VariableDeclNode):
