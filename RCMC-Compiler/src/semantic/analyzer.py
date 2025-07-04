@@ -18,6 +18,7 @@ class SymbolType(Enum):
     FUNCTION = auto()
     STRUCT = auto()
     PARAMETER = auto()
+    MESSAGE = auto()  # Message queue symbol
 
 @dataclass
 class Symbol:
@@ -285,6 +286,24 @@ class SemanticAnalyzer(ASTVisitor):
         self.errors.append(error_msg)
         raise SemanticError(error_msg)
     
+    def is_type_compatible(self, type1: str, type2: str) -> bool:
+        """Check if two types are compatible"""
+        # Exact match
+        if type1 == type2:
+            return True
+        
+        # Numeric type compatibility (int can be assigned to float)
+        if type1 == "int" and type2 == "float":
+            return True
+        
+        # Pointer compatibility (void* is compatible with any pointer type)
+        if type1.endswith("*") and type2 == "void*":
+            return True
+        if type2.endswith("*") and type1 == "void*":
+            return True
+        
+        return False
+
     def analyze(self, node: ASTNode):
         """Analyze the AST"""
         try:
@@ -697,3 +716,64 @@ class SemanticAnalyzer(ASTVisitor):
     def visit_literal_expr(self, node: LiteralExprNode):
         """Visit literal expression"""
         return node.literal_type
+
+    def visit_message_decl(self, node: MessageDeclNode):
+        """Visit message declaration"""
+        # Check if the message type is valid
+        message_type = node.message_type.accept(self)
+        
+        # Messages must be declared at global scope (not inside functions or tasks)
+        if self.symbol_table.scope_level > 0:
+            self.error(f"Message queue '{node.name}' must be declared at global scope", node.line)
+        
+        # Check if message name is already defined
+        if self.symbol_table.get(node.name):
+            self.error(f"Message queue '{node.name}' already defined", node.line)
+        
+        # Add message to symbol table
+        symbol = Symbol(
+            name=node.name,
+            symbol_type=SymbolType.MESSAGE,
+            data_type=message_type,
+            line=node.line
+        )
+        
+        self.symbol_table.define(symbol)
+        return message_type
+
+    def visit_message_send(self, node: MessageSendNode):
+        """Visit message send expression"""
+        # Check if the message queue exists
+        symbol = self.symbol_table.get(node.channel)
+        
+        if not symbol:
+            self.error(f"Undefined message queue '{node.channel}'", node.line)
+            return "void"
+        
+        if symbol.symbol_type != SymbolType.MESSAGE:
+            self.error(f"'{node.channel}' is not a message queue", node.line)
+            return "void"
+        
+        # Check payload type matches message type
+        payload_type = node.payload.accept(self)
+        
+        if not self.is_type_compatible(payload_type, symbol.data_type):
+            self.error(f"Type mismatch in message send: expected {symbol.data_type}, got {payload_type}", node.line)
+        
+        return "void"
+
+    def visit_message_recv(self, node: MessageRecvNode):
+        """Visit message receive expression"""
+        # Check if the message queue exists
+        symbol = self.symbol_table.get(node.channel)
+        
+        if not symbol:
+            self.error(f"Undefined message queue '{node.channel}'", node.line)
+            return "int"
+        
+        if symbol.symbol_type != SymbolType.MESSAGE:
+            self.error(f"'{node.channel}' is not a message queue", node.line)
+            return "int"
+        
+        # Return the message type
+        return symbol.data_type

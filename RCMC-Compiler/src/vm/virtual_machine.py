@@ -54,6 +54,23 @@ class Semaphore:
         if not hasattr(self, 'waiting_tasks'):
             self.waiting_tasks = []
 
+@dataclass
+class MessageQueue:
+    """Message queue for inter-task communication"""
+    id: int
+    name: str
+    message_type: str
+    queue: deque
+    max_size: int = 10
+    waiting_senders: List[int] = None  # Task IDs waiting to send
+    waiting_receivers: List[int] = None  # Task IDs waiting to receive
+    
+    def __post_init__(self):
+        if self.waiting_senders is None:
+            self.waiting_senders = []
+        if self.waiting_receivers is None:
+            self.waiting_receivers = []
+
 class HardwareSimulator:
     """Simulates hardware peripherals"""
     
@@ -202,9 +219,11 @@ class VirtualMachine:
         # RTOS state
         self.tasks: Dict[int, Task] = {}
         self.semaphores: Dict[int, Semaphore] = {}
+        self.message_queues: Dict[int, MessageQueue] = {}
         self.current_task_id = 0
         self.task_counter = 0
         self.semaphore_counter = 0
+        self.message_queue_counter = 0
         self.scheduler_running = False
         
         # Hardware simulator
@@ -257,6 +276,11 @@ class VirtualMachine:
             Opcode.RTOS_YIELD: self._handle_rtos_yield,
             Opcode.RTOS_SUSPEND_TASK: self._handle_rtos_suspend_task,
             Opcode.RTOS_RESUME_TASK: self._handle_rtos_resume_task,
+            
+            # Message passing instructions  
+            Opcode.MSG_DECLARE: self._handle_msg_declare,
+            Opcode.MSG_SEND: self._handle_msg_send,
+            Opcode.MSG_RECV: self._handle_msg_recv,
             
             # Hardware instructions
             Opcode.HW_GPIO_INIT: self._handle_hw_gpio_init,
@@ -727,6 +751,88 @@ class VirtualMachine:
         else:
             print(f"Task ID {task_id} not found")
     
+    def _handle_msg_declare(self, instruction: Instruction):
+        """Handle MSG_DECLARE instruction"""
+        message_id = instruction.operands[0]
+        message_type = instruction.operands[1]
+        
+        # Create new message queue with the specified ID
+        queue = MessageQueue(
+            id=message_id,
+            name=f"MessageQueue_{message_id}",
+            message_type=message_type,
+            queue=deque(),
+            max_size=10  # Default queue size
+        )
+        
+        self.message_queues[message_id] = queue
+        if self.debug:
+            print(f"Declared message queue ID: {message_id}, Type: {message_type}")
+    
+    def _handle_msg_send(self, instruction: Instruction):
+        """Handle MSG_SEND instruction"""
+        message_id = instruction.operands[0]
+        payload = self._pop()  # Get the payload from stack
+        
+        if message_id in self.message_queues:
+            queue = self.message_queues[message_id]
+            if len(queue.queue) < queue.max_size:
+                queue.queue.append(payload)
+                
+                # Wake up any task waiting to receive
+                if queue.waiting_receivers:
+                    receiver_id = queue.waiting_receivers.pop(0)
+                    if receiver_id in self.tasks:
+                        self.tasks[receiver_id].state = TaskState.READY
+                        if self.debug:
+                            print(f"Woke up receiver task ID: {receiver_id}")
+                
+                if self.debug:
+                    print(f"Sent message to queue ID: {message_id}, payload: {payload}")
+            else:
+                # Queue is full, block sender (or drop message in this simple implementation)
+                if self.debug:
+                    print(f"Message queue ID: {message_id} is full, dropping message")
+        else:
+            raise VMError(f"Invalid message queue ID: {message_id}")
+    
+    def _handle_msg_recv(self, instruction: Instruction):
+        """Handle MSG_RECV instruction"""
+        message_id = instruction.operands[0]
+        
+        if message_id in self.message_queues:
+            queue = self.message_queues[message_id]
+            if queue.queue:
+                # Message available, return it
+                message = queue.queue.popleft()
+                self._push(message)
+                
+                # Wake up any task waiting to send
+                if queue.waiting_senders:
+                    sender_id = queue.waiting_senders.pop(0)
+                    if sender_id in self.tasks:
+                        self.tasks[sender_id].state = TaskState.READY
+                        if self.debug:
+                            print(f"Woke up sender task ID: {sender_id}")
+                
+                if self.debug:
+                    print(f"Received message from queue ID: {message_id}, payload: {message}")
+            else:
+                # No message available, block the current task
+                task_id = self.current_task_id
+                if task_id in self.tasks:
+                    self.tasks[task_id].state = TaskState.BLOCKED
+                    queue.waiting_receivers.append(task_id)
+                    if self.debug:
+                        print(f"Task ID: {task_id} blocked, waiting for message")
+                    # Yield execution to allow other tasks to run
+                    self._yield_task()
+                else:
+                    # In non-task context, push 0 as default value
+                    self._push(0)
+        else:
+            raise VMError(f"Invalid message queue ID: {message_id}")
+
     # Hardware instruction handlers
     
     def _handle_hw_gpio_init(self, instruction: Instruction):

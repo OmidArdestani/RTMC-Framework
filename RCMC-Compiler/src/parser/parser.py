@@ -99,6 +99,10 @@ class Parser:
             if self.check(TokenType.TASK):
                 return self.task_declaration()
             
+            # Check for Message declaration (message<type> Name;)
+            if self.check(TokenType.MESSAGE):
+                return self.message_declaration()
+            
             # Check for struct declaration (struct Name { ... })
             if self.check(TokenType.STRUCT):
                 # Look ahead to see if this is a struct declaration or variable declaration
@@ -216,6 +220,23 @@ class Parser:
         except ParseError:
             self.synchronize()
             return None
+
+    def message_declaration(self) -> MessageDeclNode:
+        """Parse message declaration: message<type> Name;"""
+        self.consume(TokenType.MESSAGE, "Expected 'message'")
+        self.consume(TokenType.LESS_THAN, "Expected '<' after message")
+        
+        # Parse the message type
+        message_type = self.type_specifier()
+        
+        self.consume(TokenType.GREATER_THAN, "Expected '>' after message type")
+        
+        # Parse message queue name
+        name = self.consume(TokenType.IDENTIFIER, "Expected message queue name").value
+        
+        self.consume(TokenType.SEMICOLON, "Expected ';' after message declaration")
+        
+        return MessageDeclNode(name, message_type)
 
     def function_or_variable_declaration(self) -> ASTNode:
         """Parse function or variable declaration"""
@@ -495,7 +516,22 @@ class Parser:
                 expr = self.finish_call(expr)
             elif self.match(TokenType.DOT):
                 name = self.consume(TokenType.IDENTIFIER, "Expected property name after '.'").value
-                expr = MemberExprNode(expr, name, False)
+                
+                # Check for message operations
+                if name == "send" and isinstance(expr, IdentifierExprNode):
+                    # Parse message send: MessageQueue.send(expr)
+                    self.consume(TokenType.LEFT_PAREN, "Expected '(' after 'send'")
+                    payload = self.expression()
+                    self.consume(TokenType.RIGHT_PAREN, "Expected ')' after send payload")
+                    return MessageSendNode(expr.name, payload)
+                elif name == "recv" and isinstance(expr, IdentifierExprNode):
+                    # Parse message receive: MessageQueue.recv()
+                    self.consume(TokenType.LEFT_PAREN, "Expected '(' after 'recv'")
+                    self.consume(TokenType.RIGHT_PAREN, "Expected ')' after 'recv'")
+                    return MessageRecvNode(expr.name)
+                else:
+                    # Regular member access
+                    expr = MemberExprNode(expr, name, False)
             elif self.match(TokenType.LEFT_BRACKET):
                 index = self.expression()
                 self.consume(TokenType.RIGHT_BRACKET, "Expected ']' after array index")

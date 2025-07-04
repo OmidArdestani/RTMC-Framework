@@ -61,6 +61,11 @@ class Opcode(IntEnum):
     RTOS_SUSPEND_TASK = auto()
     RTOS_RESUME_TASK = auto()
     
+    # Message Passing Instructions
+    MSG_DECLARE = auto()  # Declare a message queue
+    MSG_SEND = auto()     # Send message to queue
+    MSG_RECV = auto()     # Receive message from queue
+    
     # Hardware Access - GPIO
     HW_GPIO_INIT = auto()
     HW_GPIO_SET = auto()

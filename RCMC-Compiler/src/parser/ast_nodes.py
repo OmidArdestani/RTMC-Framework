@@ -16,6 +16,7 @@ class NodeType(Enum):
     STRUCT_DECL = auto()
     VARIABLE_DECL = auto()
     TASK_DECL = auto()  # New Task declaration
+    MESSAGE_DECL = auto()  # New Message declaration
     
     # Statements
     BLOCK_STMT = auto()
@@ -35,6 +36,8 @@ class NodeType(Enum):
     MEMBER_EXPR = auto()
     IDENTIFIER_EXPR = auto()
     LITERAL_EXPR = auto()
+    MESSAGE_SEND = auto()  # Message send expression
+    MESSAGE_RECV = auto()  # Message receive expression
     
     # Types
     PRIMITIVE_TYPE = auto()
@@ -114,6 +117,17 @@ class TaskDeclNode(ASTNode):
     
     def accept(self, visitor):
         return visitor.visit_task_decl(self)
+
+class MessageDeclNode(ASTNode):
+    """Message queue declaration node for RT-Micro-C"""
+    
+    def __init__(self, name: str, message_type: 'TypeNode', line: int = 0):
+        super().__init__(NodeType.MESSAGE_DECL, line)
+        self.name = name
+        self.message_type = message_type
+    
+    def accept(self, visitor):
+        return visitor.visit_message_decl(self)
 
 @dataclass
 class FieldNode:
@@ -352,6 +366,27 @@ class LiteralExprNode(ExpressionNode):
     def accept(self, visitor):
         return visitor.visit_literal_expr(self)
 
+class MessageSendNode(ExpressionNode):
+    """Message send expression node"""
+    
+    def __init__(self, channel: str, payload: ExpressionNode, line: int = 0):
+        super().__init__(NodeType.MESSAGE_SEND, line)
+        self.channel = channel
+        self.payload = payload
+    
+    def accept(self, visitor):
+        return visitor.visit_message_send(self)
+
+class MessageRecvNode(ExpressionNode):
+    """Message receive expression node"""
+    
+    def __init__(self, channel: str, line: int = 0):
+        super().__init__(NodeType.MESSAGE_RECV, line)
+        self.channel = channel
+    
+    def accept(self, visitor):
+        return visitor.visit_message_recv(self)
+
 # Visitor interface
 
 class ASTVisitor(ABC):
@@ -368,6 +403,9 @@ class ASTVisitor(ABC):
     
     @abstractmethod
     def visit_task_decl(self, node: TaskDeclNode): pass
+    
+    @abstractmethod
+    def visit_message_decl(self, node: MessageDeclNode): pass
     
     @abstractmethod
     def visit_variable_decl(self, node: VariableDeclNode): pass
@@ -425,6 +463,12 @@ class ASTVisitor(ABC):
     
     @abstractmethod
     def visit_literal_expr(self, node: LiteralExprNode): pass
+    
+    @abstractmethod
+    def visit_message_send(self, node: MessageSendNode): pass
+    
+    @abstractmethod
+    def visit_message_recv(self, node: MessageRecvNode): pass
 
 # Utility functions
 
@@ -465,6 +509,9 @@ def ast_to_string(node: ASTNode, indent: int = 0) -> str:
                 result += f"{indent_str}    {ast_to_string(member, 0).strip()}\n"
         result += f"{indent_str}  RunFunction: {node.run_function.name}\n"
         return result
+    
+    elif isinstance(node, MessageDeclNode):
+        return f"{indent_str}MessageDecl: {node.name}: {ast_to_string(node.message_type, 0).strip()}\n"
     
     elif isinstance(node, VariableDeclNode):
         const_str = "const " if node.is_const else ""
@@ -564,6 +611,12 @@ def ast_to_string(node: ASTNode, indent: int = 0) -> str:
     
     elif isinstance(node, LiteralExprNode):
         return f"{indent_str}Literal: {node.value} ({node.literal_type})\n"
+    
+    elif isinstance(node, MessageSendNode):
+        return f"{indent_str}MessageSend: {node.channel}\n  Payload:\n{ast_to_string(node.payload, indent + 2)}"
+    
+    elif isinstance(node, MessageRecvNode):
+        return f"{indent_str}MessageRecv: {node.channel}\n"
     
     else:
         return f"{indent_str}{node.__class__.__name__}: {node.__dict__}\n"

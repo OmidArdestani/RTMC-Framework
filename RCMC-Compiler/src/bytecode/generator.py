@@ -537,6 +537,18 @@ class BytecodeGenerator(ASTVisitor):
             # Fallback: treat as simple variable access
             return 0  # Use address 0 as fallback
     
+    def _get_bit_field_info(self, field_name: str):
+        """Get bit field information for a field"""
+        # This is a simplified implementation
+        # In a real implementation, this would look up the struct definition
+        bit_fields = {
+            'enable': (0, 0, 1),    # byte_offset, bit_offset, bit_width
+            'mode': (0, 1, 2),
+            'speed': (0, 3, 4),
+            'reserved': (0, 7, 25)
+        }
+        return bit_fields.get(field_name, None)
+
     def _get_simple_field_offset(self, field_name: str) -> int:
         """Get simple field offset"""
         field_offsets = {
@@ -829,14 +841,6 @@ class BytecodeGenerator(ASTVisitor):
             return parent_offset * 10 + current_offset  # Simple encoding
         else:
             return self._get_field_offset(node.property)
-    
-    def _get_bit_field_info(self, field_name: str) -> Optional[Tuple[int, int, int]]:
-        """Get bit-field information if field is a bit-field"""
-        if hasattr(self, 'bit_field_layouts'):
-            for struct_name, bit_fields in self.bit_field_layouts.items():
-                if field_name in bit_fields:
-                    return bit_fields[field_name]
-        return None
 
     def _get_field_info(self, struct_var_name: str, field_name: str) -> Optional[Dict]:
         """Get field information including bit-field details"""
@@ -852,6 +856,53 @@ class BytecodeGenerator(ASTVisitor):
             'bit_width': None,
             'is_bitfield': False
         }
+
+    def visit_message_decl(self, node: MessageDeclNode):
+        """Generate code for message declaration"""
+        # Reserve space for the message queue in the symbol table
+        message_id = len(self.symbol_table)
+        self.symbol_table[node.name] = message_id
+        
+        # Emit message queue declaration instruction
+        type_name = self._get_type_name(node.message_type)
+        self.emit(Instruction(Opcode.MSG_DECLARE, [message_id, type_name]))
+
+    def visit_message_send(self, node: MessageSendNode):
+        """Generate code for message send"""
+        # Generate code for the payload expression
+        node.payload.accept(self)
+        
+        # Get the message queue ID
+        if node.channel not in self.symbol_table:
+            raise CodeGenError(f"Undefined message queue: {node.channel}")
+        
+        message_id = self.symbol_table[node.channel]
+        
+        # Emit message send instruction
+        self.emit(Instruction(Opcode.MSG_SEND, [message_id]))
+
+    def visit_message_recv(self, node: MessageRecvNode):
+        """Generate code for message receive"""
+        # Get the message queue ID
+        if node.channel not in self.symbol_table:
+            raise CodeGenError(f"Undefined message queue: {node.channel}")
+        
+        message_id = self.symbol_table[node.channel]
+        
+        # Emit message receive instruction
+        self.emit(Instruction(Opcode.MSG_RECV, [message_id]))
+
+    def _get_type_name(self, type_node: TypeNode) -> str:
+        """Get the type name as a string for bytecode"""
+        if isinstance(type_node, PrimitiveTypeNode):
+            return type_node.type_name
+        elif isinstance(type_node, StructTypeNode):
+            return f"struct_{type_node.name}"
+        elif isinstance(type_node, ArrayTypeNode):
+            element_type = self._get_type_name(type_node.element_type)
+            return f"{element_type}[{type_node.size or 0}]"
+        else:
+            return "unknown"
 
 class CodeGenError(Exception):
     """Code generation error"""

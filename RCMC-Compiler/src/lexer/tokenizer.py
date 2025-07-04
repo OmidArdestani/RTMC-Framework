@@ -27,6 +27,11 @@ class TokenType(Enum):
     CONST = auto()
     STRUCT = auto()
     TASK = auto()  # New Task keyword
+    MESSAGE = auto()  # New Message keyword
+    
+    # Message operations
+    SEND = auto()
+    RECV = auto()
     
     # Control flow
     IF = auto()
@@ -140,6 +145,11 @@ class Tokenizer:
         'const': TokenType.CONST,
         'struct': TokenType.STRUCT,
         'Task': TokenType.TASK,  # New Task keyword
+        'message': TokenType.MESSAGE,  # New Message keyword
+        
+        # Message operations
+        'send': TokenType.SEND,
+        'recv': TokenType.RECV,
         
         # Control flow
         'if': TokenType.IF,
