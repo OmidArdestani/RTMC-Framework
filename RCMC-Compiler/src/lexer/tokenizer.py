@@ -12,125 +12,129 @@ from io import StringIO
 class TokenType(Enum):
     # Literals
     INTEGER = auto()
-    FLOAT = auto()
-    STRING = auto()
-    CHAR = auto()
+    FLOAT   = auto()
+    STRING  = auto()
+    CHAR    = auto()
     
     # Identifiers and keywords
     IDENTIFIER = auto()
     
     # Data types
-    INT = auto()
-    FLOAT_TYPE = auto()
-    CHAR_TYPE = auto()
-    VOID = auto()
-    CONST = auto()
-    STRUCT = auto()
-    TASK = auto()  # New Task keyword
-    MESSAGE = auto()  # New Message keyword
+    INT         = auto()
+    FLOAT_TYPE  = auto()
+    CHAR_TYPE   = auto()
+    VOID        = auto()
+    CONST       = auto()
+    STRUCT      = auto()
+    TASK        = auto()  # New Task keyword
+    MESSAGE     = auto()  # New Message keyword
+    IMPORT      = auto()  # Import keyword
     
     # Message operations
     SEND = auto()
     RECV = auto()
     
     # Control flow
-    IF = auto()
-    ELSE = auto()
-    WHILE = auto()
-    FOR = auto()
-    BREAK = auto()
+    IF       = auto()
+    ELSE     = auto()
+    WHILE    = auto()
+    FOR      = auto()
+    BREAK    = auto()
     CONTINUE = auto()
-    RETURN = auto()
+    RETURN   = auto()
     
     # RTOS Keywords
-    RTOS_CREATE_TASK = auto()
-    RTOS_DELETE_TASK = auto()
-    RTOS_DELAY_MS = auto()
+    RTOS_CREATE_TASK      = auto()
+    RTOS_DELETE_TASK      = auto()
+    RTOS_DELAY_MS         = auto()
     RTOS_SEMAPHORE_CREATE = auto()
-    RTOS_SEMAPHORE_TAKE = auto()
-    RTOS_SEMAPHORE_GIVE = auto()
-    RTOS_YIELD = auto()
-    RTOS_SUSPEND_TASK = auto()
-    RTOS_RESUME_TASK = auto()
+    RTOS_SEMAPHORE_TAKE   = auto()
+    RTOS_SEMAPHORE_GIVE   = auto()
+    RTOS_YIELD            = auto()
+    RTOS_SUSPEND_TASK     = auto()
+    RTOS_RESUME_TASK      = auto()
     
     # Hardware Keywords
-    HW_GPIO_INIT = auto()
-    HW_GPIO_SET = auto()
-    HW_GPIO_GET = auto()
-    HW_TIMER_INIT = auto()
-    HW_TIMER_START = auto()
-    HW_TIMER_STOP = auto()
+    HW_GPIO_INIT         = auto()
+    HW_GPIO_SET          = auto()
+    HW_GPIO_GET          = auto()
+    HW_TIMER_INIT        = auto()
+    HW_TIMER_START       = auto()
+    HW_TIMER_STOP        = auto()
     HW_TIMER_SET_PWM_DUTY = auto()
-    HW_ADC_INIT = auto()
-    HW_ADC_READ = auto()
-    HW_UART_WRITE = auto()
-    HW_SPI_TRANSFER = auto()
-    HW_I2C_WRITE = auto()
-    HW_I2C_READ = auto()
+    # TODO: Add timer reset and get
+    HW_ADC_INIT          = auto()
+    HW_ADC_READ          = auto()
+    HW_UART_WRITE        = auto()
+    # TODO: Add UART read
+    HW_SPI_TRANSFER      = auto()
+    HW_I2C_WRITE         = auto()
+    HW_I2C_READ          = auto()
     
     # Debug Keywords
-    DBG_PRINT = auto()
+    DBG_PRINT      = auto()
     DBG_BREAKPOINT = auto()
     
     # Operators
-    PLUS = auto()
-    MINUS = auto()
-    MULTIPLY = auto()
-    DIVIDE = auto()
-    MODULO = auto()
-    ASSIGN = auto()
-    PLUS_ASSIGN = auto()
-    MINUS_ASSIGN = auto()
-    MULTIPLY_ASSIGN = auto()
-    DIVIDE_ASSIGN = auto()
+    PLUS             = auto()
+    MINUS            = auto()
+    MULTIPLY         = auto()
+    DIVIDE           = auto()
+    MODULO           = auto()
+    ASSIGN           = auto()
+    PLUS_ASSIGN      = auto()
+    MINUS_ASSIGN     = auto()
+    MULTIPLY_ASSIGN  = auto()
+    DIVIDE_ASSIGN    = auto()
+    # TODO: Add sqrt and power operators
     
     # Comparison operators
-    EQUAL = auto()
-    NOT_EQUAL = auto()
-    LESS_THAN = auto()
-    LESS_EQUAL = auto()
-    GREATER_THAN = auto()
+    EQUAL         = auto()
+    NOT_EQUAL     = auto()
+    LESS_THAN     = auto()
+    LESS_EQUAL    = auto()
+    GREATER_THAN  = auto()
     GREATER_EQUAL = auto()
     
     # Logical operators
     LOGICAL_AND = auto()
-    LOGICAL_OR = auto()
+    LOGICAL_OR  = auto()
     LOGICAL_NOT = auto()
     
     # Bitwise operators
-    BITWISE_AND = auto()
-    BITWISE_OR = auto()
-    BITWISE_XOR = auto()
-    BITWISE_NOT = auto()
-    LEFT_SHIFT = auto()
-    RIGHT_SHIFT = auto()
+    BITWISE_AND   = auto()
+    BITWISE_OR    = auto()
+    BITWISE_XOR   = auto()
+    BITWISE_NOT   = auto()
+    LEFT_SHIFT    = auto()
+    RIGHT_SHIFT   = auto()
     
     # Delimiters
     SEMICOLON = auto()
-    COMMA = auto()
-    DOT = auto()
-    ARROW = auto()
-    COLON = auto()
+    COMMA     = auto()
+    DOT       = auto()
+    ARROW     = auto()
+    COLON     = auto()
     
     # Brackets
-    LEFT_PAREN = auto()
-    RIGHT_PAREN = auto()
-    LEFT_BRACE = auto()
-    RIGHT_BRACE = auto()
-    LEFT_BRACKET = auto()
+    LEFT_PAREN    = auto()
+    RIGHT_PAREN   = auto()
+    LEFT_BRACE    = auto()
+    RIGHT_BRACE   = auto()
+    LEFT_BRACKET  = auto()
     RIGHT_BRACKET = auto()
     
     # Special
-    NEWLINE = auto()
-    EOF = auto()
-    COMMENT = auto()
+    NEWLINE    = auto()
+    EOF        = auto()
+    COMMENT    = auto()
     WHITESPACE = auto()
 
 @dataclass
 class Token:
-    type: TokenType
-    value: str
-    line: int
+    type:   TokenType
+    value:  str
+    line:   int
     column: int
 
 class Tokenizer:
@@ -144,8 +148,9 @@ class Tokenizer:
         'void': TokenType.VOID,
         'const': TokenType.CONST,
         'struct': TokenType.STRUCT,
-        'Task': TokenType.TASK,  # New Task keyword
-        'message': TokenType.MESSAGE,  # New Message keyword
+        'Task': TokenType.TASK,
+        'message': TokenType.MESSAGE,
+        'import': TokenType.IMPORT,
         
         # Message operations
         'send': TokenType.SEND,

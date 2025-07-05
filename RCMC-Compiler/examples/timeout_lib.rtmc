@@ -1,0 +1,7 @@
+// Library with timeout utilities
+int FAST_TIMEOUT = 50;
+int SLOW_TIMEOUT = 1000;
+
+int timeout_helper(int base_timeout) {
+    return base_timeout * 2;
+}

@@ -352,6 +352,14 @@ class ConstantFolder(ASTVisitor):
 
     def visit_message_recv(self, node: MessageRecvNode) -> MessageRecvNode:
         """Message receive expressions don't need optimization"""
+        # Optimize timeout if present
+        optimized_timeout = None
+        if node.timeout:
+            optimized_timeout = node.timeout.accept(self)
+        return MessageRecvNode(node.channel, optimized_timeout, node.line)
+
+    def visit_import_stmt(self, node: ImportStmtNode) -> ImportStmtNode:
+        """Import statements don't need optimization"""
         return node
 
 class DeadCodeEliminator(ASTVisitor):
@@ -510,6 +518,14 @@ class DeadCodeEliminator(ASTVisitor):
 
     def visit_message_recv(self, node: MessageRecvNode) -> MessageRecvNode:
         """Message receive expressions are always needed (have side effects)"""
+        # Optimize timeout if present
+        optimized_timeout = None
+        if node.timeout:
+            optimized_timeout = node.timeout.accept(self)
+        return MessageRecvNode(node.channel, optimized_timeout, node.line)
+
+    def visit_import_stmt(self, node: ImportStmtNode) -> ImportStmtNode:
+        """Import statements are always needed"""
         return node
 
 class Optimizer:

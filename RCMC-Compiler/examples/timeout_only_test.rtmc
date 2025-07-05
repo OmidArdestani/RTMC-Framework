@@ -1,0 +1,13 @@
+// Test timeout functionality
+
+message<int> TestQueue;
+
+void main() {
+    int x;
+    
+    // Test with timeout  
+    x = TestQueue.recv(timeout: 100);
+    
+    // Test without timeout
+    x = TestQueue.recv();
+}

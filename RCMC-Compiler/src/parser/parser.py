@@ -95,6 +95,10 @@ class Parser:
     def declaration(self) -> Optional[ASTNode]:
         """Parse a declaration"""
         try:
+            # Check for Import statement (import "filename.rtmc";)
+            if self.check(TokenType.IMPORT):
+                return self.import_statement()
+            
             # Check for Task declaration (Task<core, priority> Name { ... })
             if self.check(TokenType.TASK):
                 return self.task_declaration()
@@ -238,6 +242,18 @@ class Parser:
         self.consume(TokenType.SEMICOLON, "Expected ';' after message declaration")
         
         return MessageDeclNode(name, message_type)
+
+    def import_statement(self) -> ImportStmtNode:
+        """Parse import statement: import "filename.rtmc";"""
+        self.consume(TokenType.IMPORT, "Expected 'import'")
+        
+        # Parse the file path string
+        filepath_token = self.consume(TokenType.STRING, "Expected string literal after 'import'")
+        filepath = filepath_token.value.strip('"\'')  # Remove quotes
+        
+        self.consume(TokenType.SEMICOLON, "Expected ';' after import statement")
+        
+        return ImportStmtNode(filepath)
 
     def function_or_variable_declaration(self) -> ASTNode:
         """Parse function or variable declaration"""
@@ -555,11 +571,22 @@ class Parser:
                     self.consume(TokenType.RIGHT_PAREN, "Expected ')' after send payload")
                     return MessageSendNode(expr.name, payload)
                 elif self.check(TokenType.RECV) and isinstance(expr, IdentifierExprNode):
-                    # Parse message receive: MessageQueue.recv()
+                    # Parse message receive: MessageQueue.recv() or MessageQueue.recv(timeout: 100)
                     self.advance()  # consume 'recv'
                     self.consume(TokenType.LEFT_PAREN, "Expected '(' after 'recv'")
-                    self.consume(TokenType.RIGHT_PAREN, "Expected ')' after 'recv'")
-                    return MessageRecvNode(expr.name)
+                    
+                    timeout = None
+                    if not self.check(TokenType.RIGHT_PAREN):
+                        # Check for timeout parameter
+                        if self.match(TokenType.IDENTIFIER) and self.previous().value == "timeout":
+                            self.consume(TokenType.COLON, "Expected ':' after 'timeout'")
+                            timeout = self.expression()
+                        else:
+                            # If not timeout parameter, treat as error for now
+                            raise ParseError("Unexpected parameter in recv(). Only 'timeout:' is supported")
+                    
+                    self.consume(TokenType.RIGHT_PAREN, "Expected ')' after recv parameters")
+                    return MessageRecvNode(expr.name, timeout)
                 else:
                     # Regular member access
                     name = self.consume(TokenType.IDENTIFIER, "Expected property name after '.'").value

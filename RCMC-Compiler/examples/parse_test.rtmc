@@ -1,0 +1,3 @@
+void test_timeout_parsing() {
+    int x = recv(timeout: 100);
+}

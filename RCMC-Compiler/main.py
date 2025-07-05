@@ -7,16 +7,69 @@ Compiles Mini-C source code to bytecode for the RT-App-Lang virtual machine.
 import sys
 import argparse
 from pathlib import Path
+from typing import Set, Dict
 
 # Add src directory to path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from lexer.tokenizer import Tokenizer
 from parser.parser import Parser
+from parser.ast_nodes import ProgramNode, ImportStmtNode
 from semantic.analyzer import SemanticAnalyzer
 from optimizer.optimizer import Optimizer
 from bytecode.generator import BytecodeGenerator
 from bytecode.writer import BytecodeWriter
+
+def parse_with_imports(file_path: Path, imported_files: Set[Path] = None) -> ProgramNode:
+    """Parse a file and recursively parse any imported files"""
+    if imported_files is None:
+        imported_files = set()
+    
+    # Convert to absolute path to prevent duplicate imports
+    abs_path = file_path.resolve()
+    
+    # Check for circular imports
+    if abs_path in imported_files:
+        return ProgramNode([])  # Return empty program for circular imports
+    
+    imported_files.add(abs_path)
+    
+    # Read the file
+    try:
+        with open(abs_path, 'r') as f:
+            source_code = f.read()
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Import file not found: {file_path}")
+    
+    # Tokenize and parse
+    tokenizer = Tokenizer(source_code)
+    tokens = tokenizer.tokenize()
+    parser = Parser(tokens)
+    ast = parser.parse()
+    
+    # Collect import statements and other statements separately
+    imports = []
+    other_statements = []
+    
+    for stmt in ast.declarations:
+        if isinstance(stmt, ImportStmtNode):
+            imports.append(stmt)
+        else:
+            other_statements.append(stmt)
+    
+    # Process imports recursively
+    imported_statements = []
+    for import_stmt in imports:
+        # Resolve import path relative to current file
+        import_path = abs_path.parent / import_stmt.filepath
+        imported_ast = parse_with_imports(import_path, imported_files.copy())
+        imported_statements.extend(imported_ast.declarations)
+    
+    # Combine imported statements with current file statements
+    # Put imports first to ensure proper dependency order
+    all_statements = imported_statements + other_statements
+    
+    return ProgramNode(all_statements)
 
 def main():
     parser = argparse.ArgumentParser(description='Mini-C Compiler for RTOS')
@@ -30,38 +83,32 @@ def main():
     args = parser.parse_args()
     
     # Read input file
-    try:
-        with open(args.input, 'r') as f:
-            source_code = f.read()
-    except FileNotFoundError:
-        print(f"Error: File '{args.input}' not found")
-        sys.exit(1)
+    input_path = Path(args.input)
     
     # Set output file
     if args.output:
         output_file = args.output
     else:
-        output_file = Path(args.input).with_suffix('.vmb')
+        output_file = input_path.with_suffix('.vmb')
     
     try:
-        # Compilation pipeline
+        # Compilation pipeline with import support
         if args.verbose:
-            print("Stage 1: Lexical Analysis...")
+            print("Stage 1: Lexical Analysis and Parsing (with imports)...")
         
-        tokenizer = Tokenizer(source_code)
-        tokens = tokenizer.tokenize()
+        # Parse with recursive import handling
+        ast = parse_with_imports(input_path)
         
+        # Extract tokens for debugging if requested
         if args.tokens:
-            print("=== TOKENS ===")
+            print("=== TOKENS (main file only) ===")
+            with open(input_path, 'r') as f:
+                source_code = f.read()
+            tokenizer = Tokenizer(source_code)
+            tokens = tokenizer.tokenize()
             for token in tokens:
                 print(f"{token.type.name}: '{token.value}' at line {token.line}")
             print()
-        
-        if args.verbose:
-            print("Stage 2: Parsing...")
-        
-        parser = Parser(tokens)
-        ast = parser.parse()
         
         if args.ast:
             print("=== AST ===")
@@ -96,6 +143,9 @@ def main():
         if args.verbose:
             print(f"Compilation successful! Output: {output_file}")
         
+    except FileNotFoundError as e:
+        print(f"Error: {e}")
+        sys.exit(1)
     except Exception as e:
         print(f"Compilation error: {e}")
         if args.verbose:

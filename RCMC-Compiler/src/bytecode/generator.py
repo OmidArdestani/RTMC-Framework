@@ -889,8 +889,22 @@ class BytecodeGenerator(ASTVisitor):
         
         message_id = self.symbol_table[node.channel]
         
-        # Emit message receive instruction
+        # Handle timeout parameter
+        if node.timeout is not None:
+            # Generate code to compute timeout value
+            node.timeout.accept(self)
+            # The timeout value is now on the stack
+        else:
+            # No timeout specified, use -1 for blocking receive
+            self.emit(Instruction(Opcode.LOAD_CONST, [self.add_constant(-1)]))
+        
+        # Emit message receive instruction with timeout
+        # Stack order: [timeout_value] -> MSG_RECV will pop timeout and use it
         self.emit(Instruction(Opcode.MSG_RECV, [message_id]))
+
+    def visit_import_stmt(self, node: ImportStmtNode):
+        """Import statements are handled by the compiler, no bytecode needed"""
+        pass
 
     def _get_type_name(self, type_node: TypeNode) -> str:
         """Get the type name as a string for bytecode"""

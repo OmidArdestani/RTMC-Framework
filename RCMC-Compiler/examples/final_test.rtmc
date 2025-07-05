@@ -1,0 +1,20 @@
+import "timeout_lib.rtmc";
+
+message<int> DataQueue;
+
+void main() {
+    int data;
+    int computed_timeout;
+    
+    // Use imported constant with timeout
+    data = DataQueue.recv(timeout: FAST_TIMEOUT);
+    
+    // Use imported function to compute timeout
+    computed_timeout = timeout_helper(100);
+    data = DataQueue.recv(timeout: computed_timeout);
+    
+    // Test all timeout variations
+    data = DataQueue.recv(timeout: 0);     // Non-blocking
+    data = DataQueue.recv(timeout: 500);   // Fixed timeout
+    data = DataQueue.recv();               // Blocking
+}

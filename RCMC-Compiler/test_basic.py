@@ -10,6 +10,11 @@ from pathlib import Path
 # Add src directory to path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
+from lexer.tokenizer import Tokenizer, TokenType
+from parser.parser import Parser
+from parser.ast_nodes import ImportStmtNode, MessageRecvNode
+
+
 def test_tokenizer():
     """Test basic tokenizer functionality"""
     print("Testing tokenizer...")
@@ -216,6 +221,98 @@ def test_example_compilation():
     
     return True
 
+def test_import_tokenization():
+    """Test that import statements are tokenized correctly"""
+    try:
+        source = 'import "test.rtmc";'
+        tokenizer = Tokenizer(source)
+        tokens = tokenizer.tokenize()
+        
+        assert tokens[0].type == TokenType.IMPORT
+        assert tokens[1].type == TokenType.STRING
+        assert tokens[1].value == "test.rtmc"
+        assert tokens[2].type == TokenType.SEMICOLON
+        print("✓ Import tokenization test passed")
+    except AssertionError as e:
+        print(f"✗ Import tokenization test failed: {e}")
+        return False
+    
+    return True
+
+def test_timeout_tokenization():
+    """Test that timeout syntax is tokenized correctly"""
+    try:
+        source = 'queue.recv(timeout: 100);'
+        tokenizer = Tokenizer(source)
+        tokens = tokenizer.tokenize()
+        
+        # Find the relevant tokens
+        timeout_idx = None
+        colon_idx = None
+        for i, token in enumerate(tokens):
+            if token.type == TokenType.IDENTIFIER and token.value == "timeout":
+                timeout_idx = i
+            elif token.type == TokenType.COLON:
+                colon_idx = i
+        
+        assert timeout_idx is not None, "timeout identifier not found"
+        assert colon_idx is not None, "colon not found"
+        assert colon_idx == timeout_idx + 1, "colon should follow timeout"
+        print("✓ Timeout tokenization test passed")
+    except AssertionError as e:
+        print(f"✗ Timeout tokenization test failed: {e}")
+        return False
+    
+    return True
+
+def test_import_parsing():
+    """Test that import statements are parsed correctly"""
+    try:
+        source = 'import "test.rtmc";\nvoid main() {}'
+        tokenizer = Tokenizer(source)
+        tokens = tokenizer.tokenize()
+        parser = Parser(tokens)
+        ast = parser.parse()
+        
+        assert len(ast.declarations) == 2
+        assert isinstance(ast.declarations[0], ImportStmtNode)
+        assert ast.declarations[0].filepath == "test.rtmc"
+        print("✓ Import parsing test passed")
+    except AssertionError as e:
+        print(f"✗ Import parsing test failed: {e}")
+        return False
+    
+    return True
+
+def test_timeout_parsing():
+    """Test that timeout syntax is parsed correctly"""
+    try:
+        source = '''
+        message<int> TestQueue;
+        void main() {
+            int x = TestQueue.recv(timeout: 100);
+        }
+        '''
+        tokenizer = Tokenizer(source)
+        tokens = tokenizer.tokenize()
+        parser = Parser(tokens)
+        ast = parser.parse()
+        
+        # Find the variable declaration with recv call
+        main_func = ast.declarations[1]  # Second declaration should be main
+        block = main_func.body
+        var_decl = block.statements[0]  # First statement in main
+        recv_call = var_decl.initializer
+        
+        assert isinstance(recv_call, MessageRecvNode)
+        assert recv_call.timeout is not None
+        print("✓ Timeout parsing test passed")
+    except AssertionError as e:
+        print(f"✗ Timeout parsing test failed: {e}")
+        return False
+    
+    return True
+
 def main():
     """Run all tests"""
     print("=" * 50)
@@ -229,6 +326,10 @@ def main():
         test_bytecode_generation,
         test_virtual_machine,
         test_example_compilation,
+        test_import_tokenization,
+        test_timeout_tokenization,
+        test_import_parsing,
+        test_timeout_parsing
     ]
     
     passed = 0

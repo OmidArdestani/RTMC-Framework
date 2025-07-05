@@ -1,0 +1,5 @@
+import "common.rtmc";
+
+void main() {
+    int result = test_function();
+}

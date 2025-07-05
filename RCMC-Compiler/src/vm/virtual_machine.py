@@ -64,12 +64,15 @@ class MessageQueue:
     max_size: int = 10
     waiting_senders: List[int] = None  # Task IDs waiting to send
     waiting_receivers: List[int] = None  # Task IDs waiting to receive
+    waiting_timeouts: Dict[int, float] = None  # Task ID -> timeout timestamp
     
     def __post_init__(self):
         if self.waiting_senders is None:
             self.waiting_senders = []
         if self.waiting_receivers is None:
             self.waiting_receivers = []
+        if self.waiting_timeouts is None:
+            self.waiting_timeouts = {}
 
 class HardwareSimulator:
     """Simulates hardware peripherals"""
@@ -385,8 +388,50 @@ class VirtualMachine:
         stack_info = f"Stack: {self.stack[-3:] if len(self.stack) > 3 else self.stack}"
         print(f"PC:{self.pc:4d} {instruction} {stack_info}")
     
+    def _check_timeouts(self):
+        """Check for timed out message receives"""
+        current_time = time.time()
+        
+        for queue in self.message_queues.values():
+            timed_out_tasks = []
+            
+            # Check which tasks have timed out
+            for task_id, timeout_time in queue.waiting_timeouts.items():
+                if current_time >= timeout_time:
+                    timed_out_tasks.append(task_id)
+            
+            # Handle timed out tasks
+            for task_id in timed_out_tasks:
+                if task_id in self.tasks and task_id in queue.waiting_receivers:
+                    # Remove from waiting lists
+                    queue.waiting_receivers.remove(task_id)
+                    del queue.waiting_timeouts[task_id]
+                    
+                    # Wake up the task and push 0 (timeout return value)
+                    self.tasks[task_id].state = TaskState.READY
+                    
+                    # Save current state and switch to timed out task temporarily
+                    # to push the timeout return value
+                    saved_task = self.current_task_id
+                    saved_stack = self.stack
+                    
+                    self.current_task_id = task_id
+                    self.stack = self.tasks[task_id].stack
+                    self._push(0)  # Timeout return value
+                    self.tasks[task_id].stack = self.stack
+                    
+                    # Restore previous state
+                    self.current_task_id = saved_task
+                    self.stack = saved_stack
+                    
+                    if self.debug:
+                        print(f"Task ID: {task_id} timed out waiting for message")
+
     def _yield_task(self):
         """Yield current task (simplified scheduling)"""
+        # Check for message receive timeouts
+        self._check_timeouts()
+        
         # In a real RTOS, this would be more sophisticated
         time.sleep(0.001)  # Small delay to prevent busy waiting
     
@@ -797,8 +842,11 @@ class VirtualMachine:
             raise VMError(f"Invalid message queue ID: {message_id}")
     
     def _handle_msg_recv(self, instruction: Instruction):
-        """Handle MSG_RECV instruction"""
+        """Handle MSG_RECV instruction with timeout support"""
         message_id = instruction.operands[0]
+        
+        # Pop timeout value from stack (-1 means blocking, >=0 means timeout in ms)
+        timeout_ms = self._pop()
         
         if message_id in self.message_queues:
             queue = self.message_queues[message_id]
@@ -818,15 +866,29 @@ class VirtualMachine:
                 if self.debug:
                     print(f"Received message from queue ID: {message_id}, payload: {message}")
             else:
-                # No message available, block the current task
+                # No message available
                 task_id = self.current_task_id
                 if task_id in self.tasks:
-                    self.tasks[task_id].state = TaskState.BLOCKED
-                    queue.waiting_receivers.append(task_id)
-                    if self.debug:
-                        print(f"Task ID: {task_id} blocked, waiting for message")
-                    # Yield execution to allow other tasks to run
-                    self._yield_task()
+                    if timeout_ms == -1:
+                        # Blocking receive - block indefinitely
+                        self.tasks[task_id].state = TaskState.BLOCKED
+                        queue.waiting_receivers.append(task_id)
+                        if self.debug:
+                            print(f"Task ID: {task_id} blocked indefinitely, waiting for message")
+                        self._yield_task()
+                    elif timeout_ms == 0:
+                        # Non-blocking receive - return immediately with 0
+                        self._push(0)
+                        if self.debug:
+                            print(f"Non-blocking receive from queue ID: {message_id}, no message available")
+                    else:
+                        # Timeout receive - block with timeout
+                        self.tasks[task_id].state = TaskState.BLOCKED
+                        queue.waiting_receivers.append(task_id)
+                        queue.waiting_timeouts[task_id] = time.time() + (timeout_ms / 1000.0)
+                        if self.debug:
+                            print(f"Task ID: {task_id} blocked with timeout {timeout_ms}ms, waiting for message")
+                        self._yield_task()
                 else:
                     # In non-task context, push 0 as default value
                     self._push(0)

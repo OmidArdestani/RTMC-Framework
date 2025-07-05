@@ -1,0 +1,5 @@
+// Common definitions that can be imported
+
+int test_function() {
+    return 42;
+}

@@ -17,6 +17,7 @@ class NodeType(Enum):
     VARIABLE_DECL = auto()
     TASK_DECL = auto()  # New Task declaration
     MESSAGE_DECL = auto()  # New Message declaration
+    IMPORT_STMT = auto()  # Import statement
     
     # Statements
     BLOCK_STMT = auto()
@@ -281,6 +282,16 @@ class ContinueStmtNode(StatementNode):
     def accept(self, visitor):
         return visitor.visit_continue_stmt(self)
 
+class ImportStmtNode(StatementNode):
+    """Import statement node"""
+    
+    def __init__(self, filepath: str, line: int = 0):
+        super().__init__(NodeType.IMPORT_STMT, line)
+        self.filepath = filepath
+    
+    def accept(self, visitor):
+        return visitor.visit_import_stmt(self)
+
 # Expression nodes
 
 class ExpressionNode(ASTNode):
@@ -380,9 +391,10 @@ class MessageSendNode(ExpressionNode):
 class MessageRecvNode(ExpressionNode):
     """Message receive expression node"""
     
-    def __init__(self, channel: str, line: int = 0):
+    def __init__(self, channel: str, timeout: Optional['ExpressionNode'] = None, line: int = 0):
         super().__init__(NodeType.MESSAGE_RECV, line)
         self.channel = channel
+        self.timeout = timeout  # Optional timeout expression
     
     def accept(self, visitor):
         return visitor.visit_message_recv(self)

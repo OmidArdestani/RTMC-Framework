@@ -1,0 +1,22 @@
+// Create a comprehensive test that shows both features working
+
+import "timeout_lib.rtmc";
+
+message<int> SensorData;
+
+void main() {
+    int data;
+    int dynamic_timeout;
+    
+    // Use imported constant for timeout
+    data = SensorData.recv(timeout: FAST_TIMEOUT);
+    
+    // Use imported function to compute timeout
+    dynamic_timeout = timeout_helper(SLOW_TIMEOUT);
+    data = SensorData.recv(timeout: dynamic_timeout);
+    
+    // Test all timeout variations
+    data = SensorData.recv(timeout: 0);      // Non-blocking
+    data = SensorData.recv(timeout: 1000);   // Fixed timeout  
+    data = SensorData.recv();                // Blocking (no timeout)
+}

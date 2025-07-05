@@ -775,5 +775,17 @@ class SemanticAnalyzer(ASTVisitor):
             self.error(f"'{node.channel}' is not a message queue", node.line)
             return "int"
         
+        # Check timeout parameter if present
+        if node.timeout:
+            timeout_type = node.timeout.accept(self)
+            if timeout_type != "int":
+                self.error(f"Timeout parameter must be int, got {timeout_type}", node.line)
+        
         # Return the message type
         return symbol.data_type
+
+    def visit_import_stmt(self, node: ImportStmtNode):
+        """Visit import statement - handled by compiler, no semantic checking needed here"""
+        # Import statements are processed by the compiler before semantic analysis
+        # So we don't need to do anything here
+        pass

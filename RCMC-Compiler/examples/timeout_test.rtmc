@@ -1,0 +1,28 @@
+import "common.rtmc";
+
+msgqueue TempQueue<int>(5);
+
+task MainTask() {
+    int temp_reading;
+    
+    // Test timeout feature - try to receive with a 500ms timeout
+    temp_reading = TempQueue.recv(timeout: 500);
+    
+    // Test non-blocking receive (0 timeout)
+    temp_reading = TempQueue.recv(timeout: 0);
+    
+    // Test blocking receive (no timeout)
+    temp_reading = TempQueue.recv();
+}
+
+task SenderTask() {
+    delay(1000);  // Wait 1 second
+    TempQueue.send(75);  // Send a temperature reading
+}
+
+void main() {
+    utility_function();  // Call imported function
+    
+    start_task(MainTask, 1024, 1, 0);
+    start_task(SenderTask, 1024, 1, 0);
+}

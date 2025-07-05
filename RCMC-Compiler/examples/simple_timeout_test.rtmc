@@ -1,0 +1,8 @@
+message<int> TestQueue;
+
+void main() {
+    int result;
+    
+    // Test non-blocking receive (should return 0 immediately since no message)
+    result = TestQueue.recv(timeout: 0);
+}
