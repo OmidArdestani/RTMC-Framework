@@ -4,9 +4,13 @@ Converts AST to bytecode instructions.
 """
 
 from typing import Dict, List, Optional, Any, Tuple
-from parser.ast_nodes import *
-from bytecode.instructions import *
+from src.parser.ast_nodes import *
+from src.bytecode.instructions import *
 from dataclasses import dataclass
+
+class CodeGenError(Exception):
+    """Code generation error"""
+    pass
 
 @dataclass
 class BytecodeProgram:
@@ -293,6 +297,18 @@ class BytecodeGenerator(ASTVisitor):
     def visit_array_type(self, node: ArrayTypeNode):
         """Type nodes don't generate code"""
         pass
+    
+    def _get_type_name(self, type_node: TypeNode) -> str:
+        """Extract type name from a type node"""
+        if isinstance(type_node, PrimitiveTypeNode):
+            return type_node.type_name
+        elif isinstance(type_node, StructTypeNode):
+            return type_node.struct_name
+        elif isinstance(type_node, ArrayTypeNode):
+            element_name = self._get_type_name(type_node.element_type)
+            return f"{element_name}[{type_node.size}]"
+        else:
+            return "unknown"
     
     def visit_block_stmt(self, node: BlockStmtNode):
         """Generate code for block statement"""
@@ -905,19 +921,49 @@ class BytecodeGenerator(ASTVisitor):
     def visit_import_stmt(self, node: ImportStmtNode):
         """Import statements are handled by the compiler, no bytecode needed"""
         pass
-
-    def _get_type_name(self, type_node: TypeNode) -> str:
-        """Get the type name as a string for bytecode"""
-        if isinstance(type_node, PrimitiveTypeNode):
-            return type_node.type_name
-        elif isinstance(type_node, StructTypeNode):
-            return f"struct_{type_node.struct_name}"
-        elif isinstance(type_node, ArrayTypeNode):
-            element_type = self._get_type_name(type_node.element_type)
-            return f"{element_type}[{type_node.size or 0}]"
+    
+    def visit_array_decl(self, node: ArrayDeclNode):
+        """Visit array declaration node"""
+        # For now, treat array as a regular variable allocation
+        # TODO: Implement proper array support in VM
+        
+        # Store array reference in symbol table
+        array_address = self.allocate_variable(node.name)
+        
+        # Initialize to null/zero for now
+        const_idx = self.add_constant(0)
+        self.emit(Instruction(Opcode.LOAD_CONST, [const_idx]))
+        self.emit(Instruction(Opcode.STORE_VAR, [array_address]))
+        
+        # If there's an initializer, process it
+        if node.initializer:
+            # For now, just evaluate the initializer but don't store it
+            # TODO: Implement proper array initialization
+            node.initializer.accept(self)
+    
+    def visit_array_literal(self, node: ArrayLiteralNode):
+        """Visit array literal node"""
+        # For now, just emit the first element or zero
+        # TODO: Implement proper array literal support
+        if node.elements:
+            node.elements[0].accept(self)
         else:
-            return "unknown"
-
-class CodeGenError(Exception):
-    """Code generation error"""
-    pass
+            const_idx = self.add_constant(0)
+            self.emit(Instruction(Opcode.LOAD_CONST, [const_idx]))
+    
+    def visit_array_access(self, node: ArrayAccessNode):
+        """Visit array access node"""
+        # For now, just treat array access as loading the array variable
+        # TODO: Implement proper array indexing
+        if hasattr(node.array, 'name'):
+            # If it's a simple variable, load it
+            if node.array.name in self.symbol_table:
+                var_address = self.symbol_table[node.array.name]
+                self.emit(Instruction(Opcode.LOAD_VAR, [var_address]))
+            else:
+                # Load constant 0 as fallback
+                const_idx = self.add_constant(0)
+                self.emit(Instruction(Opcode.LOAD_CONST, [const_idx]))
+        else:
+            # For complex expressions, evaluate them
+            node.array.accept(self)

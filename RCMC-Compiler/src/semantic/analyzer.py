@@ -4,7 +4,7 @@ Performs type checking, symbol resolution, and semantic validation.
 """
 
 from typing import Dict, List, Optional, Any, Set
-from parser.ast_nodes import *
+from src.parser.ast_nodes import *
 from dataclasses import dataclass
 from enum import Enum, auto
 
@@ -789,3 +789,71 @@ class SemanticAnalyzer(ASTVisitor):
         # Import statements are processed by the compiler before semantic analysis
         # So we don't need to do anything here
         pass
+    
+    def visit_array_decl(self, node: ArrayDeclNode):
+        """Visit array declaration node"""
+        # Validate array size
+        if node.size <= 0:
+            self.error(f"Array size must be positive, got {node.size}", node.line)
+        
+        # Get element type
+        element_type = node.element_type.accept(self)
+        
+        # Create array type string
+        array_type = f"{element_type}[{node.size}]"
+        
+        # Validate initializer if present
+        if node.initializer:
+            init_type = node.initializer.accept(self)
+            # The initializer should be an array literal
+            if not isinstance(node.initializer, ArrayLiteralNode):
+                self.error(f"Array initializer must be an array literal", node.line)
+        
+        # Define the array symbol
+        symbol = Symbol(
+            name=node.name,
+            symbol_type=SymbolType.VARIABLE,
+            data_type=array_type,
+            line=node.line
+        )
+        self.symbol_table.define(symbol)
+        
+        return array_type
+    
+    def visit_array_literal(self, node: ArrayLiteralNode):
+        """Visit array literal node"""
+        if not node.elements:
+            return "void[]"  # Empty array
+        
+        # Check that all elements have the same type
+        element_types = []
+        for element in node.elements:
+            element_type = element.accept(self)
+            element_types.append(element_type)
+        
+        # For now, just return the type of the first element
+        # In a more sophisticated implementation, we'd do type unification
+        first_type = element_types[0]
+        for i, elem_type in enumerate(element_types[1:], 1):
+            if elem_type != first_type:
+                self.error(f"Array element {i} has type {elem_type}, expected {first_type}", node.line)
+        
+        return f"{first_type}[]"
+    
+    def visit_array_access(self, node: ArrayAccessNode):
+        """Visit array access node"""
+        # Get the array type
+        array_type = node.array.accept(self)
+        
+        # Check that it's actually an array type
+        if not ('[' in array_type and ']' in array_type):
+            self.error(f"Cannot index non-array type {array_type}", node.line)
+        
+        # Get the index type
+        index_type = node.index.accept(self)
+        if index_type != "int":
+            self.error(f"Array index must be int, got {index_type}", node.line)
+        
+        # Extract element type from array type (e.g., "int[5]" -> "int")
+        element_type = array_type.split('[')[0]
+        return element_type

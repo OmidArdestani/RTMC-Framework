@@ -1,0 +1,186 @@
+// RT-Micro-C Example: Array and Nested Struct Features
+// This demonstrates the new language capabilities
+
+// Basic struct definition
+struct Point {
+    int x;
+    int y;
+};
+
+// Nested struct definition  
+struct Rectangle {
+    Point topLeft;
+    Point bottomRight;
+    int color;
+};
+
+// Complex nested struct
+struct Window {
+    Rectangle bounds;
+    Point center;
+    int zOrder;
+    int isVisible;
+};
+
+// Message structure for window operations
+struct WindowMessage {
+    int operation;    // 0 = create, 1 = destroy, 2 = move, etc.
+    Window window;    // The window data
+};
+
+// Array declarations
+int numbers[5] = {1, 2, 3, 5, 8};           // Array with initializer
+float coordinates[3];                        // Array without initializer
+Point vertices[4] = {{0,0}, {1,0}, {1,1}, {0,1}};  // Struct array with initializer
+
+// Task using new features
+Task<0, 10> GraphicsTask {
+    // Task member arrays
+    Window windows[8];
+    Rectangle clipRegions[4];
+    Point mouseHistory[16];
+    
+    void run() {
+        // Initialize first window
+        windows[0].bounds.topLeft.x = 10;
+        windows[0].bounds.topLeft.y = 10;
+        windows[0].bounds.bottomRight.x = 100;
+        windows[0].bounds.bottomRight.y = 80;
+        windows[0].zOrder = 1;
+        windows[0].isVisible = 1;
+        
+        // Calculate window center
+        windows[0].center.x = (windows[0].bounds.topLeft.x + windows[0].bounds.bottomRight.x) / 2;
+        windows[0].center.y = (windows[0].bounds.topLeft.y + windows[0].bounds.bottomRight.y) / 2;
+        
+        // Initialize vertex array for drawing
+        for (int i = 0; i < 4; i = i + 1) {
+            vertices[i].x = coordinates[i] * 10;
+            vertices[i].y = numbers[i] * 5;
+        }
+        
+        // Process mouse history
+        int totalX = 0;
+        int totalY = 0;
+        for (int i = 0; i < 16; i = i + 1) {
+            totalX = totalX + mouseHistory[i].x;
+            totalY = totalY + mouseHistory[i].y;
+        }
+        
+        // Update clip regions based on windows
+        for (int i = 0; i < 4; i = i + 1) {
+            if (i < 8 && windows[i].isVisible) {
+                clipRegions[i] = windows[i].bounds;
+            }
+        }
+    }
+    
+    void drawPixel(int x, int y, int color) {
+        // Hardware drawing function
+        // This would interface with actual graphics hardware
+    }
+    
+    void drawRectangle(Rectangle rect) {
+        // Draw rectangle using nested struct access
+        int left = rect.topLeft.x;
+        int top = rect.topLeft.y;
+        int right = rect.bottomRight.x;
+        int bottom = rect.bottomRight.y;
+        
+        // Draw rectangle outline
+        for (int x = left; x <= right; x = x + 1) {
+            drawPixel(x, top, 1);      // Top edge
+            drawPixel(x, bottom, 1);   // Bottom edge
+        }
+        for (int y = top; y <= bottom; y = y + 1) {
+            drawPixel(left, y, 1);     // Left edge
+            drawPixel(right, y, 1);    // Right edge
+        }
+    }
+}
+
+// Function demonstrating complex array operations
+void processData() {
+    // Multi-level access patterns
+    int dataMatrix[3] = {10, 20, 30};
+    Point transformedPoints[3];
+    
+    // Transform data using arrays and structs
+    for (int i = 0; i < 3; i = i + 1) {
+        transformedPoints[i].x = dataMatrix[i] + vertices[i].x;
+        transformedPoints[i].y = dataMatrix[i] + vertices[i].y;
+    }
+    
+    // Find bounds of transformed points
+    Point minPoint = transformedPoints[0];
+    Point maxPoint = transformedPoints[0];
+    
+    for (int i = 1; i < 3; i = i + 1) {
+        if (transformedPoints[i].x < minPoint.x) {
+            minPoint.x = transformedPoints[i].x;
+        }
+        if (transformedPoints[i].x > maxPoint.x) {
+            maxPoint.x = transformedPoints[i].x;
+        }
+        if (transformedPoints[i].y < minPoint.y) {
+            minPoint.y = transformedPoints[i].y;
+        }
+        if (transformedPoints[i].y > maxPoint.y) {
+            maxPoint.y = transformedPoints[i].y;
+        }
+    }
+}
+
+// Message passing with structured data
+message<Point> PointMessage;
+
+message<WindowMessage> WindowUpdateMessage;
+
+Task<1, 5> WindowManagerTask {
+    Window activeWindows[16];
+    int windowCount;
+    
+    void run() {
+        windowCount = 0;
+        
+        while (1) {
+            // Receive window update messages
+            WindowMessage msg = WindowUpdateMessage.recv(timeout: 100);
+            
+            if (msg.operation == 0) {  // Create window
+                if (windowCount < 16) {
+                    activeWindows[windowCount] = msg.window;
+                    windowCount = windowCount + 1;
+                }
+            }
+            
+            rtos_delay_ms(10);
+        }
+    }
+}
+
+// Main function showing feature integration
+void main() {
+    // Initialize coordinate system
+    coordinates[0] = 0.0;
+    coordinates[1] = 1.5;
+    coordinates[2] = 3.0;
+    
+    // Create initial window configuration
+    Window window;
+    window.bounds.topLeft.x = 0;
+    window.bounds.topLeft.y = 0;
+    window.bounds.bottomRight.x = 640;
+    window.bounds.bottomRight.y = 480;
+    window.zOrder = 0;
+    window.isVisible = 1;
+    
+    // Send initial window creation message
+    WindowMessage windowMsg;
+    windowMsg.operation = 0;  // Create operation
+    windowMsg.window = window;
+    WindowUpdateMessage.send(windowMsg);
+    
+    // Process initial data
+    processData();
+}

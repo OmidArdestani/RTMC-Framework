@@ -12,13 +12,13 @@ from typing import Set, Dict
 # Add src directory to path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from lexer.tokenizer import Tokenizer
-from parser.parser import Parser
-from parser.ast_nodes import ProgramNode, ImportStmtNode
-from semantic.analyzer import SemanticAnalyzer
-from optimizer.optimizer import Optimizer
-from bytecode.generator import BytecodeGenerator
-from bytecode.writer import BytecodeWriter
+from src.lexer.tokenizer import Tokenizer
+from src.parser.parser import Parser
+from src.parser.ast_nodes import ProgramNode, ImportStmtNode
+from src.semantic.analyzer import SemanticAnalyzer
+from src.optimizer.optimizer import Optimizer
+from src.bytecode.generator import BytecodeGenerator
+from src.bytecode.writer import BytecodeWriter
 
 def parse_with_imports(file_path: Path, imported_files: Set[Path] = None) -> ProgramNode:
     """Parse a file and recursively parse any imported files"""
@@ -79,6 +79,7 @@ def main():
     parser.add_argument('--ast', action='store_true', help='Print AST')
     parser.add_argument('--tokens', action='store_true', help='Print tokens')
     parser.add_argument('--no-optimize', action='store_true', help='Skip optimization')
+    parser.add_argument('--no-semantic', action='store_true', help='Skip semantic analysis')
     
     args = parser.parse_args()
     
@@ -118,8 +119,9 @@ def main():
         if args.verbose:
             print("Stage 3: Semantic Analysis...")
         
-        semantic_analyzer = SemanticAnalyzer()
-        semantic_analyzer.analyze(ast)
+        if not args.no_semantic:
+            semantic_analyzer = SemanticAnalyzer()
+            semantic_analyzer.analyze(ast)
         
         if not args.no_optimize:
             if args.verbose:

@@ -4,8 +4,8 @@ Converts tokens into an Abstract Syntax Tree (AST).
 """
 
 from typing import List, Optional, Union
-from lexer.tokenizer import Token, TokenType
-from parser.ast_nodes import *
+from src.lexer.tokenizer import Token, TokenType
+from src.parser.ast_nodes import *
 
 class ParseError(Exception):
     """Parser error exception"""
@@ -20,15 +20,21 @@ class Parser:
     
     def is_at_end(self) -> bool:
         """Check if we're at the end of tokens"""
-        return self.peek().type == TokenType.EOF
+        return self.current >= len(self.tokens) or self.peek().type == TokenType.EOF
     
     def peek(self) -> Token:
         """Get current token without advancing"""
+        if self.current >= len(self.tokens):
+            # Return the last token (should be EOF) if we're beyond the array
+            return self.tokens[-1] if self.tokens else Token(TokenType.EOF, '', 0, 0)
         return self.tokens[self.current]
     
     def previous(self) -> Token:
         """Get previous token"""
-        return self.tokens[self.current - 1]
+        if self.current > 0:
+            return self.tokens[self.current - 1]
+        else:
+            return self.tokens[0] if self.tokens else Token(TokenType.EOF, '', 0, 0)
     
     def advance(self) -> Token:
         """Consume and return current token"""
@@ -118,7 +124,6 @@ class Parser:
                     if self.check(TokenType.LEFT_BRACE):
                         # This is a struct declaration
                         self.current = saved_pos
-                        self.advance()  # consume 'struct' again
                         return self.struct_declaration()
                 
                 # Not a struct declaration, reset and treat as variable declaration
@@ -137,10 +142,12 @@ class Parser:
         """Check if current token is a type specifier"""
         return self.check(TokenType.INT) or self.check(TokenType.FLOAT_TYPE) or \
                self.check(TokenType.CHAR_TYPE) or self.check(TokenType.VOID) or \
-               self.check(TokenType.CONST) or self.check(TokenType.STRUCT)
+               self.check(TokenType.CONST) or self.check(TokenType.STRUCT) or \
+               self.check(TokenType.IDENTIFIER)  # Allow custom struct types
     
     def struct_declaration(self) -> StructDeclNode:
         """Parse struct declaration"""
+        self.consume(TokenType.STRUCT, "Expected 'struct'")
         name = self.consume(TokenType.IDENTIFIER, "Expected struct name").value
         
         self.consume(TokenType.LEFT_BRACE, "Expected '{' after struct name")
@@ -280,6 +287,20 @@ class Parser:
             
             return FunctionDeclNode(name, return_type, parameters, body)
         
+        elif self.match(TokenType.LEFT_BRACKET):
+            # Array declaration
+            size_token = self.consume(TokenType.INTEGER, "Expected array size")
+            size = int(size_token.value)
+            self.consume(TokenType.RIGHT_BRACKET, "Expected ']' after array size")
+            
+            initializer = None
+            if self.match(TokenType.ASSIGN):
+                initializer = self.array_literal()
+            
+            self.consume(TokenType.SEMICOLON, "Expected ';' after array declaration")
+            
+            return ArrayDeclNode(name, return_type, size, initializer)
+        
         else:
             # Variable declaration
             initializer = None
@@ -301,6 +322,19 @@ class Parser:
         
         return ParameterNode(param_name, param_type)
     
+    def array_literal(self) -> ArrayLiteralNode:
+        """Parse array literal: {expr1, expr2, ...}"""
+        self.consume(TokenType.LEFT_BRACE, "Expected '{' for array literal")
+        
+        elements = []
+        if not self.check(TokenType.RIGHT_BRACE):
+            elements.append(self.expression())
+            while self.match(TokenType.COMMA):
+                elements.append(self.expression())
+        
+        self.consume(TokenType.RIGHT_BRACE, "Expected '}' after array literal")
+        return ArrayLiteralNode(elements)
+
     def type_specifier(self) -> TypeNode:
         """Parse type specifier"""
         if self.match(TokenType.INT):
@@ -594,7 +628,7 @@ class Parser:
             elif self.match(TokenType.LEFT_BRACKET):
                 index = self.expression()
                 self.consume(TokenType.RIGHT_BRACKET, "Expected ']' after array index")
-                expr = MemberExprNode(expr, index, True)
+                expr = ArrayAccessNode(expr, index)
             else:
                 break
         

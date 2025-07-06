@@ -15,6 +15,7 @@ class NodeType(Enum):
     FUNCTION_DECL  = auto()
     STRUCT_DECL    = auto()
     VARIABLE_DECL  = auto()
+    ARRAY_DECL     = auto()
     TASK_DECL      = auto()
     MESSAGE_DECL   = auto()
     IMPORT_STMT    = auto()
@@ -37,6 +38,8 @@ class NodeType(Enum):
     MEMBER_EXPR     = auto()
     IDENTIFIER_EXPR = auto()
     LITERAL_EXPR    = auto()
+    ARRAY_LITERAL   = auto()
+    ARRAY_ACCESS    = auto()
     MESSAGE_SEND    = auto()
     MESSAGE_RECV    = auto()
     
@@ -130,13 +133,29 @@ class MessageDeclNode(ASTNode):
     def accept(self, visitor):
         return visitor.visit_message_decl(self)
 
+class ArrayDeclNode(ASTNode):
+    """Array declaration node for fixed-length arrays"""
+    
+    def __init__(self, name: str, element_type: 'TypeNode', size: int, 
+                 initializer: Optional['ExpressionNode'] = None, line: int = 0):
+        super().__init__(NodeType.ARRAY_DECL, line)
+        self.name = name
+        self.element_type = element_type
+        self.size = size
+        self.initializer = initializer
+    
+    def accept(self, visitor):
+        return visitor.visit_array_decl(self)
+
 @dataclass
 class FieldNode:
-    """Structure field"""
-    def __init__(self, name: str, type: 'TypeNode', bit_width: Optional[int] = None, line: int = 0):
+    """Structure field with support for nested structs"""
+    def __init__(self, name: str, type: 'TypeNode', bit_width: Optional[int] = None, 
+                 offset: Optional[int] = None, line: int = 0):
         self.name = name
         self.type = type
         self.bit_width = bit_width
+        self.offset = offset  # Calculated during semantic analysis
         self.line = line
 
 class VariableDeclNode(ASTNode):
@@ -377,6 +396,27 @@ class LiteralExprNode(ExpressionNode):
     def accept(self, visitor):
         return visitor.visit_literal_expr(self)
 
+class ArrayLiteralNode(ExpressionNode):
+    """Array literal expression node for initializer lists"""
+    
+    def __init__(self, elements: List[ExpressionNode], line: int = 0):
+        super().__init__(NodeType.ARRAY_LITERAL, line)
+        self.elements = elements
+    
+    def accept(self, visitor):
+        return visitor.visit_array_literal(self)
+
+class ArrayAccessNode(ExpressionNode):
+    """Array access expression node for indexed access"""
+    
+    def __init__(self, array: ExpressionNode, index: ExpressionNode, line: int = 0):
+        super().__init__(NodeType.ARRAY_ACCESS, line)
+        self.array = array
+        self.index = index
+    
+    def accept(self, visitor):
+        return visitor.visit_array_access(self)
+
 class MessageSendNode(ExpressionNode):
     """Message send expression node"""
     
@@ -421,6 +461,12 @@ class ASTVisitor(ABC):
     
     @abstractmethod
     def visit_variable_decl(self, node: VariableDeclNode): pass
+    
+    @abstractmethod
+    def visit_array_decl(self, node: ArrayDeclNode): pass
+    
+    @abstractmethod
+    def visit_import_stmt(self, node: ImportStmtNode): pass
     
     @abstractmethod
     def visit_primitive_type(self, node: PrimitiveTypeNode): pass
@@ -477,6 +523,12 @@ class ASTVisitor(ABC):
     def visit_literal_expr(self, node: LiteralExprNode): pass
     
     @abstractmethod
+    def visit_array_literal(self, node: ArrayLiteralNode): pass
+    
+    @abstractmethod
+    def visit_array_access(self, node: ArrayAccessNode): pass
+    
+    @abstractmethod
     def visit_message_send(self, node: MessageSendNode): pass
     
     @abstractmethod
@@ -529,6 +581,10 @@ def ast_to_string(node: ASTNode, indent: int = 0) -> str:
         const_str = "const " if node.is_const else ""
         init_str = f" = {ast_to_string(node.initializer, 0).strip()}" if node.initializer else ""
         return f"{indent_str}VariableDecl: {const_str}{node.name}: {ast_to_string(node.type, 0).strip()}{init_str}\n"
+    
+    elif isinstance(node, ArrayDeclNode):
+        init_str = f" = {ast_to_string(node.initializer, 0).strip()}" if node.initializer else ""
+        return f"{indent_str}ArrayDecl: {node.name}: {ast_to_string(node.element_type, 0).strip()}[{node.size}]{init_str}\n"
     
     elif isinstance(node, PrimitiveTypeNode):
         return f"{node.type_name}"
@@ -623,6 +679,18 @@ def ast_to_string(node: ASTNode, indent: int = 0) -> str:
     
     elif isinstance(node, LiteralExprNode):
         return f"{indent_str}Literal: {node.value} ({node.literal_type})\n"
+    
+    elif isinstance(node, ArrayLiteralNode):
+        result = f"{indent_str}ArrayLiteral:\n"
+        for i, element in enumerate(node.elements):
+            result += f"{indent_str}  [{i}]: {ast_to_string(element, indent + 2).strip()}\n"
+        return result
+    
+    elif isinstance(node, ArrayAccessNode):
+        result = f"{indent_str}ArrayAccess:\n"
+        result += f"{indent_str}  Array:\n{ast_to_string(node.array, indent + 2)}"
+        result += f"{indent_str}  Index:\n{ast_to_string(node.index, indent + 2)}"
+        return result
     
     elif isinstance(node, MessageSendNode):
         return f"{indent_str}MessageSend: {node.channel}\n  Payload:\n{ast_to_string(node.payload, indent + 2)}"

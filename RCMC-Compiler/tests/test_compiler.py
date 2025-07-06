@@ -11,13 +11,13 @@ from pathlib import Path
 # Add src directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from lexer.tokenizer import Tokenizer, TokenType
-from parser.parser import Parser
-from semantic.analyzer import SemanticAnalyzer
-from optimizer.optimizer import Optimizer
-from bytecode.generator import BytecodeGenerator
-from bytecode.writer import BytecodeWriter, BytecodeReader
-from vm.virtual_machine import VirtualMachine
+from src.lexer.tokenizer import Tokenizer, TokenType
+from src.parser.parser import Parser
+from src.semantic.analyzer import SemanticAnalyzer
+from src.optimizer.optimizer import Optimizer
+from src.bytecode.generator import BytecodeGenerator
+from src.bytecode.writer import BytecodeWriter, BytecodeReader
+from src.vm.virtual_machine import VirtualMachine
 
 class TestTokenizer(unittest.TestCase):
     """Test tokenizer functionality"""
