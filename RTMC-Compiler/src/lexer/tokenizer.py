@@ -15,6 +15,7 @@ class TokenType(Enum):
     FLOAT   = auto()
     STRING  = auto()
     CHAR    = auto()
+    BOOLEAN = auto()  # Boolean literal
     
     # Identifiers and keywords
     IDENTIFIER = auto()
@@ -23,6 +24,7 @@ class TokenType(Enum):
     INT         = auto()
     FLOAT_TYPE  = auto()
     CHAR_TYPE   = auto()
+    BOOL_TYPE   = auto()
     VOID        = auto()
     CONST       = auto()
     STRUCT      = auto()
@@ -145,12 +147,17 @@ class Tokenizer:
         'int': TokenType.INT,
         'float': TokenType.FLOAT_TYPE,
         'char': TokenType.CHAR_TYPE,
+        'bool': TokenType.BOOL_TYPE,
         'void': TokenType.VOID,
         'const': TokenType.CONST,
         'struct': TokenType.STRUCT,
         'Task': TokenType.TASK,
         'message': TokenType.MESSAGE,
         'import': TokenType.IMPORT,
+        
+        # Boolean literals
+        'true': TokenType.BOOLEAN,
+        'false': TokenType.BOOLEAN,
         
         # Message operations
         'send': TokenType.SEND,

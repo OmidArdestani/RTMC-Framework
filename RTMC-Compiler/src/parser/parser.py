@@ -282,6 +282,10 @@ class Parser:
             
             self.consume(TokenType.RIGHT_PAREN, "Expected ')' after parameters")
             
+            # Skip optional newlines before opening brace
+            while self.match(TokenType.NEWLINE):
+                pass
+            
             self.consume(TokenType.LEFT_BRACE, "Expected '{' before function body")
             body = self.block_statement()
             
@@ -346,6 +350,9 @@ class Parser:
         if self.match(TokenType.CHAR_TYPE):
             return PrimitiveTypeNode("char")
         
+        if self.match(TokenType.BOOL_TYPE):
+            return PrimitiveTypeNode("bool")
+        
         if self.match(TokenType.VOID):
             return PrimitiveTypeNode("void")
         
@@ -390,6 +397,7 @@ class Parser:
             self.check(TokenType.INT) or
             self.check(TokenType.FLOAT_TYPE) or
             self.check(TokenType.CHAR_TYPE) or
+            self.check(TokenType.BOOL_TYPE) or
             self.check(TokenType.VOID) or
             self.check(TokenType.STRUCT)):
             return self.variable_declaration_statement()
@@ -419,10 +427,17 @@ class Parser:
         condition = self.expression()
         self.consume(TokenType.RIGHT_PAREN, "Expected ')' after if condition")
         
+        # Skip optional newlines before then statement
+        while self.match(TokenType.NEWLINE):
+            pass
+        
         then_stmt = self.statement()
         
         else_stmt = None
         if self.match(TokenType.ELSE):
+            # Skip optional newlines before else statement
+            while self.match(TokenType.NEWLINE):
+                pass
             else_stmt = self.statement()
         
         return IfStmtNode(condition, then_stmt, else_stmt)
@@ -432,6 +447,10 @@ class Parser:
         self.consume(TokenType.LEFT_PAREN, "Expected '(' after 'while'")
         condition = self.expression()
         self.consume(TokenType.RIGHT_PAREN, "Expected ')' after while condition")
+        
+        # Skip optional newlines before body statement
+        while self.match(TokenType.NEWLINE):
+            pass
         
         body = self.statement()
         
@@ -461,6 +480,10 @@ class Parser:
         if not self.check(TokenType.RIGHT_PAREN):
             update = self.expression()
         self.consume(TokenType.RIGHT_PAREN, "Expected ')' after for clauses")
+        
+        # Skip optional newlines before body statement
+        while self.match(TokenType.NEWLINE):
+            pass
         
         body = self.statement()
         
@@ -664,6 +687,11 @@ class Parser:
             value = self.previous().value
             return LiteralExprNode(value, "char")
         
+        if self.match(TokenType.BOOLEAN):
+            value_str = self.previous().value
+            value = True if value_str == "true" else False
+            return LiteralExprNode(value, "bool")
+
         if self.match(TokenType.IDENTIFIER):
             name = self.previous().value
             return IdentifierExprNode(name)

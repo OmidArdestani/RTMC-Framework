@@ -1,0 +1,32 @@
+// Test file for both brace styles
+
+void func1() {
+    int x = 5;
+}
+
+void func2()
+{
+    int y = 10;
+}
+
+void main() 
+{
+    if (true) {
+        func1();
+    }
+    
+    while (false)
+    {
+        func2();
+    }
+    
+    for (int i = 0; i < 5; i++)
+    {
+        bool test = true;
+    }
+    
+    if (1 > 0)
+    {
+        bool result = false;
+    }
+}

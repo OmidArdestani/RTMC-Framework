@@ -77,7 +77,7 @@ class SymbolTable:
 class TypeChecker:
     """Type checking utilities"""
     
-    PRIMITIVE_TYPES = {'int', 'float', 'char', 'void'}
+    PRIMITIVE_TYPES = {'int', 'float', 'char', 'void', 'bool'}
     
     @staticmethod
     def is_numeric_type(type_name: str) -> bool:
@@ -88,6 +88,11 @@ class TypeChecker:
     def is_integer_type(type_name: str) -> bool:
         """Check if type is integer"""
         return type_name in {'int', 'char'}
+    
+    @staticmethod
+    def is_condition_type(type_name: str) -> bool:
+        """Check if type can be used in boolean conditions"""
+        return type_name in {'int', 'float', 'char', 'bool'}
     
     @staticmethod
     def can_convert(from_type: str, to_type: str) -> bool:
@@ -511,8 +516,8 @@ class SemanticAnalyzer(ASTVisitor):
     def visit_if_stmt(self, node: IfStmtNode):
         """Visit if statement"""
         cond_type = node.condition.accept(self)
-        if not TypeChecker.is_numeric_type(cond_type):
-            self.error(f"If condition must be numeric, got {cond_type}", node.line)
+        if not TypeChecker.is_condition_type(cond_type):
+            self.error(f"If condition must be numeric or boolean, got {cond_type}", node.line)
         
         node.then_stmt.accept(self)
         
@@ -522,8 +527,8 @@ class SemanticAnalyzer(ASTVisitor):
     def visit_while_stmt(self, node: WhileStmtNode):
         """Visit while statement"""
         cond_type = node.condition.accept(self)
-        if not TypeChecker.is_numeric_type(cond_type):
-            self.error(f"While condition must be numeric, got {cond_type}", node.line)
+        if not TypeChecker.is_condition_type(cond_type):
+            self.error(f"While condition must be numeric or boolean, got {cond_type}", node.line)
         
         old_in_loop = self.in_loop
         self.in_loop = True
@@ -541,8 +546,8 @@ class SemanticAnalyzer(ASTVisitor):
         
         if node.condition:
             cond_type = node.condition.accept(self)
-            if not TypeChecker.is_numeric_type(cond_type):
-                self.error(f"For condition must be numeric, got {cond_type}", node.line)
+            if not TypeChecker.is_condition_type(cond_type):
+                self.error(f"For condition must be numeric or boolean, got {cond_type}", node.line)
         
         if node.update:
             node.update.accept(self)
