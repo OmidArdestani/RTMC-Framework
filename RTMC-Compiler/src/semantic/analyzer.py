@@ -610,6 +610,21 @@ class SemanticAnalyzer(ASTVisitor):
             self.error(f"Unknown unary operator: {node.operator}", node.line)
             return operand_type
     
+    def visit_postfix_expr(self, node: PostfixExprNode):
+        """Visit postfix expression (++ and --)"""
+        operand_type = node.operand.accept(self)
+        
+        if node.operator in ['++', '--']:
+            if not TypeChecker.is_numeric_type(operand_type):
+                self.error(f"Postfix {node.operator} requires numeric operand", node.line)
+            # Check that operand is an lvalue (assignable)
+            if not isinstance(node.operand, (IdentifierExprNode, MemberExprNode, ArrayAccessNode)):
+                self.error(f"Postfix {node.operator} requires an assignable operand", node.line)
+            return operand_type
+        else:
+            self.error(f"Unknown postfix operator: {node.operator}", node.line)
+            return operand_type
+
     def visit_assignment_expr(self, node: AssignmentExprNode):
         """Visit assignment expression"""
         target_type = node.target.accept(self)

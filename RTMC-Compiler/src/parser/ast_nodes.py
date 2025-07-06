@@ -42,6 +42,7 @@ class NodeType(Enum):
     ARRAY_ACCESS    = auto()
     MESSAGE_SEND    = auto()
     MESSAGE_RECV    = auto()
+    POSTFIX_EXPR    = auto()  # For ++ and --
     
     # Types
     PRIMITIVE_TYPE = auto()
@@ -339,6 +340,17 @@ class UnaryExprNode(ExpressionNode):
     
     def accept(self, visitor):
         return visitor.visit_unary_expr(self)
+
+class PostfixExprNode(ExpressionNode):
+    """Postfix expression node (++ and --)"""
+    
+    def __init__(self, operand: ExpressionNode, operator: str, line: int = 0):
+        super().__init__(NodeType.POSTFIX_EXPR, line)
+        self.operand = operand
+        self.operator = operator  # "++" or "--"
+    
+    def accept(self, visitor):
+        return visitor.visit_postfix_expr(self)
 
 class AssignmentExprNode(ExpressionNode):
     """Assignment expression node"""

@@ -652,6 +652,9 @@ class Parser:
                 index = self.expression()
                 self.consume(TokenType.RIGHT_BRACKET, "Expected ']' after array index")
                 expr = ArrayAccessNode(expr, index)
+            elif self.match(TokenType.INCREMENT, TokenType.DECREMENT):
+                operator = self.previous().value
+                expr = PostfixExprNode(expr, operator)
             else:
                 break
         

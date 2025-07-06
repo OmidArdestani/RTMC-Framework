@@ -226,6 +226,11 @@ class ConstantFolder(ASTVisitor):
         
         return UnaryExprNode(node.operator, optimized_operand, node.line)
     
+    def visit_postfix_expr(self, node: PostfixExprNode) -> PostfixExprNode:
+        """Optimize postfix expression (no optimization for now)"""
+        optimized_operand = node.operand.accept(self)
+        return PostfixExprNode(optimized_operand, node.operator, node.line)
+
     def visit_assignment_expr(self, node: AssignmentExprNode) -> AssignmentExprNode:
         """Optimize assignment expression"""
         optimized_target = node.target.accept(self)
@@ -516,6 +521,9 @@ class DeadCodeEliminator(ASTVisitor):
     def visit_unary_expr(self, node: UnaryExprNode) -> UnaryExprNode:
         return node
     
+    def visit_postfix_expr(self, node: PostfixExprNode) -> PostfixExprNode:
+        return node
+
     def visit_assignment_expr(self, node: AssignmentExprNode) -> AssignmentExprNode:
         return node
     

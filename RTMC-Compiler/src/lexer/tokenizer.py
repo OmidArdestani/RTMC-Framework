@@ -88,6 +88,8 @@ class TokenType(Enum):
     MINUS_ASSIGN     = auto()
     MULTIPLY_ASSIGN  = auto()
     DIVIDE_ASSIGN    = auto()
+    INCREMENT        = auto()  # ++
+    DECREMENT        = auto()  # --
     # TODO: Add sqrt and power operators
     
     # Comparison operators
@@ -376,8 +378,20 @@ class Tokenizer:
                 continue
             
             # Two-character operators
+            if char == '+' and self.peek_char() == '+':
+                self.tokens.append(Token(TokenType.INCREMENT, '++', self.line, start_column))
+                self.advance()
+                self.advance()
+                continue
+            
             if char == '+' and self.peek_char() == '=':
                 self.tokens.append(Token(TokenType.PLUS_ASSIGN, '+=', self.line, start_column))
+                self.advance()
+                self.advance()
+                continue
+            
+            if char == '-' and self.peek_char() == '-':
+                self.tokens.append(Token(TokenType.DECREMENT, '--', self.line, start_column))
                 self.advance()
                 self.advance()
                 continue

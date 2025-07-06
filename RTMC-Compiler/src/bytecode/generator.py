@@ -492,6 +492,46 @@ class BytecodeGenerator(ASTVisitor):
         else:
             raise CodeGenError(f"Unknown unary operator: {node.operator}")
     
+    def visit_postfix_expr(self, node: PostfixExprNode):
+        """Generate code for postfix expression (++ and --)"""
+        # For postfix operators, we need to:
+        # 1. Load the current value (for return value)
+        # 2. Increment/decrement the variable
+        # 3. Leave the original value on stack
+        
+        if isinstance(node.operand, IdentifierExprNode):
+            # Check local variables first, then global
+            addr = None
+            if node.operand.name in self.local_variables:
+                addr = self.local_variables[node.operand.name]
+            elif node.operand.name in self.symbol_table:
+                addr = self.symbol_table[node.operand.name]
+            else:
+                raise CodeGenError(f"Undefined variable: {node.operand.name}")
+            
+            # Load current value first (this will be the result)
+            self.emit(InstructionBuilder.load_var(addr))
+            
+            # Now modify the variable
+            if node.operator == '++':
+                # Load current value again, add 1, store back
+                self.emit(InstructionBuilder.load_var(addr))
+                const_idx = self.add_constant(1)
+                self.emit(InstructionBuilder.load_const(const_idx))
+                self.emit(InstructionBuilder.add())
+                self.emit(InstructionBuilder.store_var(addr))
+            elif node.operator == '--':
+                # Load current value again, subtract 1, store back
+                self.emit(InstructionBuilder.load_var(addr))
+                const_idx = self.add_constant(1)
+                self.emit(InstructionBuilder.load_const(const_idx))
+                self.emit(InstructionBuilder.sub())
+                self.emit(InstructionBuilder.store_var(addr))
+            else:
+                raise CodeGenError(f"Unknown postfix operator: {node.operator}")
+        else:
+            raise CodeGenError(f"Postfix operators not yet supported for {type(node.operand).__name__}")
+
     def visit_assignment_expr(self, node: AssignmentExprNode):
         """Generate code for assignment expression"""
         # Generate value
