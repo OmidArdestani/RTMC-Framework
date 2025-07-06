@@ -11,39 +11,39 @@ from enum import Enum, auto
 class NodeType(Enum):
     """AST node types"""
     # Program structure
-    PROGRAM = auto()
-    FUNCTION_DECL = auto()
-    STRUCT_DECL = auto()
-    VARIABLE_DECL = auto()
-    TASK_DECL = auto()  # New Task declaration
-    MESSAGE_DECL = auto()  # New Message declaration
-    IMPORT_STMT = auto()  # Import statement
+    PROGRAM        = auto()
+    FUNCTION_DECL  = auto()
+    STRUCT_DECL    = auto()
+    VARIABLE_DECL  = auto()
+    TASK_DECL      = auto()
+    MESSAGE_DECL   = auto()
+    IMPORT_STMT    = auto()
     
     # Statements
-    BLOCK_STMT = auto()
+    BLOCK_STMT      = auto()
     EXPRESSION_STMT = auto()
-    IF_STMT = auto()
-    WHILE_STMT = auto()
-    FOR_STMT = auto()
-    RETURN_STMT = auto()
-    BREAK_STMT = auto()
-    CONTINUE_STMT = auto()
+    IF_STMT         = auto()
+    WHILE_STMT      = auto()
+    FOR_STMT        = auto()
+    RETURN_STMT     = auto()
+    BREAK_STMT      = auto()
+    CONTINUE_STMT   = auto()
     
     # Expressions
-    BINARY_EXPR = auto()
-    UNARY_EXPR = auto()
+    BINARY_EXPR     = auto()
+    UNARY_EXPR      = auto()
     ASSIGNMENT_EXPR = auto()
-    CALL_EXPR = auto()
-    MEMBER_EXPR = auto()
+    CALL_EXPR       = auto()
+    MEMBER_EXPR     = auto()
     IDENTIFIER_EXPR = auto()
-    LITERAL_EXPR = auto()
-    MESSAGE_SEND = auto()  # Message send expression
-    MESSAGE_RECV = auto()  # Message receive expression
+    LITERAL_EXPR    = auto()
+    MESSAGE_SEND    = auto()
+    MESSAGE_RECV    = auto()
     
     # Types
     PRIMITIVE_TYPE = auto()
-    STRUCT_TYPE = auto()
-    ARRAY_TYPE = auto()
+    STRUCT_TYPE    = auto()
+    ARRAY_TYPE     = auto()
 
 class ASTNode(ABC):
     """Base class for all AST nodes"""
