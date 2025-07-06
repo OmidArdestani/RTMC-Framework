@@ -1,5 +1,6 @@
 {
     "python.analysis.extraPaths": [
-        "./RCMC-Compiler/src"
+        "./RTMC-Compiler/src",
+        "./RTMC-Compiler/"
     ]
 }

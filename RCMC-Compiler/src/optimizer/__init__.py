@@ -1,3 +1,0 @@
-"""
-Optimizer for Mini-C
-"""
