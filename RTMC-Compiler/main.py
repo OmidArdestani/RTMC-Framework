@@ -20,6 +20,8 @@ from src.optimizer.optimizer import Optimizer
 from src.bytecode.generator import BytecodeGenerator
 from src.bytecode.writer import BytecodeWriter
 
+imported_filepaths = set()
+
 def parse_with_imports(file_path: Path, imported_files: Set[Path] = None) -> ProgramNode:
     """Parse a file and recursively parse any imported files"""
     if imported_files is None:
@@ -53,7 +55,9 @@ def parse_with_imports(file_path: Path, imported_files: Set[Path] = None) -> Pro
     
     for stmt in ast.declarations:
         if isinstance(stmt, ImportStmtNode):
-            imports.append(stmt)
+            if stmt.filepath not in imported_filepaths:
+                imports.append(stmt)
+                imported_filepaths.add(stmt.filepath)
         else:
             other_statements.append(stmt)
     

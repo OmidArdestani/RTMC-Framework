@@ -1,0 +1,14 @@
+
+import "read_adc.rtmc";
+import "definitions.rtmc";
+import "send_uart.rtmc";
+
+
+void main() 
+{
+    while(true) 
+    {
+        RTOS_DELAY_MS(2000);
+        DBG_PRINT("main loop");
+    }
+}

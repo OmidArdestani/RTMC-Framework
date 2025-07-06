@@ -1,0 +1,17 @@
+
+
+import "definitions.rtmc";
+
+Task<0, 1> SendUartTask 
+{
+    void run()
+    {
+        while(true) 
+        {
+            DBG_PRINT("sending uart");
+            float adc_value = MsgADCValueQueue.recv(100);
+
+            HW_UART_WRITE(4, (int)adc_value);
+        }
+    }
+}

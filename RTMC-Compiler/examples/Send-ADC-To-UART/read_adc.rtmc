@@ -1,0 +1,19 @@
+
+
+import "definitions.rtmc";
+
+
+Task<1, 1> ReadADCTask {
+    int sensorPin = 25;
+    int readingId = 0;
+
+    void run() {
+        HW_ADC_INIT(sensorPin);
+
+        while(1) {
+            DBG_PRINT("reading ADC");
+            int adcValue = HW_ADC_READ(sensorPin);
+            MsgADCValueQueue.send(adcValue);
+        }
+    }
+}

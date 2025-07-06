@@ -2,13 +2,25 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "RT-Micro-C: Compile Demo (arrays_and_structs)",
+            "name": "RT-Micro-C: Compile Demo",
             "type": "debugpy",
             "request": "launch",
             "program": "RTMC-Compiler/main.py",
             "args": [
-                "RTMC-Compiler/examples/arrays_and_structs_demo.rtmc",
+                "C:\\Users\\oarde\\OneDrive\\Projects\\Mini-C RTOS Language\\RTMC-Compiler\\examples\\Send-ADC-To-UART\\main.rtmc",
                 "-v"
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "purpose": ["debug-in-terminal"]
+        },
+        {
+            "name": "RT-Micro-C: Run Demo",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "RTMC-Compiler/vm_runner.py",
+            "args": [
+                "C:\\Users\\oarde\\OneDrive\\Projects\\Mini-C RTOS Language\\RTMC-Compiler\\examples\\Send-ADC-To-UART\\main.vmb"
             ],
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
