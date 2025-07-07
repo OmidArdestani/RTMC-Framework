@@ -1,0 +1,250 @@
+{
+  "name": "RTMC Dark",
+  "type": "dark",
+  "colors": {
+    "editor.background": "#0d1117",
+    "editor.foreground": "#c9d1d9",
+    "editor.lineHighlightBackground": "#161b22",
+    "editor.selectionBackground": "#264f78",
+    "editor.inactiveSelectionBackground": "#3a3d41",
+    "editorCursor.foreground": "#c9d1d9",
+    "editorWhitespace.foreground": "#484f58",
+    "editorIndentGuide.background": "#21262d",
+    "editorIndentGuide.activeBackground": "#30363d",
+    "editorLineNumber.foreground": "#484f58",
+    "editorLineNumber.activeForeground": "#c9d1d9"
+  },
+  "tokenColors": [
+    {
+      "name": "Comments",
+      "scope": [
+        "comment",
+        "comment.line",
+        "comment.block"
+      ],
+      "settings": {
+        "foreground": "#7d8590",
+        "fontStyle": "italic"
+      }
+    },
+    {
+      "name": "Strings",
+      "scope": [
+        "string",
+        "string.quoted"
+      ],
+      "settings": {
+        "foreground": "#a5d6ff"
+      }
+    },
+    {
+      "name": "Numbers",
+      "scope": [
+        "constant.numeric"
+      ],
+      "settings": {
+        "foreground": "#79c0ff"
+      }
+    },
+    {
+      "name": "Keywords",
+      "scope": [
+        "keyword",
+        "keyword.control"
+      ],
+      "settings": {
+        "foreground": "#ff7b72",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "name": "Storage Types",
+      "scope": [
+        "storage.type"
+      ],
+      "settings": {
+        "foreground": "#ffa657",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "name": "Task Storage Type",
+      "scope": [
+        "storage.type.task.rtmc"
+      ],
+      "settings": {
+        "foreground": "#f85149",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "name": "Struct Storage Type",
+      "scope": [
+        "storage.type.struct.rtmc"
+      ],
+      "settings": {
+        "foreground": "#ffa657",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "name": "RTOS Functions",
+      "scope": [
+        "support.function.rtos.rtmc"
+      ],
+      "settings": {
+        "foreground": "#d2a8ff",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "name": "Hardware Functions - GPIO",
+      "scope": [
+        "support.function.hardware.gpio.rtmc"
+      ],
+      "settings": {
+        "foreground": "#7ee787",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "name": "Hardware Functions - Timer",
+      "scope": [
+        "support.function.hardware.timer.rtmc"
+      ],
+      "settings": {
+        "foreground": "#56d364",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "name": "Hardware Functions - ADC",
+      "scope": [
+        "support.function.hardware.adc.rtmc"
+      ],
+      "settings": {
+        "foreground": "#39d353",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "name": "Hardware Functions - Communication",
+      "scope": [
+        "support.function.hardware.uart.rtmc",
+        "support.function.hardware.spi.rtmc",
+        "support.function.hardware.i2c.rtmc"
+      ],
+      "settings": {
+        "foreground": "#2ea043",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "name": "Debug Functions",
+      "scope": [
+        "support.function.debug.rtmc"
+      ],
+      "settings": {
+        "foreground": "#f85149",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "name": "Function Names",
+      "scope": [
+        "entity.name.function"
+      ],
+      "settings": {
+        "foreground": "#d2a8ff"
+      }
+    },
+    {
+      "name": "Task Names",
+      "scope": [
+        "entity.name.function.task.rtmc"
+      ],
+      "settings": {
+        "foreground": "#f85149",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "name": "Struct Names",
+      "scope": [
+        "entity.name.type.struct.rtmc"
+      ],
+      "settings": {
+        "foreground": "#ffa657",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "name": "Variables",
+      "scope": [
+        "variable"
+      ],
+      "settings": {
+        "foreground": "#c9d1d9"
+      }
+    },
+    {
+      "name": "Struct Members",
+      "scope": [
+        "variable.other.member.rtmc"
+      ],
+      "settings": {
+        "foreground": "#79c0ff"
+      }
+    },
+    {
+      "name": "Operators",
+      "scope": [
+        "keyword.operator"
+      ],
+      "settings": {
+        "foreground": "#ff7b72"
+      }
+    },
+    {
+      "name": "Constants",
+      "scope": [
+        "constant.language"
+      ],
+      "settings": {
+        "foreground": "#79c0ff",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "name": "Bitfield Numbers",
+      "scope": [
+        "constant.numeric.bitfield.rtmc"
+      ],
+      "settings": {
+        "foreground": "#a5d6ff",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "name": "Task Core/Priority Numbers",
+      "scope": [
+        "constant.numeric.core.rtmc",
+        "constant.numeric.priority.rtmc"
+      ],
+      "settings": {
+        "foreground": "#ffa657",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "name": "Preprocessor",
+      "scope": [
+        "meta.preprocessor",
+        "keyword.control.preprocessor"
+      ],
+      "settings": {
+        "foreground": "#79c0ff"
+      }
+    }
+  ]
+}

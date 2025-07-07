@@ -1,0 +1,42 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="128" height="128" fill="#0d1117" rx="16"/>
+  
+  <!-- Main circuit board shape -->
+  <rect x="16" y="16" width="96" height="96" fill="#21262d" rx="8" stroke="#30363d" stroke-width="2"/>
+  
+  <!-- CPU/Microcontroller -->
+  <rect x="32" y="32" width="32" height="32" fill="#f85149" rx="4"/>
+  <text x="48" y="52" text-anchor="middle" fill="white" font-family="monospace" font-size="12" font-weight="bold">CPU</text>
+  
+  <!-- GPIO pins -->
+  <rect x="20" y="40" width="8" height="4" fill="#7ee787"/>
+  <rect x="20" y="48" width="8" height="4" fill="#7ee787"/>
+  <rect x="20" y="56" width="8" height="4" fill="#7ee787"/>
+  
+  <rect x="100" y="40" width="8" height="4" fill="#7ee787"/>
+  <rect x="100" y="48" width="8" height="4" fill="#7ee787"/>
+  <rect x="100" y="56" width="8" height="4" fill="#7ee787"/>
+  
+  <!-- RTOS Task indicators -->
+  <circle cx="80" cy="40" r="6" fill="#d2a8ff"/>
+  <text x="80" y="44" text-anchor="middle" fill="white" font-family="monospace" font-size="8">T1</text>
+  
+  <circle cx="80" cy="56" r="6" fill="#d2a8ff"/>
+  <text x="80" y="60" text-anchor="middle" fill="white" font-family="monospace" font-size="8">T2</text>
+  
+  <!-- Hardware peripherals -->
+  <rect x="40" y="80" width="16" height="8" fill="#39d353" rx="2"/>
+  <text x="48" y="86" text-anchor="middle" fill="white" font-family="monospace" font-size="8">ADC</text>
+  
+  <rect x="64" y="80" width="16" height="8" fill="#56d364" rx="2"/>
+  <text x="72" y="86" text-anchor="middle" fill="white" font-family="monospace" font-size="8">PWM</text>
+  
+  <!-- Connection lines -->
+  <line x1="48" y1="64" x2="48" y2="80" stroke="#30363d" stroke-width="2"/>
+  <line x1="64" y1="48" x2="74" y2="48" stroke="#30363d" stroke-width="2"/>
+  <line x1="72" y1="64" x2="72" y2="80" stroke="#30363d" stroke-width="2"/>
+  
+  <!-- RTMC text -->
+  <text x="64" y="104" text-anchor="middle" fill="#c9d1d9" font-family="monospace" font-size="10" font-weight="bold">RTMC</text>
+</svg>

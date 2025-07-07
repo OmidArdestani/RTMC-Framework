@@ -1,0 +1,185 @@
+// Sample RTMC file to demonstrate extension features
+// This file shows syntax highlighting, snippets, and language features
+
+import "definitions.rtmc";
+
+// Bitfield struct example
+struct ControlRegister {
+    int enable : 1;      // 1-bit enable flag
+    int mode : 2;        // 2-bit mode selection (0-3)
+    int speed : 4;       // 4-bit speed control (0-15)
+    int priority : 3;    // 3-bit priority level (0-7)
+    int reserved : 22;   // Reserved bits
+};
+
+// Regular struct example
+struct SensorData {
+    int temperature;
+    int humidity;
+    int pressure;
+    struct ControlRegister control;
+};
+
+// GPIO LED Blink Task
+Task<0, 2> BlinkTask {
+    int ledPin = 13;
+    int blinkDelay = 500;
+    
+    void run() {
+        HW_GPIO_INIT(ledPin, 1);  // Initialize as output
+        
+        while (1) {
+            HW_GPIO_SET(ledPin, 1);   // Turn LED on
+            RTOS_DELAY_MS(blinkDelay);
+            HW_GPIO_SET(ledPin, 0);   // Turn LED off
+            RTOS_DELAY_MS(blinkDelay);
+            
+            DBG_PRINT("LED blink cycle completed");
+        }
+    }
+}
+
+// ADC Sensor Reading Task
+Task<1, 3> SensorTask {
+    int sensorPin = 25;
+    int threshold = 512;
+    struct SensorData data;
+    
+    void run() {
+        HW_ADC_INIT(sensorPin);
+        
+        // Initialize sensor data
+        data.temperature = 0;
+        data.humidity = 0;
+        data.pressure = 0;
+        data.control.enable = 1;
+        data.control.mode = 2;
+        data.control.speed = 8;
+        
+        while (1) {
+            int reading = HW_ADC_READ(sensorPin);
+            
+            if (reading > threshold) {
+                DBG_PRINT("Sensor threshold exceeded!");
+                data.temperature = reading * 100 / 4095;  // Convert to temperature
+                
+                // Send data via UART
+                HW_UART_WRITE("Temperature: ");
+                HW_UART_WRITE(data.temperature);
+            }
+            
+            RTOS_DELAY_MS(1000);
+        }
+    }
+}
+
+// Timer PWM Control Task
+Task<0, 1> PWMTask {
+    int timerID = 0;
+    int pwmFreq = 1000;  // 1kHz
+    int dutyCycle = 50;   // 50% duty cycle
+    
+    void run() {
+        HW_TIMER_INIT(timerID, pwmFreq);
+        HW_TIMER_START(timerID);
+        
+        while (1) {
+            for (int i = 0; i <= 100; i += 10) {
+                HW_TIMER_SET_PWM_DUTY(timerID, i);
+                RTOS_DELAY_MS(100);
+            }
+            
+            for (int i = 100; i >= 0; i -= 10) {
+                HW_TIMER_SET_PWM_DUTY(timerID, i);
+                RTOS_DELAY_MS(100);
+            }
+        }
+    }
+}
+
+// Semaphore demonstration
+int sharedResource = 0;
+int resourceSemaphore;
+
+Task<1, 4> ProducerTask {
+    void run() {
+        while (1) {
+            RTOS_SEMAPHORE_TAKE(resourceSemaphore, 1000);
+            
+            sharedResource++;
+            DBG_PRINT("Producer: Resource incremented to ");
+            DBG_PRINT(sharedResource);
+            
+            RTOS_SEMAPHORE_GIVE(resourceSemaphore);
+            RTOS_DELAY_MS(200);
+        }
+    }
+}
+
+Task<1, 4> ConsumerTask {
+    void run() {
+        while (1) {
+            RTOS_SEMAPHORE_TAKE(resourceSemaphore, 1000);
+            
+            if (sharedResource > 0) {
+                sharedResource--;
+                DBG_PRINT("Consumer: Resource decremented to ");
+                DBG_PRINT(sharedResource);
+            }
+            
+            RTOS_SEMAPHORE_GIVE(resourceSemaphore);
+            RTOS_DELAY_MS(300);
+        }
+    }
+}
+
+// Main function
+void main() {
+    DBG_PRINT("RTMC System Starting...");
+    
+    // Create semaphore for shared resource
+    resourceSemaphore = RTOS_SEMAPHORE_CREATE();
+    
+    // Initialize hardware
+    DBG_PRINT("Hardware initialization complete");
+    
+    // Main system loop
+    while (1) {
+        RTOS_DELAY_MS(5000);
+        DBG_PRINT("Main loop heartbeat - System running");
+    }
+}
+
+// Example function with various control structures
+void demonstrateControlFlow() {
+    int counter = 0;
+    
+    // If-else demonstration
+    if (counter < 10) {
+        DBG_PRINT("Counter is less than 10");
+    } else {
+        DBG_PRINT("Counter is 10 or greater");
+    }
+    
+    // While loop demonstration
+    while (counter < 5) {
+        DBG_PRINT("While loop iteration: ");
+        DBG_PRINT(counter);
+        counter++;
+    }
+    
+    // For loop demonstration
+    for (int i = 0; i < 3; i++) {
+        DBG_PRINT("For loop iteration: ");
+        DBG_PRINT(i);
+    }
+    
+    // Switch-like behavior with if-else chain
+    if (counter == 0) {
+        DBG_PRINT("Counter is zero");
+    } else if (counter == 1) {
+        DBG_PRINT("Counter is one");
+    } else {
+        DBG_PRINT("Counter is something else");
+    }
+}

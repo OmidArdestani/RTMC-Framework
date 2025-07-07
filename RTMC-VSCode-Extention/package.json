@@ -1,0 +1,134 @@
+{
+  "name": "rtmc-language-support",
+  "displayName": "RT-Micro-C Language Support",
+  "description": "Language support for RT-Micro-C (RTMC) - Real-time embedded DSL for microcontrollers",
+  "version": "1.0.0",
+  "publisher": "rtmc-dev",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets",
+    "Themes"
+  ],
+  "keywords": [
+    "rtmc",
+    "rt-micro-c",
+    "embedded",
+    "rtos",
+    "microcontroller",
+    "real-time"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "rtmc",
+        "aliases": ["RT-Micro-C", "rtmc"],
+        "extensions": [".rtmc"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "rtmc",
+        "scopeName": "source.rtmc",
+        "path": "./syntaxes/rtmc.tmLanguage.json"
+      }
+    ],
+    "themes": [
+      {
+        "label": "RTMC Dark",
+        "uiTheme": "vs-dark",
+        "path": "./themes/rtmc-dark-theme.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "rtmc",
+        "path": "./snippets/rtmc.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "rtmc.compile",
+        "title": "Compile RTMC File",
+        "category": "RTMC"
+      },
+      {
+        "command": "rtmc.run",
+        "title": "Run RTMC Program",
+        "category": "RTMC"
+      },
+      {
+        "command": "rtmc.debug",
+        "title": "Debug RTMC Program",
+        "category": "RTMC"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "rtmc.compile",
+        "key": "ctrl+shift+b",
+        "when": "editorLangId == rtmc"
+      },
+      {
+        "command": "rtmc.run",
+        "key": "ctrl+f5",
+        "when": "editorLangId == rtmc"
+      }
+    ],
+    "configuration": {
+      "title": "RTMC",
+      "properties": {
+        "rtmc.compilerPath": {
+          "type": "string",
+          "default": "python",
+          "description": "Path to Python interpreter for RTMC compiler"
+        },
+        "rtmc.compilerScript": {
+          "type": "string",
+          "default": "",
+          "description": "Path to RTMC compiler main.py script"
+        },
+        "rtmc.vmRunnerScript": {
+          "type": "string",
+          "default": "",
+          "description": "Path to RTMC VM runner script"
+        },
+        "rtmc.enableDebugMode": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable debug mode for RTMC programs"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.74.0",
+    "@types/node": "16.x",
+    "@types/mocha": "^10.0.0",
+    "@types/glob": "^8.0.0",
+    "@typescript-eslint/eslint-plugin": "^5.45.0",
+    "@typescript-eslint/parser": "^5.45.0",
+    "@vscode/test-electron": "^2.3.0",
+    "eslint": "^8.28.0",
+    "glob": "^8.0.3",
+    "mocha": "^10.0.0",
+    "typescript": "^4.9.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rtmc-dev/rtmc-vscode-extension"
+  },
+  "license": "MIT"
+}

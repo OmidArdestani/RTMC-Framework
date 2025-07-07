@@ -1,0 +1,277 @@
+{
+  "Task Template": {
+    "prefix": "task",
+    "body": [
+      "Task<${1:0}, ${2:2}> ${3:TaskName} {",
+      "\t${4:// Task variables}",
+      "\t",
+      "\tvoid run() {",
+      "\t\t${5:// Task implementation}",
+      "\t\twhile (1) {",
+      "\t\t\t${6:// Main task loop}",
+      "\t\t\tRTOS_DELAY_MS(${7:1000});",
+      "\t\t}",
+      "\t}",
+      "}"
+    ],
+    "description": "Create a new RTMC task with core and priority"
+  },
+  "GPIO Blink Task": {
+    "prefix": "gpio-blink",
+    "body": [
+      "Task<${1:0}, ${2:2}> ${3:BlinkTask} {",
+      "\tint ${4:ledPin} = ${5:13};",
+      "\tint ${6:blinkDelay} = ${7:500};",
+      "\t",
+      "\tvoid run() {",
+      "\t\tHW_GPIO_INIT(${4:ledPin}, 1);  // Initialize as output",
+      "\t\t",
+      "\t\twhile (1) {",
+      "\t\t\tHW_GPIO_SET(${4:ledPin}, 1);",
+      "\t\t\tRTOS_DELAY_MS(${6:blinkDelay});",
+      "\t\t\tHW_GPIO_SET(${4:ledPin}, 0);",
+      "\t\t\tRTOS_DELAY_MS(${6:blinkDelay});",
+      "\t\t}",
+      "\t}",
+      "}"
+    ],
+    "description": "Create a GPIO LED blink task"
+  },
+  "ADC Sensor Task": {
+    "prefix": "adc-sensor",
+    "body": [
+      "Task<${1:1}, ${2:3}> ${3:SensorTask} {",
+      "\tint ${4:sensorPin} = ${5:25};",
+      "\tint ${6:threshold} = ${7:512};",
+      "\t",
+      "\tvoid run() {",
+      "\t\tHW_ADC_INIT(${4:sensorPin});",
+      "\t\t",
+      "\t\twhile (1) {",
+      "\t\t\tint reading = HW_ADC_READ(${4:sensorPin});",
+      "\t\t\t",
+      "\t\t\tif (reading > ${6:threshold}) {",
+      "\t\t\t\tDBG_PRINT(\"${8:Sensor threshold exceeded}\");",
+      "\t\t\t}",
+      "\t\t\t",
+      "\t\t\tRTOS_DELAY_MS(${9:1000});",
+      "\t\t}",
+      "\t}",
+      "}"
+    ],
+    "description": "Create an ADC sensor reading task"
+  },
+  "Struct Definition": {
+    "prefix": "struct",
+    "body": [
+      "struct ${1:StructName} {",
+      "\t${2:int} ${3:member1};",
+      "\t${4:int} ${5:member2};",
+      "\t${6:// Add more members}",
+      "};"
+    ],
+    "description": "Create a struct definition"
+  },
+  "Bitfield Struct": {
+    "prefix": "bitfield",
+    "body": [
+      "struct ${1:ControlRegister} {",
+      "\tint ${2:enable} : ${3:1};      // ${4:1-bit flag}",
+      "\tint ${5:mode} : ${6:2};        // ${7:2-bit mode (0-3)}",
+      "\tint ${8:speed} : ${9:4};       // ${10:4-bit speed (0-15)}",
+      "\tint ${11:reserved} : ${12:25}; // ${13:Remaining bits}",
+      "};"
+    ],
+    "description": "Create a bitfield struct for hardware registers"
+  },
+  "Main Function": {
+    "prefix": "main",
+    "body": [
+      "void main() {",
+      "\t${1:// Initialization}",
+      "\t",
+      "\twhile (1) {",
+      "\t\t${2:// Main loop}",
+      "\t\tRTOS_DELAY_MS(${3:1000});",
+      "\t}",
+      "}"
+    ],
+    "description": "Create a main function"
+  },
+  "Function Definition": {
+    "prefix": "func",
+    "body": [
+      "${1:void} ${2:functionName}(${3:}) {",
+      "\t${4:// Function implementation}",
+      "}"
+    ],
+    "description": "Create a function definition"
+  },
+  "GPIO Initialize": {
+    "prefix": "gpio-init",
+    "body": [
+      "HW_GPIO_INIT(${1:pin}, ${2:direction}); // ${3:0=input, 1=output}"
+    ],
+    "description": "Initialize GPIO pin"
+  },
+  "GPIO Set": {
+    "prefix": "gpio-set",
+    "body": [
+      "HW_GPIO_SET(${1:pin}, ${2:value}); // ${3:0=low, 1=high}"
+    ],
+    "description": "Set GPIO pin value"
+  },
+  "GPIO Get": {
+    "prefix": "gpio-get",
+    "body": [
+      "int ${1:value} = HW_GPIO_GET(${2:pin});"
+    ],
+    "description": "Read GPIO pin value"
+  },
+  "ADC Initialize": {
+    "prefix": "adc-init",
+    "body": [
+      "HW_ADC_INIT(${1:pin});"
+    ],
+    "description": "Initialize ADC pin"
+  },
+  "ADC Read": {
+    "prefix": "adc-read",
+    "body": [
+      "int ${1:value} = HW_ADC_READ(${2:pin});"
+    ],
+    "description": "Read ADC value"
+  },
+  "Timer Initialize": {
+    "prefix": "timer-init",
+    "body": [
+      "HW_TIMER_INIT(${1:timer_id}, ${2:frequency});"
+    ],
+    "description": "Initialize timer"
+  },
+  "Timer PWM": {
+    "prefix": "timer-pwm",
+    "body": [
+      "HW_TIMER_SET_PWM_DUTY(${1:timer_id}, ${2:duty_cycle});"
+    ],
+    "description": "Set timer PWM duty cycle"
+  },
+  "UART Write": {
+    "prefix": "uart-write",
+    "body": [
+      "HW_UART_WRITE(${1:\"message\"});"
+    ],
+    "description": "Write to UART"
+  },
+  "RTOS Delay": {
+    "prefix": "delay",
+    "body": [
+      "RTOS_DELAY_MS(${1:1000});"
+    ],
+    "description": "RTOS delay in milliseconds"
+  },
+  "RTOS Semaphore Create": {
+    "prefix": "sem-create",
+    "body": [
+      "int ${1:semaphore} = RTOS_SEMAPHORE_CREATE();"
+    ],
+    "description": "Create RTOS semaphore"
+  },
+  "RTOS Semaphore Take": {
+    "prefix": "sem-take",
+    "body": [
+      "RTOS_SEMAPHORE_TAKE(${1:semaphore}, ${2:timeout});"
+    ],
+    "description": "Take RTOS semaphore"
+  },
+  "RTOS Semaphore Give": {
+    "prefix": "sem-give",
+    "body": [
+      "RTOS_SEMAPHORE_GIVE(${1:semaphore});"
+    ],
+    "description": "Give RTOS semaphore"
+  },
+  "Debug Print": {
+    "prefix": "dbg",
+    "body": [
+      "DBG_PRINT(\"${1:Debug message}\");"
+    ],
+    "description": "Print debug message"
+  },
+  "If Statement": {
+    "prefix": "if",
+    "body": [
+      "if (${1:condition}) {",
+      "\t${2:// Code}",
+      "}"
+    ],
+    "description": "If statement"
+  },
+  "If-Else Statement": {
+    "prefix": "ifelse",
+    "body": [
+      "if (${1:condition}) {",
+      "\t${2:// If code}",
+      "} else {",
+      "\t${3:// Else code}",
+      "}"
+    ],
+    "description": "If-else statement"
+  },
+  "While Loop": {
+    "prefix": "while",
+    "body": [
+      "while (${1:condition}) {",
+      "\t${2:// Loop code}",
+      "}"
+    ],
+    "description": "While loop"
+  },
+  "For Loop": {
+    "prefix": "for",
+    "body": [
+      "for (${1:int i = 0}; ${2:i < 10}; ${3:i++}) {",
+      "\t${4:// Loop code}",
+      "}"
+    ],
+    "description": "For loop"
+  },
+  "Import Statement": {
+    "prefix": "import",
+    "body": [
+      "import \"${1:filename.rtmc}\";"
+    ],
+    "description": "Import RTMC file"
+  },
+  "Complete RTMC Program": {
+    "prefix": "rtmc-program",
+    "body": [
+      "// RT-Micro-C Program",
+      "// ${1:Program description}",
+      "",
+      "import \"${2:definitions.rtmc}\";",
+      "",
+      "Task<${3:0}, ${4:2}> ${5:MainTask} {",
+      "\t${6:// Task variables}",
+      "\t",
+      "\tvoid run() {",
+      "\t\t${7:// Task implementation}",
+      "\t\twhile (1) {",
+      "\t\t\t${8:// Main task loop}",
+      "\t\t\tRTOS_DELAY_MS(${9:1000});",
+      "\t\t}",
+      "\t}",
+      "}",
+      "",
+      "void main() {",
+      "\tDBG_PRINT(\"${10:Program starting}\");",
+      "\t",
+      "\twhile (1) {",
+      "\t\tRTOS_DELAY_MS(${11:5000});",
+      "\t\tDBG_PRINT(\"${12:Main loop heartbeat}\");",
+      "\t}",
+      "}"
+    ],
+    "description": "Complete RTMC program template"
+  }
+}
