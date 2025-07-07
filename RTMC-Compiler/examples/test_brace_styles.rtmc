@@ -1,32 +1,35 @@
-// Test file for both brace styles
+import "definitions.rtmc";
 
-void func1() {
-    int x = 5;
+// Test both brace styles for tasks
+Task<0, 1> StyleOneTask {
+    void run() {
+        DBG_PRINT("Style one task running");
+        RTOS_DELAY_MS(1000);
+    }
 }
 
-void func2()
+Task<1, 2> StyleTwoTask 
 {
-    int y = 10;
+    void run() 
+    {
+        DBG_PRINT("Style two task running");
+        RTOS_DELAY_MS(1500);
+    }
+}
+
+// Test both brace styles for functions
+void styleOneFunction() {
+    DBG_PRINT("Style one function");
+}
+
+void styleTwoFunction()
+{
+    DBG_PRINT("Style two function");
 }
 
 void main() 
 {
-    if (true) {
-        func1();
-    }
-    
-    while (false)
-    {
-        func2();
-    }
-    
-    for (int i = 0; i < 5; i++)
-    {
-        bool test = true;
-    }
-    
-    if (1 > 0)
-    {
-        bool result = false;
-    }
+    styleOneFunction();
+    styleTwoFunction();
+    DBG_PRINT("Main task done");
 }

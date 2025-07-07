@@ -195,6 +195,10 @@ class Parser:
         # Parse task name
         task_name = self.consume(TokenType.IDENTIFIER, "Expected task name").value
         
+        # Skip optional newlines before opening brace
+        while self.match(TokenType.NEWLINE):
+            pass
+        
         self.consume(TokenType.LEFT_BRACE, "Expected '{' after task name")
         
         # Parse task members (variables and functions)

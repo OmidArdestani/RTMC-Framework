@@ -1,0 +1,70 @@
+import "definitions.rtmc";
+
+// Test file to verify both brace styles work correctly
+
+// Functions with different brace styles
+void immediatebraceFunction() {
+    DBG_PRINT("Function with immediate brace");
+}
+
+void newlinebraceFunction()
+{
+    DBG_PRINT("Function with newline brace");
+}
+
+void mixedStyleFunction(int x, int y) {
+    DBG_PRINT("Mixed style function with parameters");
+}
+
+void anotherNewlineFunction(int param)
+{
+    DBG_PRINT("Another newline style function");
+}
+
+// Tasks with different brace styles
+Task<0, 1> ImmediateBraceTask {
+    int counter = 0;
+    
+    void run() {
+        DBG_PRINT("Task with immediate brace");
+        counter++;
+        RTOS_DELAY_MS(1000);
+    }
+}
+
+Task<1, 2> NewlineBraceTask
+{
+    int value = 42;
+    
+    void run()
+    {
+        DBG_PRINT("Task with newline brace");
+        value *= 2;
+        RTOS_DELAY_MS(1500);
+    }
+}
+
+Task<0, 3> MixedTask {
+    void run()
+    {
+        DBG_PRINT("Mixed style task");
+        RTOS_DELAY_MS(2000);
+    }
+}
+
+Task<1, 4> AnotherNewlineTask
+{
+    void run() {
+        DBG_PRINT("Another newline task");
+        RTOS_DELAY_MS(500);
+    }
+}
+
+void main()
+{
+    immediatebraceFunction();
+    newlinebraceFunction();
+    mixedStyleFunction(1, 2);
+    anotherNewlineFunction(10);
+    DBG_PRINT("All function calls completed");
+}

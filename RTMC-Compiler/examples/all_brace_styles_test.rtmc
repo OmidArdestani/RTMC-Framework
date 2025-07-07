@@ -1,0 +1,123 @@
+// Comprehensive test for all constructs supporting both brace styles
+// This file tests newlines after ')' for all relevant constructs
+
+import "definitions.rtmc";
+
+// Functions - both styles
+void immediateFunction() {
+    DBG_PRINT("Immediate brace function");
+}
+
+void newlineFunction()
+{
+    DBG_PRINT("Newline brace function");
+}
+
+// Function with parameters - both styles
+int paramFunction(int x, int y) {
+    return x + y;
+}
+
+int newlineParamFunction(int a, int b)
+{
+    return a * b;
+}
+
+// Tasks - both styles
+Task<0, 1> ImmediateTask {
+    int counter = 0;
+    
+    void run() {
+        counter++;
+        DBG_PRINT("Immediate task brace");
+        RTOS_DELAY_MS(1000);
+    }
+}
+
+Task<1, 2> NewlineTask
+{
+    int value = 42;
+    
+    void run()
+    {
+        value += 10;
+        DBG_PRINT("Newline task brace");
+        RTOS_DELAY_MS(1500);
+    }
+}
+
+void testControlStructures()
+{
+    int x = 10;
+    
+    // If statement - immediate brace
+    if (x > 5) {
+        DBG_PRINT("x is greater than 5");
+    }
+    
+    // If statement - newline brace
+    if (x < 20)
+    {
+        DBG_PRINT("x is less than 20");
+    }
+    
+    // If-else - mixed styles
+    if (x == 10) {
+        DBG_PRINT("x equals 10");
+    }
+    else
+    {
+        DBG_PRINT("x does not equal 10");
+    }
+    
+    // While loop - immediate brace
+    while (x > 0) {
+        x--;
+        if (x == 5) break;
+    }
+    
+    // While loop - newline brace
+    while (x < 10)
+    {
+        x++;
+        if (x == 8) continue;
+    }
+    
+    // For loop - immediate brace
+    for (int i = 0; i < 5; i++) {
+        DBG_PRINT("For loop immediate");
+    }
+    
+    // For loop - newline brace
+    for (int j = 0; j < 3; j++)
+    {
+        DBG_PRINT("For loop newline");
+    }
+    
+    // Nested structures with mixed styles
+    if (true)
+    {
+        for (int k = 0; k < 2; k++) {
+            while (k < 1)
+            {
+                DBG_PRINT("Nested mixed styles");
+                break;
+            }
+        }
+    }
+}
+
+void main()
+{
+    // Call functions with different styles
+    immediateFunction();
+    newlineFunction();
+    
+    int result1 = paramFunction(5, 3);
+    int result2 = newlineParamFunction(4, 6);
+    
+    // Test control structures
+    testControlStructures();
+    
+    DBG_PRINT("All brace style tests completed");
+}

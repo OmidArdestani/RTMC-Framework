@@ -48,6 +48,50 @@ struct ControlRegister {
 - Semaphores, delays, task suspension/resumption
 - Real-time scheduling and resource management
 
+### 🎨 **Flexible Brace Styles**
+RT-Micro-C supports both common brace styles for maximum developer comfort:
+
+```c
+// Style 1: Opening brace on same line
+void function() {
+    if (condition) {
+        while (loop) {
+            // code
+        }
+    }
+}
+
+Task<0, 1> MyTask {
+    void run() {
+        // task code
+    }
+}
+```
+
+```c
+// Style 2: Opening brace on new line
+void function()
+{
+    if (condition)
+    {
+        while (loop)
+        {
+            // code
+        }
+    }
+}
+
+Task<0, 1> MyTask
+{
+    void run()
+    {
+        // task code
+    }
+}
+```
+
+Both styles can be mixed within the same file, supporting team preferences and existing code styles.
+
 ## Architecture
 
 The compiler follows a traditional multi-stage pipeline:

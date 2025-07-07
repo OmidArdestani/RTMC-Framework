@@ -1,5 +1,4 @@
 
-
 import "definitions.rtmc";
 
 Task<0, 1> SendUartTask 
