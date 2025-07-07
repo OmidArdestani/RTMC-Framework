@@ -14,6 +14,7 @@ Task<1, 1> ReadADCTask {
             DBG_PRINT("reading ADC");
             int adcValue = HW_ADC_READ(sensorPin);
             MsgADCValueQueue.send(adcValue);
+            RTOS_DELAY_MS(1000);
         }
     }
 }

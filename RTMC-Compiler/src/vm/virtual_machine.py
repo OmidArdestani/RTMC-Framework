@@ -37,6 +37,7 @@ class Task:
     thread: Optional[threading.Thread] = None
     stack: List[Any] = None
     pc: int = 0
+    vm_instance: Optional['VirtualMachine'] = None  # Reference to VM for thread execution
     
     def __post_init__(self):
         if self.stack is None:
@@ -73,6 +74,99 @@ class MessageQueue:
             self.waiting_receivers = []
         if self.waiting_timeouts is None:
             self.waiting_timeouts = {}
+
+class TaskVMContext:
+    """Separate VM context for executing tasks in threads"""
+    
+    def __init__(self, main_vm: 'VirtualMachine', task: Task):
+        self.main_vm = main_vm
+        self.task = task
+        self.pc = 0
+        self.stack = []
+        self.call_stack = []
+        self.memory = {}  # Task-local memory
+        self.running = True
+    
+    def execute_function(self, func_addr: int):
+        """Execute a function starting at the given address"""
+        self.pc = func_addr
+        
+        try:
+            while self.running and self.pc < len(self.main_vm.program.instructions):
+                instruction = self.main_vm.program.instructions[self.pc]
+                
+                if self.main_vm.trace:
+                    print(f"Task {self.task.name}: PC={self.pc} {instruction}")
+                
+                self._execute_instruction(instruction)
+                
+                # Handle control flow
+                if instruction.opcode not in [Opcode.JUMP, Opcode.JUMPIF_TRUE, 
+                                            Opcode.JUMPIF_FALSE, Opcode.CALL, Opcode.RET]:
+                    self.pc += 1
+                
+                # Check if task should yield or delay
+                if instruction.opcode in [Opcode.RTOS_YIELD, Opcode.RTOS_DELAY_MS]:
+                    time.sleep(0.001)  # Small yield for cooperative threading
+                    
+        except Exception as e:
+            print(f"Task {self.task.name} execution error: {e}")
+            raise
+    
+    def _execute_instruction(self, instruction: Instruction):
+        """Execute a single instruction in task context"""
+        # Delegate most instructions to the main VM, but handle some locally
+        if instruction.opcode == Opcode.RET:
+            self.running = False
+            return
+        elif instruction.opcode == Opcode.RTOS_DELAY_MS:
+            delay_ms = self._pop()
+            print(f"Task {self.task.name}: Delaying {delay_ms}ms")
+            time.sleep(delay_ms / 1000.0)
+            return
+        elif instruction.opcode == Opcode.DBG_PRINT:
+            string_id = self._pop()
+            if string_id < len(self.main_vm.program.strings):
+                print(f"Task {self.task.name}: DEBUG: {self.main_vm.program.strings[string_id]}")
+            return
+        
+        # For other instructions, use the main VM's handlers but with our context
+        handler = self.main_vm.handlers.get(instruction.opcode)
+        if handler:
+            # Temporarily switch VM context
+            old_stack = self.main_vm.stack
+            old_pc = self.main_vm.pc
+            old_memory = self.main_vm.memory
+            
+            self.main_vm.stack = self.stack
+            self.main_vm.pc = self.pc
+            self.main_vm.memory = self.memory
+            
+            try:
+                handler(instruction)
+                
+                # Update our context
+                self.stack = self.main_vm.stack
+                self.pc = self.main_vm.pc
+                self.memory = self.main_vm.memory
+                
+            finally:
+                # Restore main VM context
+                self.main_vm.stack = old_stack
+                self.main_vm.pc = old_pc
+                self.main_vm.memory = old_memory
+        else:
+            raise VMError(f"Unknown instruction: {instruction.opcode}")
+    
+    def _pop(self):
+        """Pop value from stack"""
+        if not self.stack:
+            raise VMError("Stack underflow")
+        return self.stack.pop()
+    
+    def _push(self, value):
+        """Push value to stack"""
+        self.stack.append(value)
 
 class HardwareSimulator:
     """Simulates hardware peripherals"""
@@ -316,7 +410,7 @@ class VirtualMachine:
         self.call_stack = []
         self.memory = {}
         
-        # Initialize main task
+        # Create main task if main function exists
         if 'main' in program.functions:
             main_addr = program.functions['main']
             self.create_main_task(main_addr)
@@ -324,56 +418,175 @@ class VirtualMachine:
     def create_main_task(self, main_addr: int):
         """Create the main task"""
         task = Task(
-            id=0,
+            id=self.task_counter,
             name="main",
             func_addr=main_addr,
             stack_size=1024,
             priority=5,
             core=0,
             state=TaskState.READY,
-            pc=main_addr
+            pc=main_addr,
+            vm_instance=self
         )
-        self.tasks[0] = task
-        self.current_task_id = 0
+        self.tasks[self.task_counter] = task
+        self.task_counter += 1
     
+    def _run_task_thread(self, task: Task):
+        """Run a task in its own thread"""
+        try:
+            print(f"Starting task thread: {task.name} (ID: {task.id})")
+            task.state = TaskState.RUNNING
+            
+            # Create a separate VM context for this task
+            task_vm = TaskVMContext(self, task)
+            
+            # Execute the task's run function
+            task_vm.execute_function(task.func_addr)
+            
+        except Exception as e:
+            print(f"Task {task.name} (ID: {task.id}) encountered error: {e}")
+            if self.debug:
+                import traceback
+                traceback.print_exc()
+        finally:
+            task.state = TaskState.DELETED
+            print(f"Task {task.name} (ID: {task.id}) finished")
+    
+    def _start_task_thread(self, task: Task):
+        """Start a task as a Python thread"""
+        if task.thread is None or not task.thread.is_alive():
+            task.thread = threading.Thread(
+                target=self._run_task_thread,
+                args=(task,),
+                name=f"Task-{task.name}-{task.id}"
+            )
+            task.thread.daemon = True  # Don't block program exit
+            task.thread.start()
+            return True
+        return False
+
     def run(self):
-        """Run the virtual machine"""
+        """Run the virtual machine with threaded tasks"""
         self.running = True
         
         if not self.program:
             raise VMError("No program loaded")
         
-        # Start with main task
-        if 0 in self.tasks:
-            self.pc = self.tasks[0].func_addr
-            self.current_task_id = 0
-        
         try:
-            while self.running and self.pc < len(self.program.instructions):
-                instruction = self.program.instructions[self.pc]
+            # Create tasks based on RTOS_CREATE_TASK instructions found in bytecode
+            self._initialize_tasks_from_bytecode()
+            
+            print(f"Initialized {len(self.tasks)} tasks.")
+            
+            # Start all tasks as threads (including main if it exists)
+            for task in self.tasks.values():
+                self._start_task_thread(task)
+                print(f"Started task '{task.name}' (ID: {task.id}) as thread")
+            
+            # Wait for all tasks to complete or until interrupted
+            print("VM running, waiting for tasks to complete...")
+            while self.running:
+                # Check if any tasks are still running
+                active_tasks = [task for task in self.tasks.values() 
+                              if task.thread and task.thread.is_alive()]
                 
-                if self.trace:
-                    self._trace_instruction(instruction)
+                if not active_tasks:
+                    print("All tasks completed")
+                    break
                 
-                self._execute_instruction(instruction)
+                # Wait a bit and check again
+                time.sleep(0.1)
                 
-                if instruction.opcode not in [Opcode.JUMP, Opcode.JUMPIF_TRUE, 
-                                            Opcode.JUMPIF_FALSE, Opcode.CALL, Opcode.RET]:
-                    self.pc += 1
-                
-                # Simple task switching (cooperative)
-                if instruction.opcode in [Opcode.RTOS_YIELD, Opcode.RTOS_DELAY_MS]:
-                    self._yield_task()
+                # Check for any task errors or completions
+                for task in list(self.tasks.values()):
+                    if task.thread and not task.thread.is_alive() and task.state != TaskState.DELETED:
+                        print(f"Task {task.name} (ID: {task.id}) finished")
+                        task.state = TaskState.DELETED
         
         except KeyboardInterrupt:
             print("\\nExecution interrupted by user")
+            self.running = False
+            
+            # Wait for threads to finish gracefully
+            for task in self.tasks.values():
+                if task.thread and task.thread.is_alive():
+                    print(f"Waiting for task {task.name} to finish...")
+                    task.thread.join(timeout=1.0)
+                    
         except Exception as e:
-            print(f"Runtime error at PC {self.pc}: {e}")
+            print(f"Runtime error: {e}")
             if self.debug:
                 import traceback
                 traceback.print_exc()
         finally:
             self.running = False
+            print("VM execution finished")
+    
+    def _initialize_tasks_from_bytecode(self):
+        """Find and process RTOS_CREATE_TASK instructions to create tasks"""
+        # Simulate executing RTOS_CREATE_TASK instructions
+        temp_stack = []
+        
+        for i, instruction in enumerate(self.program.instructions):
+            if instruction.opcode == Opcode.LOAD_CONST:
+                # Add constant to temp stack
+                const_idx = instruction.operands[0]
+                if const_idx < len(self.program.constants):
+                    temp_stack.append(self.program.constants[const_idx])
+                
+            elif instruction.opcode == Opcode.RTOS_CREATE_TASK:
+                # Process task creation with the last 5 values on temp stack
+                if len(temp_stack) >= 5:
+                    core = temp_stack.pop()
+                    priority = temp_stack.pop()
+                    stack_size = temp_stack.pop()
+                    name_id = temp_stack.pop()
+                    func_name_id = temp_stack.pop()
+                    
+                    print(f"Creating task: func_name_id={func_name_id}, name_id={name_id}, stack_size={stack_size}, priority={priority}, core={core}")
+                    
+                    # Get task name and function name from string pool
+                    if isinstance(name_id, int) and name_id < len(self.program.strings):
+                        task_name = self.program.strings[name_id]
+                    else:
+                        task_name = f"Task{self.task_counter}"
+                    
+                    if isinstance(func_name_id, int) and func_name_id < len(self.program.strings):
+                        func_name = self.program.strings[func_name_id]
+                    elif isinstance(func_name_id, str):
+                        func_name = func_name_id
+                    else:
+                        func_name = None
+                    
+                    print(f"Task name: {task_name}, Function name: {func_name}")
+                    
+                    # Get function address
+                    if func_name and func_name in self.program.functions:
+                        func_addr = self.program.functions[func_name]
+                        
+                        # Create task
+                        task = Task(
+                            id=self.task_counter,
+                            name=task_name,
+                            func_addr=func_addr,
+                            stack_size=stack_size,
+                            priority=priority,
+                            core=core,
+                            state=TaskState.READY,
+                            pc=func_addr,
+                            vm_instance=self
+                        )
+                        
+                        self.tasks[self.task_counter] = task
+                        self.task_counter += 1
+                        
+                        print(f"Created task '{task_name}' (ID: {task.id}) -> function '{func_name}' at address {func_addr}")
+                    else:
+                        print(f"Warning: Function '{func_name}' not found for task '{task_name}'")
+            
+            else:
+                # Reset temp stack for other instructions to avoid accumulation
+                temp_stack.clear()
     
     def _execute_instruction(self, instruction: Instruction):
         """Execute a single instruction"""
@@ -443,7 +656,7 @@ class VirtualMachine:
     def _pop(self) -> Any:
         """Pop value from stack"""
         if not self.stack:
-            raise VMError("Stack underflow")
+            raise VMError(f"Stack underflow at PC {self.pc}")
         return self.stack.pop()
     
     def _peek(self) -> Any:
@@ -684,27 +897,35 @@ class VirtualMachine:
         priority = self._pop()
         stack_size = self._pop()
         name_id = self._pop()
-        func_id = self._pop()
+        func_name_id = self._pop()
         
         # Get task name from string pool
         task_name = self.program.strings[name_id] if name_id < len(self.program.strings) else f"Task{self.task_counter}"
+        
+        # Get function name and resolve to address
+        func_name = self.program.strings[func_name_id] if func_name_id < len(self.program.strings) else None
+        if func_name and func_name in self.program.functions:
+            func_addr = self.program.functions[func_name]
+        else:
+            raise VMError(f"Function '{func_name}' not found for task '{task_name}'")
         
         # Create new task
         task = Task(
             id=self.task_counter,
             name=task_name,
-            func_addr=func_id,
+            func_addr=func_addr,
             stack_size=stack_size,
             priority=priority,
             core=core,
             state=TaskState.READY,
-            pc=func_id
+            pc=func_addr,
+            vm_instance=self
         )
         
         self.tasks[self.task_counter] = task
         self.task_counter += 1
         
-        print(f"Created task '{task_name}' (ID: {task.id})")
+        print(f"Created task '{task_name}' (ID: {task.id}) -> function '{func_name}' at address {func_addr}")
     
     def _handle_rtos_delete_task(self, instruction: Instruction):
         """Handle RTOS_DELETE_TASK instruction"""

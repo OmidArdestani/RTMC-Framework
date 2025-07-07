@@ -1,0 +1,27 @@
+import "definitions.rtmc";
+
+Task<0, 1> SimpleTask1 
+{
+    void run() 
+    {
+        for(int i = 0; i < 5; i++) {
+            DBG_PRINT("Task1 iteration");
+            RTOS_DELAY_MS(500);
+        }
+    }
+}
+
+Task<1, 2> SimpleTask2 {
+    void run() {
+        for(int i = 0; i < 3; i++) {
+            DBG_PRINT("Task2 iteration");
+            RTOS_DELAY_MS(800);
+        }
+    }
+}
+
+void main() {
+    DBG_PRINT("Main task starting");
+    RTOS_DELAY_MS(2000);
+    DBG_PRINT("Main task ending");
+}

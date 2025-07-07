@@ -12,6 +12,7 @@ Task<0, 1> SendUartTask
             float adc_value = MsgADCValueQueue.recv(100);
 
             HW_UART_WRITE(4, (int)adc_value);
+            RTOS_DELAY_MS(1000);
         }
     }
 }

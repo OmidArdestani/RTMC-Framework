@@ -6,9 +6,6 @@ import "send_uart.rtmc";
 
 void main() 
 {
-    while(true) 
-    {
-        RTOS_DELAY_MS(2000);
-        DBG_PRINT("main loop");
-    }
+    RTOS_DELAY_MS(1000);
+    DBG_PRINT("Main task finished");
 }
