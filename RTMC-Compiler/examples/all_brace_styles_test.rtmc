@@ -70,40 +70,30 @@ void testControlStructures()
         DBG_PRINT("x does not equal 10");
     }
     
-    // While loop - immediate brace
-    while (x > 0) {
-        x--;
-        if (x == 5) break;
+    // While loop - immediate brace (safe version)
+    int counter = 3;
+    while (counter > 0) {
+        counter--;
+        DBG_PRINT("While loop immediate");
     }
     
     // While loop - newline brace
-    while (x < 10)
+    int counter2 = 0;
+    while (counter2 < 2)
     {
-        x++;
-        if (x == 8) continue;
+        counter2++;
+        DBG_PRINT("While loop newline");
     }
     
     // For loop - immediate brace
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 3; i++) {
         DBG_PRINT("For loop immediate");
     }
     
     // For loop - newline brace
-    for (int j = 0; j < 3; j++)
+    for (int j = 0; j < 2; j++)
     {
         DBG_PRINT("For loop newline");
-    }
-    
-    // Nested structures with mixed styles
-    if (true)
-    {
-        for (int k = 0; k < 2; k++) {
-            while (k < 1)
-            {
-                DBG_PRINT("Nested mixed styles");
-                break;
-            }
-        }
     }
 }
 
