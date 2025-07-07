@@ -140,6 +140,7 @@ class Token:
     value:  str
     line:   int
     column: int
+    filename: str = ""
 
 class Tokenizer:
     """RT-Micro-C tokenizer"""
@@ -205,8 +206,9 @@ class Tokenizer:
         'DBG_BREAKPOINT': TokenType.DBG_BREAKPOINT,
     }
     
-    def __init__(self, source: str):
+    def __init__(self, source: str, filename: str = ""):
         self.source = source
+        self.filename = filename
         self.pos = 0
         self.line = 1
         self.column = 1
@@ -256,10 +258,10 @@ class Tokenizer:
                 self.advance()
             
             value = self.source[start_pos:self.pos]
-            return Token(TokenType.FLOAT, value, self.line, start_column)
+            return Token(TokenType.FLOAT, value, self.line, start_column, self.filename)
         
         value = self.source[start_pos:self.pos]
-        return Token(TokenType.INTEGER, value, self.line, start_column)
+        return Token(TokenType.INTEGER, value, self.line, start_column, self.filename)
     
     def read_string(self) -> Token:
         """Read a string literal"""
@@ -297,7 +299,7 @@ class Tokenizer:
             self.advance()  # consume closing quote
         
         token_type = TokenType.STRING if quote_char == '"' else TokenType.CHAR
-        return Token(token_type, value, self.line, start_column)
+        return Token(token_type, value, self.line, start_column, self.filename)
     
     def read_identifier(self) -> Token:
         """Read an identifier or keyword"""
@@ -310,7 +312,7 @@ class Tokenizer:
         
         value = self.source[start_pos:self.pos]
         token_type = self.KEYWORDS.get(value, TokenType.IDENTIFIER)
-        return Token(token_type, value, self.line, start_column)
+        return Token(token_type, value, self.line, start_column, self.filename)
     
     def read_comment(self) -> Token:
         """Read a comment"""
@@ -320,7 +322,7 @@ class Tokenizer:
             # Single-line comment
             while self.current_char() and self.current_char() != '\n':
                 self.advance()
-            return Token(TokenType.COMMENT, "", self.line, start_column)
+            return Token(TokenType.COMMENT, "", self.line, start_column, self.filename)
         
         elif self.current_char() == '/' and self.peek_char() == '*':
             # Multi-line comment
@@ -334,7 +336,7 @@ class Tokenizer:
                     break
                 self.advance()
             
-            return Token(TokenType.COMMENT, "", self.line, start_column)
+            return Token(TokenType.COMMENT, "", self.line, start_column, self.filename)
         
         return None
     
@@ -351,7 +353,7 @@ class Tokenizer:
             
             # Newlines
             if char == '\n':
-                self.tokens.append(Token(TokenType.NEWLINE, char, self.line, start_column))
+                self.tokens.append(Token(TokenType.NEWLINE, char, self.line, start_column, self.filename))
                 self.advance()
                 continue
             
@@ -379,91 +381,91 @@ class Tokenizer:
             
             # Two-character operators
             if char == '+' and self.peek_char() == '+':
-                self.tokens.append(Token(TokenType.INCREMENT, '++', self.line, start_column))
+                self.tokens.append(Token(TokenType.INCREMENT, '++', self.line, start_column, self.filename))
                 self.advance()
                 self.advance()
                 continue
             
             if char == '+' and self.peek_char() == '=':
-                self.tokens.append(Token(TokenType.PLUS_ASSIGN, '+=', self.line, start_column))
+                self.tokens.append(Token(TokenType.PLUS_ASSIGN, '+=', self.line, start_column, self.filename))
                 self.advance()
                 self.advance()
                 continue
             
             if char == '-' and self.peek_char() == '-':
-                self.tokens.append(Token(TokenType.DECREMENT, '--', self.line, start_column))
+                self.tokens.append(Token(TokenType.DECREMENT, '--', self.line, start_column, self.filename))
                 self.advance()
                 self.advance()
                 continue
             
             if char == '-' and self.peek_char() == '=':
-                self.tokens.append(Token(TokenType.MINUS_ASSIGN, '-=', self.line, start_column))
+                self.tokens.append(Token(TokenType.MINUS_ASSIGN, '-=', self.line, start_column, self.filename))
                 self.advance()
                 self.advance()
                 continue
             
             if char == '*' and self.peek_char() == '=':
-                self.tokens.append(Token(TokenType.MULTIPLY_ASSIGN, '*=', self.line, start_column))
+                self.tokens.append(Token(TokenType.MULTIPLY_ASSIGN, '*=', self.line, start_column, self.filename))
                 self.advance()
                 self.advance()
                 continue
             
             if char == '/' and self.peek_char() == '=':
-                self.tokens.append(Token(TokenType.DIVIDE_ASSIGN, '/=', self.line, start_column))
+                self.tokens.append(Token(TokenType.DIVIDE_ASSIGN, '/=', self.line, start_column, self.filename))
                 self.advance()
                 self.advance()
                 continue
             
             if char == '=' and self.peek_char() == '=':
-                self.tokens.append(Token(TokenType.EQUAL, '==', self.line, start_column))
+                self.tokens.append(Token(TokenType.EQUAL, '==', self.line, start_column, self.filename))
                 self.advance()
                 self.advance()
                 continue
             
             if char == '!' and self.peek_char() == '=':
-                self.tokens.append(Token(TokenType.NOT_EQUAL, '!=', self.line, start_column))
+                self.tokens.append(Token(TokenType.NOT_EQUAL, '!=', self.line, start_column, self.filename))
                 self.advance()
                 self.advance()
                 continue
             
             if char == '<' and self.peek_char() == '=':
-                self.tokens.append(Token(TokenType.LESS_EQUAL, '<=', self.line, start_column))
+                self.tokens.append(Token(TokenType.LESS_EQUAL, '<=', self.line, start_column, self.filename))
                 self.advance()
                 self.advance()
                 continue
             
             if char == '>' and self.peek_char() == '=':
-                self.tokens.append(Token(TokenType.GREATER_EQUAL, '>=', self.line, start_column))
+                self.tokens.append(Token(TokenType.GREATER_EQUAL, '>=', self.line, start_column, self.filename))
                 self.advance()
                 self.advance()
                 continue
             
             if char == '&' and self.peek_char() == '&':
-                self.tokens.append(Token(TokenType.LOGICAL_AND, '&&', self.line, start_column))
+                self.tokens.append(Token(TokenType.LOGICAL_AND, '&&', self.line, start_column, self.filename))
                 self.advance()
                 self.advance()
                 continue
             
             if char == '|' and self.peek_char() == '|':
-                self.tokens.append(Token(TokenType.LOGICAL_OR, '||', self.line, start_column))
+                self.tokens.append(Token(TokenType.LOGICAL_OR, '||', self.line, start_column, self.filename))
                 self.advance()
                 self.advance()
                 continue
             
             if char == '<' and self.peek_char() == '<':
-                self.tokens.append(Token(TokenType.LEFT_SHIFT, '<<', self.line, start_column))
+                self.tokens.append(Token(TokenType.LEFT_SHIFT, '<<', self.line, start_column, self.filename))
                 self.advance()
                 self.advance()
                 continue
             
             if char == '>' and self.peek_char() == '>':
-                self.tokens.append(Token(TokenType.RIGHT_SHIFT, '>>', self.line, start_column))
+                self.tokens.append(Token(TokenType.RIGHT_SHIFT, '>>', self.line, start_column, self.filename))
                 self.advance()
                 self.advance()
                 continue
             
             if char == '-' and self.peek_char() == '>':
-                self.tokens.append(Token(TokenType.ARROW, '->', self.line, start_column))
+                self.tokens.append(Token(TokenType.ARROW, '->', self.line, start_column, self.filename))
                 self.advance()
                 self.advance()
                 continue
@@ -496,13 +498,14 @@ class Tokenizer:
             }
             
             if char in single_char_tokens:
-                self.tokens.append(Token(single_char_tokens[char], char, self.line, start_column))
+                self.tokens.append(Token(single_char_tokens[char], char, self.line, start_column, self.filename))
                 self.advance()
                 continue
             
             # Unknown character
-            raise SyntaxError(f"Unexpected character '{char}' at line {self.line}, column {self.column}")
+            error_msg = f"Unexpected character '{char}' at {self.filename}:{self.line}:{self.column}" if self.filename else f"Unexpected character '{char}' at line {self.line}, column {self.column}"
+            raise SyntaxError(error_msg)
         
         # Add EOF token
-        self.tokens.append(Token(TokenType.EOF, '', self.line, self.column))
+        self.tokens.append(Token(TokenType.EOF, '', self.line, self.column, self.filename))
         return self.tokens

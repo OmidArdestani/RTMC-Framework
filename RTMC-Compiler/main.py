@@ -44,7 +44,7 @@ def parse_with_imports(file_path: Path, imported_files: Set[Path] = None) -> Pro
         raise FileNotFoundError(f"Import file not found: {file_path}")
     
     # Tokenize and parse
-    tokenizer = Tokenizer(source_code)
+    tokenizer = Tokenizer(source_code, str(abs_path))
     tokens = tokenizer.tokenize()
     parser = Parser(tokens)
     ast = parser.parse()
@@ -109,10 +109,10 @@ def main():
             print("=== TOKENS (main file only) ===")
             with open(input_path, 'r') as f:
                 source_code = f.read()
-            tokenizer = Tokenizer(source_code)
+            tokenizer = Tokenizer(source_code, str(input_path))
             tokens = tokenizer.tokenize()
             for token in tokens:
-                print(f"{token.type.name}: '{token.value}' at line {token.line}")
+                print(f"{token.type.name}: '{token.value}' at {token.filename}:{token.line}")
             print()
         
         if args.ast:

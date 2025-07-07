@@ -295,9 +295,14 @@ class SemanticAnalyzer(ASTVisitor):
         for name, symbol in builtins.items():
             self.symbol_table.define(symbol)
     
-    def error(self, message: str, line: int = 0):
+    def error(self, message: str, line: int = 0, filename: str = ""):
         """Report semantic error"""
-        error_msg = f"Line {line}: {message}" if line > 0 else message
+        if filename and line > 0:
+            error_msg = f"{filename}:{line}: {message}"
+        elif line > 0:
+            error_msg = f"Line {line}: {message}"
+        else:
+            error_msg = message
         self.errors.append(error_msg)
         raise SemanticError(error_msg)
     
@@ -372,7 +377,7 @@ class SemanticAnalyzer(ASTVisitor):
         
         # Check if function already exists
         if self.symbol_table.exists(func_name):
-            self.error(f"Function '{func_name}' already defined", node.line)
+            self.error(f"Function '{func_name}' already defined", node.line, node.filename)
         
         # Create function symbol
         param_symbols = []
@@ -408,7 +413,7 @@ class SemanticAnalyzer(ASTVisitor):
         
         # Check if struct already exists
         if self.symbol_table.exists(struct_name):
-            self.error(f"Struct '{struct_name}' already defined", node.line)
+            self.error(f"Struct '{struct_name}' already defined", node.line, node.filename)
         
         # Create struct symbol with field information
         field_symbols = {}
@@ -427,14 +432,14 @@ class SemanticAnalyzer(ASTVisitor):
         
         # Check if task already exists
         if self.symbol_table.exists(task_name):
-            self.error(f"Task '{task_name}' already defined", node.line)
+            self.error(f"Task '{task_name}' already defined", node.line, node.filename)
         
         # Validate core and priority values
         if node.core < 0 or node.core > 7:  # Assuming max 8 cores
-            self.error(f"Invalid core number {node.core}, must be 0-7", node.line)
+            self.error(f"Invalid core number {node.core}, must be 0-7", node.line, node.filename)
         
         if node.priority < 1 or node.priority > 10:  # Assuming priority range 1-10
-            self.error(f"Invalid priority {node.priority}, must be 1-10", node.line)
+            self.error(f"Invalid priority {node.priority}, must be 1-10", node.line, node.filename)
         
         # Create new scope for task
         self.symbol_table = SymbolTable(self.symbol_table)
@@ -460,7 +465,7 @@ class SemanticAnalyzer(ASTVisitor):
                 not isinstance(node.run_function.return_type, PrimitiveTypeNode) or
                 node.run_function.return_type.type_name != "void" or
                 len(node.run_function.parameters) != 0):
-                self.error("Task must have exactly one 'void run()' method with no parameters", node.line)
+                self.error("Task must have exactly one 'void run()' method with no parameters", node.line, node.filename)
         
         finally:
             # Exit task scope
@@ -481,13 +486,13 @@ class SemanticAnalyzer(ASTVisitor):
         
         # Check if variable already exists in current scope
         if var_name in self.symbol_table.symbols:
-            self.error(f"Variable '{var_name}' already defined in this scope", node.line)
+            self.error(f"Variable '{var_name}' already defined in this scope", node.line, node.filename)
         
         # Check initializer type if present
         if node.initializer:
             init_type = node.initializer.accept(self)
             if not TypeChecker.can_convert(init_type, var_type):
-                self.error(f"Cannot initialize {var_type} with {init_type}", node.line)
+                self.error(f"Cannot initialize {var_type} with {init_type}", node.line, node.filename)
         
         # Create variable symbol
         var_symbol = Symbol(var_name, SymbolType.VARIABLE, var_type, is_const=node.is_const)
@@ -501,7 +506,7 @@ class SemanticAnalyzer(ASTVisitor):
         """Visit struct type node"""
         struct_symbol = self.symbol_table.get(node.struct_name)
         if not struct_symbol or struct_symbol.symbol_type != SymbolType.STRUCT:
-            self.error(f"Undefined struct '{node.struct_name}'", node.line)
+            self.error(f"Undefined struct '{node.struct_name}'", node.line, node.filename)
         
         return f"struct {node.struct_name}"
     
@@ -527,7 +532,7 @@ class SemanticAnalyzer(ASTVisitor):
         """Visit if statement"""
         cond_type = node.condition.accept(self)
         if not TypeChecker.is_condition_type(cond_type):
-            self.error(f"If condition must be numeric or boolean, got {cond_type}", node.line)
+            self.error(f"If condition must be numeric or boolean, got {cond_type}", node.line, node.filename)
         
         node.then_stmt.accept(self)
         
@@ -538,7 +543,7 @@ class SemanticAnalyzer(ASTVisitor):
         """Visit while statement"""
         cond_type = node.condition.accept(self)
         if not TypeChecker.is_condition_type(cond_type):
-            self.error(f"While condition must be numeric or boolean, got {cond_type}", node.line)
+            self.error(f"While condition must be numeric or boolean, got {cond_type}", node.line, node.filename)
         
         old_in_loop = self.in_loop
         self.in_loop = True
@@ -557,7 +562,7 @@ class SemanticAnalyzer(ASTVisitor):
         if node.condition:
             cond_type = node.condition.accept(self)
             if not TypeChecker.is_condition_type(cond_type):
-                self.error(f"For condition must be numeric or boolean, got {cond_type}", node.line)
+                self.error(f"For condition must be numeric or boolean, got {cond_type}", node.line, node.filename)
         
         if node.update:
             node.update.accept(self)
@@ -574,25 +579,25 @@ class SemanticAnalyzer(ASTVisitor):
     def visit_return_stmt(self, node: ReturnStmtNode):
         """Visit return statement"""
         if not self.current_function:
-            self.error("Return statement outside function", node.line)
+            self.error("Return statement outside function", node.line, node.filename)
         
         if node.value:
             value_type = node.value.accept(self)
             if not TypeChecker.can_convert(value_type, self.current_return_type):
-                self.error(f"Cannot return {value_type} from function returning {self.current_return_type}", node.line)
+                self.error(f"Cannot return {value_type} from function returning {self.current_return_type}", node.line, node.filename)
         else:
             if self.current_return_type != 'void':
-                self.error(f"Function must return a value of type {self.current_return_type}", node.line)
+                self.error(f"Function must return a value of type {self.current_return_type}", node.line, node.filename)
     
     def visit_break_stmt(self, node: BreakStmtNode):
         """Visit break statement"""
         if not self.in_loop:
-            self.error("Break statement outside loop", node.line)
+            self.error("Break statement outside loop", node.line, node.filename)
     
     def visit_continue_stmt(self, node: ContinueStmtNode):
         """Visit continue statement"""
         if not self.in_loop:
-            self.error("Continue statement outside loop", node.line)
+            self.error("Continue statement outside loop", node.line, node.filename)
     
     def visit_binary_expr(self, node: BinaryExprNode):
         """Visit binary expression"""
@@ -603,7 +608,7 @@ class SemanticAnalyzer(ASTVisitor):
             result_type = TypeChecker.get_binary_result_type(node.operator, left_type, right_type)
             return result_type
         except SemanticError as e:
-            self.error(str(e), node.line)
+            self.error(str(e), node.line, node.filename)
             return "int"  # Default return type
     
     def visit_unary_expr(self, node: UnaryExprNode):
@@ -614,10 +619,10 @@ class SemanticAnalyzer(ASTVisitor):
             return 'int'
         elif node.operator in ['+', '-']:
             if not TypeChecker.is_numeric_type(operand_type):
-                self.error(f"Unary {node.operator} requires numeric operand", node.line)
+                self.error(f"Unary {node.operator} requires numeric operand", node.line, node.filename)
             return operand_type
         else:
-            self.error(f"Unknown unary operator: {node.operator}", node.line)
+            self.error(f"Unknown unary operator: {node.operator}", node.line, node.filename)
             return operand_type
     
     def visit_postfix_expr(self, node: PostfixExprNode):
@@ -626,13 +631,13 @@ class SemanticAnalyzer(ASTVisitor):
         
         if node.operator in ['++', '--']:
             if not TypeChecker.is_numeric_type(operand_type):
-                self.error(f"Postfix {node.operator} requires numeric operand", node.line)
+                self.error(f"Postfix {node.operator} requires numeric operand", node.line, node.filename)
             # Check that operand is an lvalue (assignable)
             if not isinstance(node.operand, (IdentifierExprNode, MemberExprNode, ArrayAccessNode)):
-                self.error(f"Postfix {node.operator} requires an assignable operand", node.line)
+                self.error(f"Postfix {node.operator} requires an assignable operand", node.line, node.filename)
             return operand_type
         else:
-            self.error(f"Unknown postfix operator: {node.operator}", node.line)
+            self.error(f"Unknown postfix operator: {node.operator}", node.line, node.filename)
             return operand_type
 
     def visit_assignment_expr(self, node: AssignmentExprNode):
@@ -644,18 +649,18 @@ class SemanticAnalyzer(ASTVisitor):
         if isinstance(node.target, IdentifierExprNode):
             symbol = self.symbol_table.get(node.target.name)
             if symbol and symbol.is_const:
-                self.error(f"Cannot assign to const variable '{node.target.name}'", node.line)
+                self.error(f"Cannot assign to const variable '{node.target.name}'", node.line, node.filename)
         
         if node.operator == '=':
             if not TypeChecker.can_convert(value_type, target_type):
-                self.error(f"Cannot assign {value_type} to {target_type}", node.line)
+                self.error(f"Cannot assign {value_type} to {target_type}", node.line, node.filename)
         else:
             # Compound assignment operators
             op = node.operator[:-1]  # Remove '='
             try:
                 TypeChecker.get_binary_result_type(op, target_type, value_type)
             except SemanticError as e:
-                self.error(str(e), node.line)
+                self.error(str(e), node.line, node.filename)
         
         return target_type
     
@@ -666,11 +671,11 @@ class SemanticAnalyzer(ASTVisitor):
             func_symbol = self.symbol_table.get(func_name)
             
             if not func_symbol:
-                self.error(f"Undefined function '{func_name}'", node.line)
+                self.error(f"Undefined function '{func_name}'", node.line, node.filename)
                 return "int"
             
             if func_symbol.symbol_type != SymbolType.FUNCTION:
-                self.error(f"'{func_name}' is not a function", node.line)
+                self.error(f"'{func_name}' is not a function", node.line, node.filename)
                 return "int"
             
             # Check argument count
@@ -685,12 +690,12 @@ class SemanticAnalyzer(ASTVisitor):
                 for i, (arg, param) in enumerate(zip(node.arguments, func_symbol.function_params)):
                     arg_type = arg.accept(self)
                     if not TypeChecker.can_convert(arg_type, param.data_type):
-                        self.error(f"Argument {i+1} to '{func_name}': cannot convert {arg_type} to {param.data_type}", node.line)
+                        self.error(f"Argument {i+1} to '{func_name}': cannot convert {arg_type} to {param.data_type}", node.line, node.filename)
             
             return func_symbol.function_return_type
         
         else:
-            self.error("Invalid function call", node.line)
+            self.error("Invalid function call", node.line, node.filename)
             return "int"
     
     def visit_member_expr(self, node: MemberExprNode):
@@ -700,7 +705,7 @@ class SemanticAnalyzer(ASTVisitor):
         if node.computed:
             # Array access
             if not object_type.endswith('[]'):
-                self.error(f"Cannot index non-array type {object_type}", node.line)
+                self.error(f"Cannot index non-array type {object_type}", node.line, node.filename)
             
             # Index should be integer
             if isinstance(node.property, ExpressionNode):
@@ -714,18 +719,18 @@ class SemanticAnalyzer(ASTVisitor):
         else:
             # Struct field access
             if not object_type.startswith('struct '):
-                self.error(f"Cannot access field of non-struct type {object_type}", node.line)
+                self.error(f"Cannot access field of non-struct type {object_type}", node.line, node.filename)
             
             struct_name = object_type[7:]  # Remove 'struct '
             struct_symbol = self.symbol_table.get(struct_name)
             
             if not struct_symbol or not struct_symbol.struct_fields:
-                self.error(f"Unknown struct '{struct_name}'", node.line)
+                self.error(f"Unknown struct '{struct_name}'", node.line, node.filename)
                 return "int"
             
             field_name = node.property
             if field_name not in struct_symbol.struct_fields:
-                self.error(f"Struct '{struct_name}' has no field '{field_name}'", node.line)
+                self.error(f"Struct '{struct_name}' has no field '{field_name}'", node.line, node.filename)
                 return "int"
             
             return struct_symbol.struct_fields[field_name].data_type
@@ -735,7 +740,7 @@ class SemanticAnalyzer(ASTVisitor):
         symbol = self.symbol_table.get(node.name)
         
         if not symbol:
-            self.error(f"Undefined identifier '{node.name}'", node.line)
+            self.error(f"Undefined identifier '{node.name}'", node.line, node.filename)
             return "int"
         
         if symbol.symbol_type == SymbolType.FUNCTION:
@@ -754,11 +759,11 @@ class SemanticAnalyzer(ASTVisitor):
         
         # Messages must be declared at global scope (not inside functions or tasks)
         if self.symbol_table.scope_level > 0:
-            self.error(f"Message queue '{node.name}' must be declared at global scope", node.line)
+            self.error(f"Message queue '{node.name}' must be declared at global scope", node.line, node.filename)
         
         # Check if message name is already defined
         if self.symbol_table.get(node.name):
-            self.error(f"Message queue '{node.name}' already defined", node.line)
+            self.error(f"Message queue '{node.name}' already defined", node.line, node.filename)
         
         # Add message to symbol table
         symbol = Symbol(
@@ -777,11 +782,11 @@ class SemanticAnalyzer(ASTVisitor):
         symbol = self.symbol_table.get(node.channel)
         
         if not symbol:
-            self.error(f"Undefined message queue '{node.channel}'", node.line)
+            self.error(f"Undefined message queue '{node.channel}'", node.line, node.filename)
             return "void"
         
         if symbol.symbol_type != SymbolType.MESSAGE:
-            self.error(f"'{node.channel}' is not a message queue", node.line)
+            self.error(f"'{node.channel}' is not a message queue", node.line, node.filename)
             return "void"
         
         # Check payload type matches message type
@@ -798,11 +803,11 @@ class SemanticAnalyzer(ASTVisitor):
         symbol = self.symbol_table.get(node.channel)
         
         if not symbol:
-            self.error(f"Undefined message queue '{node.channel}'", node.line)
+            self.error(f"Undefined message queue '{node.channel}'", node.line, node.filename)
             return "int"
         
         if symbol.symbol_type != SymbolType.MESSAGE:
-            self.error(f"'{node.channel}' is not a message queue", node.line)
+            self.error(f"'{node.channel}' is not a message queue", node.line, node.filename)
             return "int"
         
         # Check timeout parameter if present
@@ -837,7 +842,7 @@ class SemanticAnalyzer(ASTVisitor):
             init_type = node.initializer.accept(self)
             # The initializer should be an array literal
             if not isinstance(node.initializer, ArrayLiteralNode):
-                self.error(f"Array initializer must be an array literal", node.line)
+                self.error(f"Array initializer must be an array literal", node.line, node.filename)
         
         # Define the array symbol
         symbol = Symbol(
@@ -877,7 +882,7 @@ class SemanticAnalyzer(ASTVisitor):
         
         # Check that it's actually an array type
         if not ('[' in array_type and ']' in array_type):
-            self.error(f"Cannot index non-array type {array_type}", node.line)
+            self.error(f"Cannot index non-array type {array_type}", node.line, node.filename)
         
         # Get the index type
         index_type = node.index.accept(self)

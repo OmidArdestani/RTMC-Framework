@@ -52,9 +52,10 @@ class NodeType(Enum):
 class ASTNode(ABC):
     """Base class for all AST nodes"""
     
-    def __init__(self, node_type: NodeType, line: int = 0):
+    def __init__(self, node_type: NodeType, line: int = 0, filename: str = ""):
         self.node_type = node_type
         self.line = line
+        self.filename = filename
     
     @abstractmethod
     def accept(self, visitor):
@@ -69,8 +70,8 @@ class ASTNode(ABC):
 class ProgramNode(ASTNode):
     """Root node of the AST"""
     
-    def __init__(self, declarations: List[ASTNode], line: int = 0):
-        super().__init__(NodeType.PROGRAM, line)
+    def __init__(self, declarations: List[ASTNode], line: int = 0, filename: str = ""):
+        super().__init__(NodeType.PROGRAM, line, filename)
         self.declarations = declarations
     
     def accept(self, visitor):
@@ -163,8 +164,8 @@ class VariableDeclNode(ASTNode):
     """Variable declaration node"""
     
     def __init__(self, name: str, type: 'TypeNode', initializer: Optional['ExpressionNode'] = None, 
-                 is_const: bool = False, line: int = 0):
-        super().__init__(NodeType.VARIABLE_DECL, line)
+                 is_const: bool = False, line: int = 0, filename: str = ""):
+        super().__init__(NodeType.VARIABLE_DECL, line, filename)
         self.name = name
         self.type = type
         self.initializer = initializer
@@ -390,8 +391,8 @@ class MemberExprNode(ExpressionNode):
 class IdentifierExprNode(ExpressionNode):
     """Identifier expression node"""
     
-    def __init__(self, name: str, line: int = 0):
-        super().__init__(NodeType.IDENTIFIER_EXPR, line)
+    def __init__(self, name: str, line: int = 0, filename: str = ""):
+        super().__init__(NodeType.IDENTIFIER_EXPR, line, filename)
         self.name = name
     
     def accept(self, visitor):

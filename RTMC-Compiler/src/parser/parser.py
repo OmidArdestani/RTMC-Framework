@@ -17,6 +17,7 @@ class Parser:
     def __init__(self, tokens: List[Token]):
         self.tokens = tokens
         self.current = 0
+        self.parse_errors = []  # Track parse errors
     
     def is_at_end(self) -> bool:
         """Check if we're at the end of tokens"""
@@ -26,7 +27,7 @@ class Parser:
         """Get current token without advancing"""
         if self.current >= len(self.tokens):
             # Return the last token (should be EOF) if we're beyond the array
-            return self.tokens[-1] if self.tokens else Token(TokenType.EOF, '', 0, 0)
+            return self.tokens[-1] if self.tokens else Token(TokenType.EOF, '', 0, 0, "")
         return self.tokens[self.current]
     
     def previous(self) -> Token:
@@ -34,7 +35,7 @@ class Parser:
         if self.current > 0:
             return self.tokens[self.current - 1]
         else:
-            return self.tokens[0] if self.tokens else Token(TokenType.EOF, '', 0, 0)
+            return self.tokens[0] if self.tokens else Token(TokenType.EOF, '', 0, 0, "")
     
     def advance(self) -> Token:
         """Consume and return current token"""
@@ -62,7 +63,9 @@ class Parser:
             return self.advance()
         
         current_token = self.peek()
-        raise ParseError(f"{message} at line {current_token.line}, got {current_token.type.name}")
+        error_msg = f"{message} at {current_token.filename}:{current_token.line}" if current_token.filename else f"{message} at line {current_token.line}"
+        error_msg += f", got {current_token.type.name}"
+        raise ParseError(error_msg)
     
     def synchronize(self):
         """Synchronize after a parse error"""
@@ -82,21 +85,32 @@ class Parser:
     def parse(self) -> ProgramNode:
         """Parse the entire program"""
         declarations = []
+        current_filename = ""
         
         while not self.is_at_end():
             # Skip newlines
             if self.match(TokenType.NEWLINE):
                 continue
             
+            # Track current filename from first token
+            if not current_filename and not self.is_at_end():
+                current_filename = self.peek().filename
+            
             try:
                 decl = self.declaration()
                 if decl:
                     declarations.append(decl)
             except ParseError as e:
+                self.parse_errors.append(str(e))
                 print(f"Parse error: {e}")
                 self.synchronize()
         
-        return ProgramNode(declarations)
+        # Check for errors collected during parsing (both here and in declaration())
+        if hasattr(self, 'parse_errors') and self.parse_errors:
+            error_msg = f"Parsing failed with {len(self.parse_errors)} error(s):\n" + "\n".join(self.parse_errors)
+            raise ParseError(error_msg)
+        
+        return ProgramNode(declarations, 0, current_filename)
     
     def declaration(self) -> Optional[ASTNode]:
         """Parse a declaration"""
@@ -130,11 +144,22 @@ class Parser:
                 self.current = saved_pos
             
             if self.check_type_specifier():
-                return self.function_or_variable_declaration()
+                # Try to parse as declaration, but fall back to statement if it fails
+                saved_position = self.current
+                try:
+                    return self.function_or_variable_declaration()
+                except ParseError:
+                    # Reset position and try as statement
+                    self.current = saved_position
             
             return self.statement()
         
-        except ParseError:
+        except ParseError as e:
+            # Track the error for later reporting but continue parsing
+            if not hasattr(self, 'parse_errors'):
+                self.parse_errors = []
+            self.parse_errors.append(str(e))
+            print(f"Parse error: {e}")
             self.synchronize()
             return None
     
@@ -273,7 +298,8 @@ class Parser:
             is_const = True
         
         return_type = self.type_specifier()
-        name = self.consume(TokenType.IDENTIFIER, "Expected identifier").value
+        name_token = self.consume(TokenType.IDENTIFIER, "Expected identifier")
+        name = name_token.value
         
         if self.match(TokenType.LEFT_PAREN):
             # Function declaration
@@ -320,7 +346,7 @@ class Parser:
             
             self.consume(TokenType.SEMICOLON, "Expected ';' after variable declaration")
             
-            result = VariableDeclNode(name, return_type, initializer, is_const)
+            result = VariableDeclNode(name, return_type, initializer, is_const, name_token.line, name_token.filename)
             return result
     
     def parameter(self) -> ParameterNode:
@@ -415,7 +441,8 @@ class Parser:
             is_const = True
         
         var_type = self.type_specifier()
-        name = self.consume(TokenType.IDENTIFIER, "Expected identifier").value
+        name_token = self.consume(TokenType.IDENTIFIER, "Expected identifier")
+        name = name_token.value
         
         initializer = None
         if self.match(TokenType.ASSIGN):
@@ -423,7 +450,7 @@ class Parser:
         
         self.consume(TokenType.SEMICOLON, "Expected ';' after variable declaration")
         
-        return VariableDeclNode(name, var_type, initializer, is_const)
+        return VariableDeclNode(name, var_type, initializer, is_const, name_token.line, name_token.filename)
     
     def if_statement(self) -> IfStmtNode:
         """Parse if statement"""
@@ -700,8 +727,9 @@ class Parser:
             return LiteralExprNode(value, "bool")
 
         if self.match(TokenType.IDENTIFIER):
-            name = self.previous().value
-            return IdentifierExprNode(name)
+            name_token = self.previous()
+            name = name_token.value
+            return IdentifierExprNode(name, name_token.line, name_token.filename)
         
         # Hardware/RTOS function calls
         if self.match(TokenType.HW_GPIO_INIT, TokenType.HW_GPIO_SET, TokenType.HW_GPIO_GET,
@@ -712,8 +740,9 @@ class Parser:
                      TokenType.RTOS_DELAY_MS, TokenType.RTOS_SEMAPHORE_CREATE, TokenType.RTOS_SEMAPHORE_TAKE,
                      TokenType.RTOS_SEMAPHORE_GIVE, TokenType.RTOS_YIELD, TokenType.RTOS_SUSPEND_TASK,
                      TokenType.RTOS_RESUME_TASK, TokenType.DBG_PRINT, TokenType.DBG_BREAKPOINT):
-            name = self.previous().value
-            return IdentifierExprNode(name)
+            name_token = self.previous()
+            name = name_token.value
+            return IdentifierExprNode(name, name_token.line, name_token.filename)
         
         if self.match(TokenType.LEFT_PAREN):
             expr = self.expression()
