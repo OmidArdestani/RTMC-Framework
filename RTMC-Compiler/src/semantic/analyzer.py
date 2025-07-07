@@ -1,6 +1,16 @@
 """
 Semantic Analyzer for RT-Micro-C Language
 Performs type checking, symbol resolution, and semantic validation.
+
+KNOWN ISSUES:
+- BUG: Variable scope management issue with multiple while loops using same variable
+  Symptom: "Undefined identifier" error when same variable is used in multiple while loops
+  Example code that fails:
+    int x = 10;
+    while (x > 0) { x--; }
+    while (x < 10) { x++; }  // Error: "Undefined identifier 'x'"
+  The variable 'x' should remain in scope but is lost during semantic analysis.
+  Root cause: Likely issue in scope management during nested statement traversal.
 """
 
 from typing import Dict, List, Optional, Any, Set
