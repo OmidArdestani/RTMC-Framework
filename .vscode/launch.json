@@ -7,7 +7,7 @@
             "request": "launch",
             "program": "RTMC-Compiler/main.py",
             "args": [
-                "C:\\Users\\oarde\\OneDrive\\Projects\\Mini-C RTOS Language\\RTMC-Compiler\\examples\\Send-ADC-To-UART\\main.rtmc",
+                "RTMC-Compiler\\examples\\Send-ADC-To-UART\\main.rtmc",
                 "-v"
             ],
             "console": "integratedTerminal",
@@ -20,7 +20,7 @@
             "request": "launch",
             "program": "RTMC-Compiler/vm_runner.py",
             "args": [
-                "C:\\Users\\oarde\\OneDrive\\Projects\\Mini-C RTOS Language\\RTMC-Compiler\\examples\\Send-ADC-To-UART\\main.vmb"
+                "RTMC-Compiler\\examples\\Send-ADC-To-UART\\main.vmb"
             ],
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
