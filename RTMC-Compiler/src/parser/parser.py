@@ -18,6 +18,9 @@ class Parser:
         self.tokens = tokens
         self.current = 0
         self.parse_errors = []  # Track parse errors
+        
+        # Remove all newline tokens from the token stream
+        self.tokens = [token for token in self.tokens if token.type != TokenType.NEWLINE]
     
     def is_at_end(self) -> bool:
         """Check if we're at the end of tokens"""
@@ -134,7 +137,16 @@ class Parser:
                 self.advance()  # consume 'struct'
                 if self.check(TokenType.IDENTIFIER):
                     struct_name = self.peek().value
+
+                    # support structure inheritance
+                    if self.match(TokenType.COLON):
+                        # Inheritance is not supported in RT-Micro-C, so we just consume it
+                        self.consume(TokenType.IDENTIFIER, "Expected identifier after ':'")
+
+                        base_struct_name = self.previous().value
+                    
                     self.advance()  # consume identifier
+                    
                     if self.check(TokenType.LEFT_BRACE):
                         # This is a struct declaration
                         self.current = saved_pos
@@ -178,10 +190,7 @@ class Parser:
         self.consume(TokenType.LEFT_BRACE, "Expected '{' after struct name")
         
         fields = []
-        while not self.check(TokenType.RIGHT_BRACE) and not self.is_at_end():
-            if self.match(TokenType.NEWLINE):
-                continue
-            
+        while not self.check(TokenType.RIGHT_BRACE) and not self.is_at_end():            
             field_type = self.type_specifier()
             field_name = self.consume(TokenType.IDENTIFIER, "Expected field name").value
             
@@ -220,20 +229,13 @@ class Parser:
         # Parse task name
         task_name = self.consume(TokenType.IDENTIFIER, "Expected task name").value
         
-        # Skip optional newlines before opening brace
-        while self.match(TokenType.NEWLINE):
-            pass
-        
         self.consume(TokenType.LEFT_BRACE, "Expected '{' after task name")
         
         # Parse task members (variables and functions)
         members = []
         run_function = None
         
-        while not self.check(TokenType.RIGHT_BRACE) and not self.is_at_end():
-            if self.match(TokenType.NEWLINE):
-                continue
-            
+        while not self.check(TokenType.RIGHT_BRACE) and not self.is_at_end():            
             # Parse member declaration
             member = self.task_member_declaration()
             if member:
@@ -311,10 +313,6 @@ class Parser:
                     parameters.append(self.parameter())
             
             self.consume(TokenType.RIGHT_PAREN, "Expected ')' after parameters")
-            
-            # Skip optional newlines before opening brace
-            while self.match(TokenType.NEWLINE):
-                pass
             
             self.consume(TokenType.LEFT_BRACE, "Expected '{' before function body")
             body = self.block_statement()
@@ -458,17 +456,10 @@ class Parser:
         condition = self.expression()
         self.consume(TokenType.RIGHT_PAREN, "Expected ')' after if condition")
         
-        # Skip optional newlines before then statement
-        while self.match(TokenType.NEWLINE):
-            pass
-        
         then_stmt = self.statement()
         
         else_stmt = None
         if self.match(TokenType.ELSE):
-            # Skip optional newlines before else statement
-            while self.match(TokenType.NEWLINE):
-                pass
             else_stmt = self.statement()
         
         return IfStmtNode(condition, then_stmt, else_stmt)
@@ -478,11 +469,7 @@ class Parser:
         self.consume(TokenType.LEFT_PAREN, "Expected '(' after 'while'")
         condition = self.expression()
         self.consume(TokenType.RIGHT_PAREN, "Expected ')' after while condition")
-        
-        # Skip optional newlines before body statement
-        while self.match(TokenType.NEWLINE):
-            pass
-        
+                
         body = self.statement()
         
         return WhileStmtNode(condition, body)
@@ -511,11 +498,7 @@ class Parser:
         if not self.check(TokenType.RIGHT_PAREN):
             update = self.expression()
         self.consume(TokenType.RIGHT_PAREN, "Expected ')' after for clauses")
-        
-        # Skip optional newlines before body statement
-        while self.match(TokenType.NEWLINE):
-            pass
-        
+                
         body = self.statement()
         
         return ForStmtNode(initializer, condition, update, body)
@@ -533,10 +516,7 @@ class Parser:
         """Parse block statement"""
         statements = []
         
-        while not self.check(TokenType.RIGHT_BRACE) and not self.is_at_end():
-            if self.match(TokenType.NEWLINE):
-                continue
-            
+        while not self.check(TokenType.RIGHT_BRACE) and not self.is_at_end():            
             stmt = self.declaration()
             if stmt:
                 statements.append(stmt)
