@@ -484,7 +484,7 @@ class VirtualMachine:
                 print(f"Started task '{task.name}' (ID: {task.id}) as thread")
             
             # Wait for all tasks to complete or until interrupted
-            print("VM running, waiting for tasks to complete...")
+            print("\nVM running, waiting for tasks to complete...")
             while self.running:
                 # Check if any tasks are still running
                 active_tasks = [task for task in self.tasks.values() 
