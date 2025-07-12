@@ -84,8 +84,13 @@ def main():
     parser.add_argument('--tokens', action='store_true', help='Print tokens')
     parser.add_argument('--no-optimize', action='store_true', help='Skip optimization')
     parser.add_argument('--no-semantic', action='store_true', help='Skip semantic analysis')
+    parser.add_argument('--release', action='store_true', help='Compile in release mode (strip debug info)')
     
     args = parser.parse_args()
+    
+    # Determine compilation mode
+    from src.bytecode.generator import CompileMode
+    compile_mode = CompileMode.RELEASE if args.release else CompileMode.DEBUG
     
     # Read input file
     input_path = Path(args.input)
@@ -137,8 +142,14 @@ def main():
         if args.verbose:
             print("Stage 5: Bytecode Generation...")
         
-        bytecode_generator = BytecodeGenerator()
+        bytecode_generator = BytecodeGenerator(compile_mode)
         bytecode_program = bytecode_generator.generate(ast)
+        
+        if args.verbose:
+            print(f"Generated {len(bytecode_program.instructions)} instructions")
+            print(f"Compilation mode: {compile_mode.name}")
+            if compile_mode == CompileMode.DEBUG:
+                print(f"Debug info: {len(bytecode_program.debug_info)} entries")
         
         if args.verbose:
             print("Stage 6: Writing Output...")
@@ -148,6 +159,7 @@ def main():
         
         if args.verbose:
             print(f"Compilation successful! Output: {output_file}")
+            print(f"Mode: {compile_mode.name}")
         
     except FileNotFoundError as e:
         print(f"Error: {e}")

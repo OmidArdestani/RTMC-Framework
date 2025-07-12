@@ -26,6 +26,11 @@ class Opcode(IntEnum):
     LOAD_STRUCT_MEMBER_BIT = auto()
     STORE_STRUCT_MEMBER_BIT = auto()
     
+    # Pointer Instructions (NEW)
+    LOAD_ADDR = auto()      # Load address of variable
+    LOAD_DEREF = auto()     # Dereference pointer on stack
+    STORE_DEREF = auto()    # Store value at pointer address
+    
     # Arithmetic and Logical
     ADD = auto()
     SUB = auto()
@@ -95,13 +100,15 @@ class Opcode(IntEnum):
     # Special
     HALT = auto()
     NOP = auto()
+    COMMENT = auto()  # NEW: For debug comments
 
 @dataclass
 class Instruction:
-    """A single bytecode instruction"""
+    """A single bytecode instruction with enhanced debug info"""
     opcode: Opcode
     operands: List[Any]
     line: Optional[int] = None
+    column: Optional[int] = None  # NEW: Column information for better debug info
     
     def __str__(self):
         if self.operands:
@@ -168,6 +175,23 @@ class InstructionBuilder:
     @staticmethod
     def store_struct_member_bit(base_addr: int, byte_offset: int, bit_offset: int, width: int) -> Instruction:
         return Instruction(Opcode.STORE_STRUCT_MEMBER_BIT, [base_addr, byte_offset, bit_offset, width])
+    
+    # NEW: Pointer instruction builders
+    @staticmethod
+    def load_addr(address: int) -> Instruction:
+        return Instruction(Opcode.LOAD_ADDR, [address])
+    
+    @staticmethod
+    def load_deref() -> Instruction:
+        return Instruction(Opcode.LOAD_DEREF, [])
+    
+    @staticmethod
+    def store_deref() -> Instruction:
+        return Instruction(Opcode.STORE_DEREF, [])
+    
+    @staticmethod
+    def comment(text: str) -> Instruction:
+        return Instruction(Opcode.COMMENT, [text])
     
     @staticmethod
     def add() -> Instruction:

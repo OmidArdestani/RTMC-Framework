@@ -6,7 +6,14 @@ Converts AST to bytecode instructions.
 from typing import Dict, List, Optional, Any, Tuple
 from src.parser.ast_nodes import *
 from src.bytecode.instructions import *
+from src.semantic.struct_layout import StructLayoutTable
 from dataclasses import dataclass
+from enum import Enum, auto
+
+class CompileMode(Enum):
+    """Compilation modes"""
+    DEBUG = auto()
+    RELEASE = auto()
 
 class CodeGenError(Exception):
     """Code generation error"""
@@ -21,17 +28,21 @@ class BytecodeProgram:
     instructions: List[Instruction]
     symbol_table: Dict[str, int]  # symbol name -> address
     struct_layouts: Dict[str, Dict[str, int]]  # struct name -> field offsets
+    mode: CompileMode = CompileMode.DEBUG  # NEW: Compilation mode
+    debug_info: Optional[Dict[int, int]] = None  # NEW: instruction_index -> source_line
 
 class BytecodeGenerator(ASTVisitor):
     """Generates bytecode from AST"""
     
-    def __init__(self):
+    def __init__(self, mode: CompileMode = CompileMode.DEBUG):
         self.instructions: List[Instruction] = []
         self.constants: List[Any] = []
         self.strings: List[str] = []
         self.functions: Dict[str, int] = {}
         self.symbol_table: Dict[str, int] = {}
         self.struct_layouts: Dict[str, Dict[str, int]] = {}
+        self.mode = mode  # NEW: Compilation mode
+        self.debug_info: Dict[int, int] = {}  # NEW: Debug information
         
         # Code generation state
         self.current_address = 0
@@ -47,6 +58,13 @@ class BytecodeGenerator(ASTVisitor):
         # Control flow
         self.break_labels: List[str] = []
         self.continue_labels: List[str] = []
+        
+        # NEW: Struct layout management
+        self.struct_layout_table = StructLayoutTable()
+        
+        # NEW: Current line tracking for debug info
+        self.current_line = 0
+        self.current_column = 0
     
     def generate(self, ast: ProgramNode) -> BytecodeProgram:
         """Generate bytecode from AST"""
@@ -58,14 +76,29 @@ class BytecodeGenerator(ASTVisitor):
             functions=self.functions,
             instructions=self.instructions,
             symbol_table=self.symbol_table,
-            struct_layouts=self.struct_layouts
+            struct_layouts=self.struct_layouts,
+            mode=self.mode,
+            debug_info=self.debug_info if self.mode == CompileMode.DEBUG else None
         )
     
     def emit(self, instruction: Instruction):
-        """Emit an instruction"""
-        instruction.line = getattr(self, 'current_line', 0)
+        """Emit an instruction with proper line tracking"""
+        if self.mode == CompileMode.DEBUG:
+            instruction.line = self.current_line
+            instruction.column = self.current_column
+            self.debug_info[self.current_address] = self.current_line
+        else:
+            # In release mode, strip debug info
+            instruction.line = 0
+            instruction.column = 0
+        
         self.instructions.append(instruction)
         self.current_address += 1
+    
+    def set_current_position(self, line: int, column: int = 0):
+        """Set current source position for debug info"""
+        self.current_line = line
+        self.current_column = column
     
     def add_constant(self, value: Any) -> int:
         """Add constant to constant pool"""
@@ -181,44 +214,27 @@ class BytecodeGenerator(ASTVisitor):
         self.parameter_count = old_param_count
     
     def visit_struct_decl(self, node: StructDeclNode):
-        """Generate layout for struct declaration with bit-field support"""
-        field_info = {}  # field_name -> byte_offset (for compatibility)
-        bit_field_info = {}  # field_name -> (byte_offset, bit_offset, bit_width)
-        current_byte_offset = 0
-        current_bit_offset = 0
+        """Generate code for struct declaration"""
+        # Set current position for debug info
+        self.set_current_position(node.line, getattr(node, 'column', 0))
         
-        for field in node.fields:
-            if field.bit_width is not None:
-                # Bit-field handling
-                bit_width = field.bit_width
-                
-                # Check if we need to move to next byte
-                if current_bit_offset + bit_width > 32:  # Assume 32-bit alignment
-                    current_byte_offset += 4  # Move to next 32-bit boundary
-                    current_bit_offset = 0
-                
-                field_info[field.name] = current_byte_offset  # For compatibility
-                bit_field_info[field.name] = (current_byte_offset, current_bit_offset, bit_width)
-                
-                current_bit_offset += bit_width
-            else:
-                # Regular field handling
-                # Align to next byte boundary if we have pending bits
-                if current_bit_offset > 0:
-                    current_byte_offset += 4
-                    current_bit_offset = 0
-                
-                field_info[field.name] = current_byte_offset
-                
-                # Calculate field size
-                field_size = self.get_type_size(field.type)
-                current_byte_offset += field_size
+        # Register struct with layout table
+        self.struct_layout_table.register_struct(node)
         
-        self.struct_layouts[node.name] = field_info
-        # Store bit-field info separately for now
-        if not hasattr(self, 'bit_field_layouts'):
-            self.bit_field_layouts = {}
-        self.bit_field_layouts[node.name] = bit_field_info
+        # Calculate layout
+        layout = self.struct_layout_table.calculate_layout(node.name)
+        
+        # Store layout information for backwards compatibility
+        self.struct_layouts[node.name] = {name: field.offset for name, field in layout.fields.items()}
+        
+        # In debug mode, emit struct metadata
+        if self.mode == CompileMode.DEBUG:
+            self.emit(InstructionBuilder.comment(f"Struct {node.name} size: {layout.total_size} bytes"))
+            for field_name, field_layout in layout.fields.items():
+                comment = f"  {field_name}: offset {field_layout.offset}, size {field_layout.size}"
+                if field_layout.bit_width > 0:
+                    comment += f", bit-field: {field_layout.bit_offset}:{field_layout.bit_width}"
+                self.emit(InstructionBuilder.comment(comment))
     
     def visit_task_decl(self, node: TaskDeclNode):
         """Generate bytecode for task declaration"""
@@ -580,7 +596,8 @@ class BytecodeGenerator(ASTVisitor):
         if isinstance(node.object, IdentifierExprNode):
             # Simple case: variable.field
             base_address = self.get_variable_address(node.object.name)
-            field_offset = self._get_simple_field_offset(node.property)
+            struct_name = self._get_struct_name_for_member(node)
+            field_offset = self._get_simple_field_offset(struct_name, node.property)
             return base_address + field_offset
         elif isinstance(node.object, MemberExprNode):
             # For nested access like rect.top_left.x, get the base variable
@@ -593,31 +610,30 @@ class BytecodeGenerator(ASTVisitor):
             # Fallback: treat as simple variable access
             return 0  # Use address 0 as fallback
     
-    def _get_bit_field_info(self, field_name: str):
-        """Get bit field information for a field"""
+    def _get_struct_name_for_member(self, member_expr: MemberExprNode) -> str:
+        """Get the struct name for a member expression"""
         # This is a simplified implementation
-        # In a real implementation, this would look up the struct definition
-        bit_fields = {
-            'enable': (0, 0, 1),    # byte_offset, bit_offset, bit_width
-            'mode': (0, 1, 2),
-            'speed': (0, 3, 4),
-            'reserved': (0, 7, 25)
-        }
-        return bit_fields.get(field_name, None)
-
-    def _get_simple_field_offset(self, field_name: str) -> int:
-        """Get simple field offset"""
-        field_offsets = {
-            'temperature': 0,
-            'humidity': 1, 
-            'pressure': 2,
-            'control': 3,
-            'enable': 10,  # Use higher offset for nested fields
-            'mode': 11,
-            'speed': 12,
-            'reserved': 13
-        }
-        return field_offsets.get(field_name, 0)
+        # In a full implementation, we'd use type information from semantic analysis
+        if isinstance(member_expr.object, IdentifierExprNode):
+            # For now, return a default struct name
+            # This should be enhanced to use actual type information
+            return "default_struct"
+        else:
+            return "default_struct"
+    
+    def _get_simple_field_offset(self, struct_name: str, field_name: str) -> int:
+        """Get field offset with support for nested structs"""
+        try:
+            return self.struct_layout_table.get_field_offset(struct_name, field_name)
+        except (ValueError, KeyError):
+            raise CodeGenError("Field not found in struct layout")
+    
+    def _get_bit_field_info(self, struct_name: str, field_name: str) -> Optional[Tuple[int, int, int]]:
+        """Get bit-field information with support for nested structs"""
+        try:
+            return self.struct_layout_table.get_bit_field_info(struct_name, field_name)
+        except (ValueError, KeyError):
+            raise CodeGenError("Bit-field not found in struct layout")
     
     def visit_call_expr(self, node: CallExprNode):
         """Generate code for call expression"""
@@ -769,22 +785,31 @@ class BytecodeGenerator(ASTVisitor):
             self.emit(InstructionBuilder.load_const(const_idx))
     
     def get_type_size(self, type_node: TypeNode) -> int:
-        """Get size of type in bytes (simplified)"""
+        """Get size of type in bytes with proper struct size calculation"""
         if isinstance(type_node, PrimitiveTypeNode):
             if type_node.type_name == 'char':
                 return 1
             elif type_node.type_name in ['int', 'float']:
                 return 4
-            else:
+            elif type_node.type_name == 'bool':
+                return 1
+            elif type_node.type_name == 'void':
                 return 0
+            else:
+                raise CodeGenError("Unknown primitive type: " + type_node.type_name)
         elif isinstance(type_node, StructTypeNode):
-            # Return size of struct (simplified)
-            return 16  # Placeholder
+            # Use struct layout table for accurate size calculation
+            try:
+                return self.struct_layout_table.get_struct_size(type_node.struct_name)
+            except (ValueError, KeyError):
+                raise CodeGenError("Struct not found in layout table")
         elif isinstance(type_node, ArrayTypeNode):
             element_size = self.get_type_size(type_node.element_type)
             return element_size * (type_node.size or 1)
+        elif isinstance(type_node, PointerTypeNode):
+            return 8  # 64-bit pointer size
         else:
-            return 4  # Default size
+            raise CodeGenError("Pointer types not supported in this context")
 
     def _generate_member_load(self, node: MemberExprNode):
         """Generate code to load from a member expression"""
@@ -793,14 +818,15 @@ class BytecodeGenerator(ASTVisitor):
             base_address = self.get_variable_address(node.object.name)
             
             # Check if this is a bit-field
-            bit_field_info = self._get_bit_field_info(node.property)
+            struct_name = self._get_struct_name_for_member(node)
+            bit_field_info = self._get_bit_field_info(struct_name, node.property)
             if bit_field_info:
                 byte_offset, bit_offset, bit_width = bit_field_info
                 self.emit(InstructionBuilder.load_struct_member_bit(
                     base_address, byte_offset, bit_offset, bit_width))
             else:
                 # Regular field access
-                field_offset = self._get_simple_field_offset(node.property)
+                field_offset = self._get_simple_field_offset(struct_name, node.property)
                 self.emit(InstructionBuilder.load_struct_member(base_address, field_offset))
         elif isinstance(node.object, MemberExprNode):
             # Nested case: variable.field1.field2
@@ -818,14 +844,15 @@ class BytecodeGenerator(ASTVisitor):
             base_address = self.get_variable_address(node.object.name)
             
             # Check if this is a bit-field
-            bit_field_info = self._get_bit_field_info(node.property)
+            struct_name = self._get_struct_name_for_member(node)
+            bit_field_info = self._get_bit_field_info(struct_name, node.property)
             if bit_field_info:
                 byte_offset, bit_offset, bit_width = bit_field_info
                 self.emit(InstructionBuilder.store_struct_member_bit(
                     base_address, byte_offset, bit_offset, bit_width))
             else:
                 # Regular field access
-                field_offset = self._get_simple_field_offset(node.property)
+                field_offset = self._get_simple_field_offset(struct_name, node.property)
                 self.emit(InstructionBuilder.store_struct_member(base_address, field_offset))
         elif isinstance(node.object, MemberExprNode):
             # Nested case: variable.field1.field2 = value
@@ -858,11 +885,13 @@ class BytecodeGenerator(ASTVisitor):
         """Calculate offset for nested member access"""
         if isinstance(node.object, IdentifierExprNode):
             # This is the final level, just return field offset
-            return self._get_simple_field_offset(node.property)
+            struct_name = self._get_struct_name_for_member(node)
+            return self._get_simple_field_offset(struct_name, node.property)
         elif isinstance(node.object, MemberExprNode):
             # Nested access: calculate parent offset + current field offset
             parent_offset = self._calculate_nested_offset(node.object)
-            current_offset = self._get_simple_field_offset(node.property)
+            struct_name = self._get_struct_name_for_member(node)
+            current_offset = self._get_simple_field_offset(struct_name, node.property)
             # Simple encoding: multiply parent by struct size and add current
             return parent_offset * 10 + current_offset
         else:
@@ -996,14 +1025,57 @@ class BytecodeGenerator(ASTVisitor):
         # For now, just treat array access as loading the array variable
         # TODO: Implement proper array indexing
         if hasattr(node.array, 'name'):
-            # If it's a simple variable, load it
-            if node.array.name in self.symbol_table:
-                var_address = self.symbol_table[node.array.name]
-                self.emit(Instruction(Opcode.LOAD_VAR, [var_address]))
-            else:
-                # Load constant 0 as fallback
-                const_idx = self.add_constant(0)
-                self.emit(Instruction(Opcode.LOAD_CONST, [const_idx]))
+            # Simple case: array[index]
+            array_address = self.get_variable_address(node.array.name)
+            self.emit(Instruction(Opcode.LOAD_VAR, [array_address]))
         else:
-            # For complex expressions, evaluate them
+            # Complex array access
             node.array.accept(self)
+    
+    def visit_pointer_type(self, node: PointerTypeNode):
+        """Visit pointer type node"""
+        # Type nodes don't generate bytecode
+        pass
+    
+    def visit_pointer_decl(self, node: PointerDeclNode):
+        """Visit pointer declaration node"""
+        # Set current position for debug info
+        self.set_current_position(node.line, getattr(node, 'column', 0))
+        
+        # Allocate space for pointer
+        pointer_address = self.allocate_variable(node.name)
+        
+        if node.initializer:
+            # Generate code for initializer
+            node.initializer.accept(self)
+            # Store the initialized value
+            self.emit(Instruction(Opcode.STORE_VAR, [pointer_address]))
+        else:
+            # Initialize to null pointer (0)
+            const_idx = self.add_constant(0)
+            self.emit(Instruction(Opcode.LOAD_CONST, [const_idx]))
+            self.emit(Instruction(Opcode.STORE_VAR, [pointer_address]))
+    
+    def visit_address_of(self, node: AddressOfNode):
+        """Visit address-of expression node (&variable)"""
+        # Set current position for debug info
+        self.set_current_position(node.line, getattr(node, 'column', 0))
+        
+        if isinstance(node.operand, IdentifierExprNode):
+            # Simple case: &variable
+            var_address = self.get_variable_address(node.operand.name)
+            self.emit(Instruction(Opcode.LOAD_ADDR, [var_address]))
+        else:
+            # Complex address-of operation
+            raise CodeGenError("Complex address-of operations not yet supported")
+    
+    def visit_dereference(self, node: DereferenceNode):
+        """Visit dereference expression node (*pointer)"""
+        # Set current position for debug info
+        self.set_current_position(node.line, getattr(node, 'column', 0))
+        
+        # Generate code for the pointer expression
+        node.operand.accept(self)
+        
+        # Dereference the pointer
+        self.emit(Instruction(Opcode.LOAD_DEREF, []))
