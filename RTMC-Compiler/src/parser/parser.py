@@ -185,14 +185,21 @@ class Parser:
     def struct_declaration(self) -> StructDeclNode:
         """Parse struct declaration"""
         self.consume(TokenType.STRUCT, "Expected 'struct'")
-        name = self.consume(TokenType.IDENTIFIER, "Expected struct name").value
+        struct_tocketn = self.consume(TokenType.IDENTIFIER, "Expected struct name")
+        name = struct_tocketn.value
+        line = struct_tocketn.line
+        column = struct_tocketn.column
         
         self.consume(TokenType.LEFT_BRACE, "Expected '{' after struct name")
         
         fields = []
         while not self.check(TokenType.RIGHT_BRACE) and not self.is_at_end():            
             field_type = self.type_specifier()
-            field_name = self.consume(TokenType.IDENTIFIER, "Expected field name").value
+            field_name_token = self.consume(TokenType.IDENTIFIER, "Expected field name")
+            field_name = field_name_token.value
+            line = field_name_token.line
+            column = field_name_token.column
+            filename = field_name_token.filename
             
             # Check for bit field
             bit_width = None
@@ -200,18 +207,18 @@ class Parser:
                 bit_width_token = self.consume(TokenType.INTEGER, "Expected bit width")
                 bit_width = int(bit_width_token.value)
             
-            fields.append(FieldNode(field_name, field_type, bit_width))
+            fields.append(FieldNode(field_name, field_type, bit_width, None, line, column))
             
             self.consume(TokenType.SEMICOLON, "Expected ';' after field declaration")
         
         self.consume(TokenType.RIGHT_BRACE, "Expected '}' after struct fields")
         self.consume(TokenType.SEMICOLON, "Expected ';' after struct declaration")
         
-        return StructDeclNode(name, fields)
+        return StructDeclNode(name, fields, line, column, filename)
     
     def task_declaration(self) -> TaskDeclNode:
         """Parse Task declaration: Task<core, priority> Name { ... }"""
-        self.consume(TokenType.TASK, "Expected 'Task'")
+        task_token = self.consume(TokenType.TASK, "Expected 'Task'")
         self.consume(TokenType.LESS_THAN, "Expected '<' after Task")
         
         # Parse core number
@@ -252,7 +259,7 @@ class Parser:
         if run_function is None:
             raise ParseError("Task must have a 'void run()' method")
         
-        return TaskDeclNode(task_name, core, priority, members, run_function)
+        return TaskDeclNode(task_name, core, priority, members, run_function, task_token.line, task_token.filename)
     
     def task_member_declaration(self) -> Optional[ASTNode]:
         """Parse a member declaration inside a Task"""
@@ -302,7 +309,9 @@ class Parser:
         return_type = self.type_specifier()
         name_token = self.consume(TokenType.IDENTIFIER, "Expected identifier")
         name = name_token.value
-        
+        line = name_token.line
+        filename = name_token.filename
+
         if self.match(TokenType.LEFT_PAREN):
             # Function declaration
             parameters = []
@@ -317,7 +326,7 @@ class Parser:
             self.consume(TokenType.LEFT_BRACE, "Expected '{' before function body")
             body = self.block_statement()
             
-            return FunctionDeclNode(name, return_type, parameters, body)
+            return FunctionDeclNode(name, return_type, parameters, body, line, filename)
         
         elif self.match(TokenType.LEFT_BRACKET):
             # Array declaration
@@ -350,10 +359,12 @@ class Parser:
     def parameter(self) -> ParameterNode:
         """Parse function parameter"""
         param_type = self.type_specifier()
-        param_name = self.consume(TokenType.IDENTIFIER, "Expected parameter name").value
-        
-        return ParameterNode(param_name, param_type)
-    
+        param_name_token = self.consume(TokenType.IDENTIFIER, "Expected parameter name")
+        param_name = param_name_token.value
+        line = param_name_token.line
+
+        return ParameterNode(param_name, param_type, line)
+
     def array_literal(self) -> ArrayLiteralNode:
         """Parse array literal: {expr1, expr2, ...}"""
         self.consume(TokenType.LEFT_BRACE, "Expected '{' for array literal")
@@ -441,15 +452,18 @@ class Parser:
         var_type = self.type_specifier()
         name_token = self.consume(TokenType.IDENTIFIER, "Expected identifier")
         name = name_token.value
-        
+        line = name_token.line
+        column = name_token.column
+        filename = name_token.filename
+
         initializer = None
         if self.match(TokenType.ASSIGN):
             initializer = self.expression()
         
         self.consume(TokenType.SEMICOLON, "Expected ';' after variable declaration")
-        
-        return VariableDeclNode(name, var_type, initializer, is_const, name_token.line, name_token.filename)
-    
+
+        return VariableDeclNode(name, var_type, initializer, is_const, line, column, filename)
+
     def if_statement(self) -> IfStmtNode:
         """Parse if statement"""
         self.consume(TokenType.LEFT_PAREN, "Expected '(' after 'if'")

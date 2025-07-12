@@ -86,8 +86,8 @@ class FunctionDeclNode(ASTNode):
     """Function declaration node"""
     
     def __init__(self, name: str, return_type: 'TypeNode', parameters: List['ParameterNode'], 
-                 body: 'BlockStmtNode', line: int = 0):
-        super().__init__(NodeType.FUNCTION_DECL, line)
+                 body: 'BlockStmtNode', line: int = 0, filename: str = ""):
+        super().__init__(NodeType.FUNCTION_DECL, line, filename=filename)
         self.name = name
         self.return_type = return_type
         self.parameters = parameters
@@ -106,8 +106,8 @@ class ParameterNode:
 class StructDeclNode(ASTNode):
     """Structure declaration node"""
     
-    def __init__(self, name: str, fields: List['FieldNode'], line: int = 0, column: int = 0):
-        super().__init__(NodeType.STRUCT_DECL, line, column)
+    def __init__(self, name: str, fields: List['FieldNode'], line: int = 0, column: int = 0, filename: str = ""):
+        super().__init__(NodeType.STRUCT_DECL, line, column, filename)
         self.name = name
         self.fields = fields
         self.base_struct = None  # For C-style inheritance via first field
@@ -121,8 +121,8 @@ class TaskDeclNode(ASTNode):
     """Task declaration node for RT-Micro-C"""
     
     def __init__(self, name: str, core: int, priority: int, members: List[ASTNode], 
-                 run_function: 'FunctionDeclNode', line: int = 0):
-        super().__init__(NodeType.TASK_DECL, line)
+                 run_function: 'FunctionDeclNode', line: int = 0, filename: str = ""):
+        super().__init__(NodeType.TASK_DECL, line, line=line, filename=filename)
         self.name = name
         self.core = core
         self.priority = priority

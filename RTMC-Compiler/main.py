@@ -73,7 +73,7 @@ def parse_with_imports(file_path: Path, imported_files: Set[Path] = None) -> Pro
     # Put imports first to ensure proper dependency order
     all_statements = imported_statements + other_statements
     
-    return ProgramNode(all_statements)
+    return ProgramNode(all_statements, filename=file_path.name)
 
 def main():
     parser = argparse.ArgumentParser(description='RT-Micro-C Compiler for RTOS')
