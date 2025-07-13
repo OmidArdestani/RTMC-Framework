@@ -342,6 +342,11 @@ class VirtualMachine:
             Opcode.LOAD_STRUCT_MEMBER_BIT: self._handle_load_struct_member_bit,
             Opcode.STORE_STRUCT_MEMBER_BIT: self._handle_store_struct_member_bit,
             
+            # Pointer instructions
+            Opcode.LOAD_ADDR: self._handle_load_addr,
+            Opcode.LOAD_DEREF: self._handle_load_deref,
+            Opcode.STORE_DEREF: self._handle_store_deref,
+            
             Opcode.ADD: self._handle_add,
             Opcode.SUB: self._handle_sub,
             Opcode.MUL: self._handle_mul,
@@ -1225,3 +1230,26 @@ class VirtualMachine:
     def _handle_nop(self, instruction: Instruction):
         """Handle NOP instruction"""
         pass  # Do nothing
+
+    # Pointer instruction handlers
+    def _handle_load_addr(self, instruction: Instruction):
+        """Handle LOAD_ADDR instruction - pushes address of variable onto stack"""
+        address = instruction.operands[0]
+        self._push(address)
+    
+    def _handle_load_deref(self, instruction: Instruction):
+        """Handle LOAD_DEREF instruction - dereferences pointer on top of stack"""
+        pointer_value = self._pop()
+        # The pointer value is the address to read from
+        if pointer_value not in self.memory:
+            raise VMError(f"Dereferencing null or invalid pointer: {pointer_value}")
+        value = self.memory[pointer_value]
+        self._push(value)
+    
+    def _handle_store_deref(self, instruction: Instruction):
+        """Handle STORE_DEREF instruction - stores value at pointer address"""
+        value = self._pop()  # Value to store
+        pointer_value = self._pop()  # Address to store at
+        if pointer_value is None:
+            raise VMError("Cannot dereference null pointer")
+        self.memory[pointer_value] = value

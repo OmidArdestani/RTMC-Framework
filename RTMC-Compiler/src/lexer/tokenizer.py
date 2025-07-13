@@ -28,8 +28,8 @@ class TokenType(Enum):
     VOID        = auto()
     CONST       = auto()
     STRUCT      = auto()
-    TASK        = auto()  # New Task keyword
-    MESSAGE     = auto()  # New Message keyword
+    TASK        = auto()  # Task keyword
+    MESSAGE     = auto()  # Message keyword
     IMPORT      = auto()  # Import keyword
     
     # Message operations

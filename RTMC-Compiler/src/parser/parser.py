@@ -306,11 +306,23 @@ class Parser:
         if self.match(TokenType.CONST):
             is_const = True
         
-        return_type = self.type_specifier()
+        base_type = self.type_specifier()
+        
+        # Count pointer levels
+        pointer_level = 0
+        while self.match(TokenType.MULTIPLY):
+            pointer_level += 1
+        
         name_token = self.consume(TokenType.IDENTIFIER, "Expected identifier")
         name = name_token.value
         line = name_token.line
         filename = name_token.filename
+
+        # Create the appropriate type (pointer or base type)
+        if pointer_level > 0:
+            return_type = PointerTypeNode(base_type, pointer_level)
+        else:
+            return_type = base_type
 
         if self.match(TokenType.LEFT_PAREN):
             # Function declaration
@@ -343,7 +355,7 @@ class Parser:
             return ArrayDeclNode(name, return_type, size, initializer)
         
         else:
-            # Variable declaration
+            # Variable declaration (regular or pointer)
             initializer = None
             if self.match(TokenType.ASSIGN):
                 try:
@@ -353,12 +365,25 @@ class Parser:
             
             self.consume(TokenType.SEMICOLON, "Expected ';' after variable declaration")
             
-            result = VariableDeclNode(name, return_type, initializer, is_const, name_token.line, name_token.filename)
-            return result
+            # Create appropriate node type based on whether it's a pointer
+            if pointer_level > 0:
+                return PointerDeclNode(name, base_type, pointer_level, initializer, is_const, line, name_token.column, filename)
+            else:
+                return VariableDeclNode(name, return_type, initializer, is_const, name_token.line, name_token.column, filename)
     
     def parameter(self) -> ParameterNode:
         """Parse function parameter"""
         param_type = self.type_specifier()
+        
+        # Count pointer levels for parameter
+        pointer_level = 0
+        while self.match(TokenType.MULTIPLY):
+            pointer_level += 1
+        
+        # Create pointer type if needed
+        if pointer_level > 0:
+            param_type = PointerTypeNode(param_type, pointer_level)
+        
         param_name_token = self.consume(TokenType.IDENTIFIER, "Expected parameter name")
         param_name = param_name_token.value
         line = param_name_token.line
@@ -449,7 +474,13 @@ class Parser:
         if self.match(TokenType.CONST):
             is_const = True
         
-        var_type = self.type_specifier()
+        base_type = self.type_specifier()
+        
+        # Count pointer levels
+        pointer_level = 0
+        while self.match(TokenType.MULTIPLY):
+            pointer_level += 1
+        
         name_token = self.consume(TokenType.IDENTIFIER, "Expected identifier")
         name = name_token.value
         line = name_token.line
@@ -462,7 +493,11 @@ class Parser:
         
         self.consume(TokenType.SEMICOLON, "Expected ';' after variable declaration")
 
-        return VariableDeclNode(name, var_type, initializer, is_const, line, column, filename)
+        # Create appropriate node type based on whether it's a pointer
+        if pointer_level > 0:
+            return PointerDeclNode(name, base_type, pointer_level, initializer, is_const, line, column, filename)
+        else:
+            return VariableDeclNode(name, base_type, initializer, is_const, line, column, filename)
 
     def if_statement(self) -> IfStmtNode:
         """Parse if statement"""
@@ -633,6 +668,16 @@ class Parser:
             operator = self.previous().value
             right = self.unary()
             return UnaryExprNode(operator, right)
+        
+        # Handle address-of operator (&)
+        if self.match(TokenType.BITWISE_AND):
+            right = self.unary()
+            return AddressOfNode(right, self.previous().line, self.previous().column)
+        
+        # Handle dereference operator (*)
+        if self.match(TokenType.MULTIPLY):
+            right = self.unary()
+            return DereferenceNode(right, self.previous().line, self.previous().column)
         
         return self.call()
     

@@ -1197,7 +1197,7 @@ class BytecodeGenerator(ASTVisitor):
         pointer_address = self.allocate_variable(node.name)
         
         # Track the pointer type
-        pointer_type = self._get_type_name(node.pointer_type)
+        pointer_type = self._get_type_name(node.type)
         if self.current_function:
             self.local_variable_types[node.name] = pointer_type
         else:

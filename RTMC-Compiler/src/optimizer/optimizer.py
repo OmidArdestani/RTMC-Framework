@@ -20,7 +20,7 @@ class ConstantFolder(ASTVisitor):
         optimized_initializer = None
         if node.initializer:
             optimized_initializer = node.initializer.accept(self)
-        return PointerDeclNode(node.name, node.pointer_type, optimized_initializer, node.line)
+        return PointerDeclNode(node.name, node.base_type, node.pointer_level, optimized_initializer, node.is_const, node.line, node.column, node.filename)
 
     def visit_address_of(self, node: AddressOfNode) -> AddressOfNode:
         """Optimize address-of expression"""
