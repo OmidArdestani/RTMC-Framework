@@ -102,7 +102,19 @@ class TypeChecker:
     @staticmethod
     def is_condition_type(type_name: str) -> bool:
         """Check if type can be used in boolean conditions"""
-        return type_name in {'int', 'float', 'char', 'bool'}
+        return type_name in {'int', 'float', 'char', 'bool'} or TypeChecker.is_pointer_type(type_name)
+    
+    @staticmethod
+    def is_pointer_type(type_name: str) -> bool:
+        """Check if type is a pointer type"""
+        return type_name.endswith('*')
+    
+    @staticmethod
+    def get_pointer_base_type(type_name: str) -> str:
+        """Get the base type of a pointer (remove one level of indirection)"""
+        if TypeChecker.is_pointer_type(type_name):
+            return type_name[:-1]
+        return type_name
     
     @staticmethod
     def can_convert(from_type: str, to_type: str) -> bool:
@@ -117,6 +129,21 @@ class TypeChecker:
         # String conversions
         if from_type == 'string' and to_type == 'string':
             return True
+        
+        # Pointer conversions
+        if TypeChecker.is_pointer_type(from_type) and TypeChecker.is_pointer_type(to_type):
+            # void* can be converted to any pointer type and vice versa
+            if from_type == 'void*' or to_type == 'void*':
+                return True
+            # Same pointer types
+            if from_type == to_type:
+                return True
+        
+        # Address-of can be assigned to pointer
+        if TypeChecker.is_pointer_type(to_type):
+            base_type = TypeChecker.get_pointer_base_type(to_type)
+            if from_type == base_type:
+                return True
         
         return False
     
@@ -353,6 +380,9 @@ class SemanticAnalyzer(ASTVisitor):
         elif isinstance(type_node, ArrayTypeNode):
             element_type = self.get_type_from_node(type_node.element_type)
             return f"{element_type}[]"
+        elif isinstance(type_node, PointerTypeNode):
+            base_type = self.get_type_from_node(type_node.base_type)
+            return base_type + '*' * type_node.pointer_level
         else:
             return "unknown"
     
@@ -892,3 +922,55 @@ class SemanticAnalyzer(ASTVisitor):
         # Extract element type from array type (e.g., "int[5]" -> "int")
         element_type = array_type.split('[')[0]
         return element_type
+    
+    def visit_pointer_type(self, node: PointerTypeNode):
+        """Visit pointer type node"""
+        base_type = node.base_type.accept(self)
+        
+        # Build pointer type string with correct level of indirection
+        pointer_type = base_type + '*' * node.pointer_level
+        return pointer_type
+    
+    def visit_pointer_decl(self, node: PointerDeclNode):
+        """Visit pointer declaration node"""
+        # Get the pointer type
+        pointer_type = node.type.accept(self)
+        
+        # Check if variable already exists in current scope
+        if node.name in self.symbol_table.symbols:
+            self.error(f"Pointer '{node.name}' already defined in this scope", node.line, node.filename)
+        
+        # Check initializer type if present
+        if node.initializer:
+            init_type = node.initializer.accept(self)
+            if not TypeChecker.can_convert(init_type, pointer_type):
+                self.error(f"Cannot initialize {pointer_type} with {init_type}", node.line, node.filename)
+        
+        # Create pointer symbol
+        pointer_symbol = Symbol(node.name, SymbolType.VARIABLE, pointer_type, is_const=node.is_const)
+        self.symbol_table.define(pointer_symbol)
+        
+        return pointer_type
+    
+    def visit_address_of(self, node: AddressOfNode):
+        """Visit address-of expression (&)"""
+        operand_type = node.operand.accept(self)
+        
+        # Check that operand is an lvalue (addressable)
+        if not isinstance(node.operand, (IdentifierExprNode, MemberExprNode, ArrayAccessNode)):
+            self.error("Address-of operator requires an lvalue operand", node.line, node.filename)
+        
+        # Return pointer to the operand type
+        return operand_type + '*'
+    
+    def visit_dereference(self, node: DereferenceNode):
+        """Visit dereference expression (*)"""
+        operand_type = node.operand.accept(self)
+        
+        # Check that operand is a pointer type
+        if not operand_type.endswith('*'):
+            self.error(f"Cannot dereference non-pointer type {operand_type}", node.line, node.filename)
+            return "int"  # Return default type to continue analysis
+        
+        # Return the base type (remove one level of pointer indirection)
+        return operand_type[:-1]

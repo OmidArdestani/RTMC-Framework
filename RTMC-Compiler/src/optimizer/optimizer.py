@@ -11,6 +11,26 @@ class OptimizationError(Exception):
     pass
 
 class ConstantFolder(ASTVisitor):
+    def visit_pointer_type(self, node: PointerTypeNode) -> PointerTypeNode:
+        """Pointer types don't need optimization"""
+        return node
+
+    def visit_pointer_decl(self, node: PointerDeclNode) -> PointerDeclNode:
+        """Optimize pointer declaration"""
+        optimized_initializer = None
+        if node.initializer:
+            optimized_initializer = node.initializer.accept(self)
+        return PointerDeclNode(node.name, node.pointer_type, optimized_initializer, node.line)
+
+    def visit_address_of(self, node: AddressOfNode) -> AddressOfNode:
+        """Optimize address-of expression"""
+        optimized_operand = node.operand.accept(self)
+        return AddressOfNode(optimized_operand, node.line)
+
+    def visit_dereference(self, node: DereferenceNode) -> DereferenceNode:
+        """Optimize dereference expression"""
+        optimized_operand = node.operand.accept(self)
+        return DereferenceNode(optimized_operand, node.line)
     """Constant folding optimizer"""
     
     def __init__(self):
@@ -392,6 +412,17 @@ class ConstantFolder(ASTVisitor):
         return node
 
 class DeadCodeEliminator(ASTVisitor):
+    def visit_pointer_type(self, node: PointerTypeNode) -> PointerTypeNode:
+        return node
+
+    def visit_pointer_decl(self, node: PointerDeclNode) -> PointerDeclNode:
+        return node
+
+    def visit_address_of(self, node: AddressOfNode) -> AddressOfNode:
+        return node
+
+    def visit_dereference(self, node: DereferenceNode) -> DereferenceNode:
+        return node
     """Dead code elimination optimizer"""
     
     def __init__(self):

@@ -62,6 +62,10 @@ class BytecodeGenerator(ASTVisitor):
         # NEW: Struct layout management
         self.struct_layout_table = StructLayoutTable()
         
+        # NEW: Variable type tracking for dynamic type resolution
+        self.variable_types: Dict[str, str] = {}  # variable_name -> type_name
+        self.local_variable_types: Dict[str, str] = {}  # local variables in current function
+        
         # NEW: Current line tracking for debug info
         self.current_line = 0
         self.current_column = 0
@@ -188,15 +192,20 @@ class BytecodeGenerator(ASTVisitor):
         # Enter function context
         old_function = self.current_function
         old_locals = self.local_variables.copy()
+        old_local_types = self.local_variable_types.copy()
         old_param_count = self.parameter_count
         
         self.current_function = node.name
         self.local_variables = {}
+        self.local_variable_types = {}
         self.parameter_count = len(node.parameters)
         
-        # Allocate space for parameters
+        # Allocate space for parameters and track their types
         for i, param in enumerate(node.parameters):
             self.local_variables[param.name] = i
+            # Store parameter type information
+            param_type = self._get_type_name(param.type)
+            self.local_variable_types[param.name] = param_type
         
         # Set variable counter to start after parameters
         self.variable_counter = self.parameter_count
@@ -211,6 +220,7 @@ class BytecodeGenerator(ASTVisitor):
         # Restore context
         self.current_function = old_function
         self.local_variables = old_locals
+        self.local_variable_types = old_local_types
         self.parameter_count = old_param_count
     
     def visit_struct_decl(self, node: StructDeclNode):
@@ -291,6 +301,15 @@ class BytecodeGenerator(ASTVisitor):
         """Generate code for variable declaration"""
         # Allocate space
         address = self.allocate_variable(node.name)
+        
+        # Extract and store the variable's type information
+        type_name = self._get_type_name(node.type)
+        if self.current_function:
+            # Local variable
+            self.local_variable_types[node.name] = type_name
+        else:
+            # Global variable
+            self.variable_types[node.name] = type_name
         
         # Initialize if needed
         if node.initializer:
@@ -611,15 +630,105 @@ class BytecodeGenerator(ASTVisitor):
             return 0  # Use address 0 as fallback
     
     def _get_struct_name_for_member(self, member_expr: MemberExprNode) -> str:
-        """Get the struct name for a member expression"""
-        # This is a simplified implementation
-        # In a full implementation, we'd use type information from semantic analysis
+        """Get the struct name for a member expression using dynamic type resolution"""
         if isinstance(member_expr.object, IdentifierExprNode):
-            # For now, return a default struct name
-            # This should be enhanced to use actual type information
-            return "default_struct"
+            # Simple case: variable.field
+            var_name = member_expr.object.name
+            
+            # First, try to get the variable's type from the struct layout table
+            # This should contain type information from semantic analysis
+            try:
+                var_type = self.struct_layout_table.get_variable_type(var_name)
+                if var_type:
+                    return var_type
+            except (AttributeError, KeyError):
+                pass
+            
+            # If struct layout table doesn't have variable type info, 
+            # we need to look up the variable declaration to find its type
+            variable_type = self._resolve_variable_type(var_name)
+            if variable_type:
+                return variable_type
+            
+            # As a fallback, try to find the struct type by checking which struct contains this field
+            field_name = member_expr.property
+            candidate_structs = []
+            for struct_name, fields in self.struct_layouts.items():
+                if field_name in fields:
+                    candidate_structs.append(struct_name)
+            
+            # If only one struct contains this field, use it
+            if len(candidate_structs) == 1:
+                return candidate_structs[0]
+            elif len(candidate_structs) > 1:
+                # Multiple structs contain this field - this is ambiguous
+                # In a real compiler, this would be caught by semantic analysis
+                raise CodeGenError(f"Ambiguous field access: field '{field_name}' exists in multiple structs: {candidate_structs}")
+            
+            # Field not found in any struct
+            raise CodeGenError(f"Field '{field_name}' not found in any registered struct")
+            
+        elif isinstance(member_expr.object, MemberExprNode):
+            # Nested case: obj.field1.field2
+            # The type of field1 determines the struct for field2
+            parent_struct = self._get_struct_name_for_member(member_expr.object)
+            parent_field = member_expr.object.property
+            
+            # Look up the type of parent_field in parent_struct
+            try:
+                field_type = self.struct_layout_table.get_field_type(parent_struct, parent_field)
+                if field_type:
+                    return field_type
+            except (AttributeError, KeyError):
+                pass
+            
+            # If struct layout table doesn't have field type info, 
+            # try to resolve it from the struct declaration
+            field_type = self._resolve_field_type(parent_struct, parent_field)
+            if field_type:
+                return field_type
+            
+            raise CodeGenError(f"Cannot resolve type of field '{parent_field}' in struct '{parent_struct}'")
         else:
-            return "default_struct"
+            # Complex object (like function call result)
+            # This would require full type inference from semantic analysis
+            raise CodeGenError("Complex member access on non-identifier objects not yet supported")
+    
+    def _resolve_variable_type(self, var_name: str) -> Optional[str]:
+        """Resolve the type of a variable from declarations"""
+        # Check local variables first (if we're in a function)
+        if self.current_function and var_name in self.local_variable_types:
+            return self.local_variable_types[var_name]
+        
+        # Check global variables
+        if var_name in self.variable_types:
+            return self.variable_types[var_name]
+        
+        # Check if we have type information stored in struct layout table
+        if hasattr(self.struct_layout_table, 'get_variable_type'):
+            try:
+                var_type = self.struct_layout_table.get_variable_type(var_name)
+                if var_type:
+                    return var_type
+            except (AttributeError, KeyError):
+                pass
+        
+        # Variable type not found
+        return None
+    
+    def _resolve_field_type(self, struct_name: str, field_name: str) -> Optional[str]:
+        """Resolve the type of a field within a struct"""
+        # This should ideally be provided by semantic analysis
+        # For now, we'll try to look it up in the struct layout table
+        
+        try:
+            return self.struct_layout_table.get_field_type(struct_name, field_name)
+        except (AttributeError, KeyError):
+            pass
+        
+        # If not available from struct layout, this is a limitation
+        # In a real implementation, this would be resolved during semantic analysis
+        return None
     
     def _get_simple_field_offset(self, struct_name: str, field_name: str) -> int:
         """Get field offset with support for nested structs"""
@@ -751,11 +860,46 @@ class BytecodeGenerator(ASTVisitor):
             # In a real implementation, we'd need to handle array element loading
         else:
             # Struct field access
-            node.object.accept(self)
+            # node.object.accept(self)
             
-            # Get field offset (simplified)
-            # In a real implementation, we'd look up the struct layout
-            field_offset = 0  # Placeholder
+            # Get struct name and field offset
+            struct_name = self._get_struct_name_for_member(node)
+            field_offset = self._get_simple_field_offset(struct_name, node.property)
+            
+            # Generate code to load the struct base address
+            if isinstance(node.object, IdentifierExprNode):
+                # Simple case: variable.field
+                base_address = self.get_variable_address(node.object.name)
+                
+                # Check if this is a bit-field
+                bit_field_info = self._get_bit_field_info(struct_name, node.property)
+                if bit_field_info:
+                    byte_offset, bit_offset, bit_width = bit_field_info
+                    self.emit(InstructionBuilder.load_struct_member_bit(base_address, byte_offset, bit_offset, bit_width))
+                    
+                    return
+                else:
+                    # Regular field access
+                    self.emit(InstructionBuilder.load_struct_member(base_address, field_offset))
+
+                    return
+            elif isinstance(node.object, MemberExprNode):
+                # Nested access: variable.field1.field2
+                base_var = self._get_base_variable_name(node.object)
+                base_address = self.get_variable_address(base_var)
+                nested_offset = self._calculate_nested_offset(node)
+                # field_offset = base_address + nested_offset
+                self.emit(InstructionBuilder.load_struct_member(base_address, nested_offset))
+
+                return
+            else:
+                # Complex object access
+                node.object.accept(self)
+                # Add field offset to the address on stack
+                offset_const = self.add_constant(field_offset)
+                self.emit(InstructionBuilder.load_const(offset_const))
+                self.emit(InstructionBuilder.add())
+                field_offset = 0  # Offset already added
             
             self.emit(InstructionBuilder.load_struct_member(0, field_offset))
     
@@ -999,6 +1143,13 @@ class BytecodeGenerator(ASTVisitor):
         # Store array reference in symbol table
         array_address = self.allocate_variable(node.name)
         
+        # Track the array type
+        array_type = f"{self._get_type_name(node.element_type)}[{node.size}]"
+        if self.current_function:
+            self.local_variable_types[node.name] = array_type
+        else:
+            self.variable_types[node.name] = array_type
+        
         # Initialize to null/zero for now
         const_idx = self.add_constant(0)
         self.emit(Instruction(Opcode.LOAD_CONST, [const_idx]))
@@ -1044,6 +1195,13 @@ class BytecodeGenerator(ASTVisitor):
         
         # Allocate space for pointer
         pointer_address = self.allocate_variable(node.name)
+        
+        # Track the pointer type
+        pointer_type = self._get_type_name(node.pointer_type)
+        if self.current_function:
+            self.local_variable_types[node.name] = pointer_type
+        else:
+            self.variable_types[node.name] = pointer_type
         
         if node.initializer:
             # Generate code for initializer

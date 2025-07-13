@@ -76,7 +76,7 @@ class ProgramNode(ASTNode):
     """Root node of the AST"""
     
     def __init__(self, declarations: List[ASTNode], line: int = 0, filename: str = ""):
-        super().__init__(NodeType.PROGRAM, line, filename)
+        super().__init__(NodeType.PROGRAM, line, filename=filename)
         self.declarations = declarations
     
     def accept(self, visitor):
@@ -415,7 +415,7 @@ class IdentifierExprNode(ExpressionNode):
     """Identifier expression node"""
     
     def __init__(self, name: str, line: int = 0, filename: str = ""):
-        super().__init__(NodeType.IDENTIFIER_EXPR, line, filename)
+        super().__init__(NodeType.IDENTIFIER_EXPR, line, filename=filename)
         self.name = name
     
     def accept(self, visitor):

@@ -252,3 +252,44 @@ class StructLayoutTable:
                 return True
             current = layout.base_struct
         return False
+    
+    def get_field_type(self, struct_name: str, field_name: str) -> Optional[str]:
+        """Get the type name of a field in a struct"""
+        if struct_name not in self.struct_decls:
+            return None
+        
+        struct_decl = self.struct_decls[struct_name]
+        
+        # Find the field in the struct declaration
+        for field in struct_decl.fields:
+            if field.name == field_name:
+                return self._get_type_name_from_node(field.type)
+        
+        # Check base struct if present
+        layout = self.calculate_layout(struct_name)
+        if layout.base_struct:
+            return self.get_field_type(layout.base_struct, field_name)
+        
+        return None
+    
+    def get_variable_type(self, var_name: str) -> Optional[str]:
+        """Get the type of a variable (placeholder - would be enhanced with symbol table)"""
+        # This is a placeholder method that would typically be enhanced
+        # to work with a symbol table or semantic analyzer
+        # For now, it returns None to indicate the information is not available
+        return None
+    
+    def _get_type_name_from_node(self, type_node: TypeNode) -> str:
+        """Extract type name from a type node"""
+        if isinstance(type_node, PrimitiveTypeNode):
+            return type_node.type_name
+        elif isinstance(type_node, StructTypeNode):
+            return type_node.struct_name
+        elif isinstance(type_node, ArrayTypeNode):
+            element_name = self._get_type_name_from_node(type_node.element_type)
+            return f"{element_name}[{type_node.size}]"
+        elif isinstance(type_node, PointerTypeNode):
+            pointed_type = self._get_type_name_from_node(type_node.pointed_type)
+            return f"{pointed_type}*"
+        else:
+            return "unknown"
