@@ -142,8 +142,8 @@ class InstructionBuilder:
         return Instruction(Opcode.JUMPIF_FALSE, [cond_addr, jump_addr])
     
     @staticmethod
-    def call(func_id: int) -> Instruction:
-        return Instruction(Opcode.CALL, [func_id])
+    def call(func_id: int, param_count: int = 0) -> Instruction:
+        return Instruction(Opcode.CALL, [func_id, param_count])
     
     @staticmethod
     def ret() -> Instruction:
@@ -383,7 +383,7 @@ INSTRUCTION_INFO = {
     Opcode.JUMP: {"operands": 1, "description": "Unconditional jump"},
     Opcode.JUMPIF_TRUE: {"operands": 2, "description": "Jump if condition is true"},
     Opcode.JUMPIF_FALSE: {"operands": 2, "description": "Jump if condition is false"},
-    Opcode.CALL: {"operands": 1, "description": "Call function"},
+    Opcode.CALL: {"operands": 2, "description": "Call function with parameter count"},
     Opcode.RET: {"operands": 0, "description": "Return from function"},
     
     Opcode.LOAD_CONST: {"operands": 1, "description": "Load constant"},

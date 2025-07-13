@@ -86,6 +86,7 @@ class TaskVMContext:
         self.call_stack = []
         self.memory = {}  # Task-local memory
         self.running = True
+        self.saved_params = []  # For parameter restoration on function return
     
     def execute_function(self, func_addr: int):
         """Execute a function starting at the given address"""
@@ -695,12 +696,53 @@ class VirtualMachine:
     
     def _handle_call(self, instruction: Instruction):
         """Handle CALL instruction"""
+        func_address = instruction.operands[0]
+        param_count = instruction.operands[1] if len(instruction.operands) > 1 else 0
+        
+        # Save current state
         self.call_stack.append(self.pc + 1)
-        self.pc = instruction.operands[0]
+        
+        # Pop parameters from stack and store them in function's parameter slots
+        # Parameters are popped in reverse order (last argument first)
+        params = []
+        for _ in range(param_count):
+            params.append(self._pop())
+        params.reverse()  # Restore correct parameter order
+        
+        # Use a separate address space for parameters (starting from high addresses)
+        # This avoids conflicts with constants and global variables
+        param_base = 10000  # Base address for parameters
+        old_param_values = {}
+        for i, param_value in enumerate(params):
+            param_addr = param_base + i
+            # Save old values to restore later
+            if param_addr in self.memory:
+                old_param_values[param_addr] = self.memory[param_addr]
+            self.memory[param_addr] = param_value
+        
+        # Store old values for restoration on return
+        if not hasattr(self, 'saved_params'):
+            self.saved_params = []
+        self.saved_params.append((old_param_values, param_base, param_count))
+        
+        # Jump to function
+        self.pc = func_address
     
     def _handle_ret(self, instruction: Instruction):
         """Handle RET instruction"""
         if self.call_stack:
+            # Restore saved parameter values
+            if hasattr(self, 'saved_params') and self.saved_params:
+                old_values, param_base, param_count = self.saved_params.pop()
+                # Restore the old values
+                for addr, value in old_values.items():
+                    self.memory[addr] = value
+                # Remove parameter values that didn't exist before
+                for i in range(param_count):
+                    param_addr = param_base + i
+                    if param_addr not in old_values and param_addr in self.memory:
+                        del self.memory[param_addr]
+            
             self.pc = self.call_stack.pop()
         else:
             self.running = False
@@ -716,6 +758,18 @@ class VirtualMachine:
     def _handle_load_var(self, instruction: Instruction):
         """Handle LOAD_VAR instruction"""
         address = instruction.operands[0]
+        
+        # Check if this is a parameter load (addresses 0-9 are typically parameters)
+        # and we're in a function call context
+        if hasattr(self, 'saved_params') and self.saved_params and address < 10:
+            param_base = 10000
+            param_addr = param_base + address
+            if param_addr in self.memory:
+                value = self.memory[param_addr]
+                self._push(value)
+                return
+        
+        # Normal variable load
         value = self.memory.get(address, 0)
         self._push(value)
     

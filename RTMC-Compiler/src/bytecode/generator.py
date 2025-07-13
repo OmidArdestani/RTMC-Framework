@@ -761,7 +761,8 @@ class BytecodeGenerator(ASTVisitor):
                 # Call function
                 if func_name in self.functions:
                     func_id = self.functions[func_name]
-                    self.emit(InstructionBuilder.call(func_id))
+                    param_count = len(node.arguments)
+                    self.emit(InstructionBuilder.call(func_id, param_count))
                 else:
                     raise CodeGenError(f"Unknown function: {func_name}")
         else:
