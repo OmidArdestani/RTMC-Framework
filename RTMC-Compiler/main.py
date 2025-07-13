@@ -85,7 +85,8 @@ def main():
     parser.add_argument('--no-optimize', action='store_true', help='Skip optimization')
     parser.add_argument('--no-semantic', action='store_true', help='Skip semantic analysis')
     parser.add_argument('--release', action='store_true', help='Compile in release mode (strip debug info)')
-    
+    parser.add_argument('--run', action='store_true', help='Run the compiled program')
+
     args = parser.parse_args()
     
     # Determine compilation mode
@@ -160,6 +161,12 @@ def main():
         if args.verbose:
             print(f"Compilation successful! Output: {output_file}")
             print(f"Mode: {compile_mode.name}")
+
+        if args.run:
+            from src.vm.virtual_machine import VirtualMachine
+            vm = VirtualMachine()
+            vm.load_program(bytecode_program)
+            vm.run()
         
     except FileNotFoundError as e:
         print(f"Error: {e}")
