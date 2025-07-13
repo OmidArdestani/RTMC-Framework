@@ -33,20 +33,26 @@ class StructLayoutTable:
         self.layouts: Dict[str, StructLayout] = {}
         self.struct_decls: Dict[str, StructDeclNode] = {}
     
-    def register_struct(self, struct_decl: StructDeclNode):
-        """Register a struct declaration for layout calculation"""
+    def register_struct(self, struct_decl):
+        """Register a struct or union declaration for layout calculation"""
         self.struct_decls[struct_decl.name] = struct_decl
     
     def calculate_layout(self, struct_name: str) -> StructLayout:
-        """Calculate and cache the layout for a struct"""
+        """Calculate and cache the layout for a struct or union"""
         if struct_name in self.layouts:
             return self.layouts[struct_name]
         
         if struct_name not in self.struct_decls:
-            raise ValueError(f"Unknown struct: {struct_name}")
+            raise ValueError(f"Unknown struct/union: {struct_name}")
         
         struct_decl = self.struct_decls[struct_name]
-        layout = self._calculate_struct_layout(struct_decl)
+        
+        # Check if it's a union
+        if isinstance(struct_decl, UnionDeclNode):
+            layout = self._calculate_union_layout(struct_decl)
+        else:
+            layout = self._calculate_struct_layout(struct_decl)
+            
         self.layouts[struct_name] = layout
         return layout
     
@@ -144,6 +150,10 @@ class StructLayoutTable:
         elif isinstance(type_node, StructTypeNode):
             # Recursively calculate struct size
             nested_layout = self.calculate_layout(type_node.struct_name)
+            return nested_layout.total_size
+        elif isinstance(type_node, UnionTypeNode):
+            # Recursively calculate union size
+            nested_layout = self.calculate_layout(type_node.union_name)
             return nested_layout.total_size
         elif isinstance(type_node, ArrayTypeNode):
             element_size = self._get_field_size(type_node.element_type)
@@ -293,3 +303,41 @@ class StructLayoutTable:
             return f"{pointed_type}*"
         else:
             return "unknown"
+    
+    def _calculate_union_layout(self, union_decl: UnionDeclNode) -> StructLayout:
+        """Calculate layout for a union - all fields start at offset 0"""
+        fields = {}
+        max_size = 0
+        max_alignment = 1
+        
+        for field in union_decl.fields:
+            field_layout = FieldLayout(
+                name=field.name,
+                offset=0,  # All union fields start at offset 0
+                size=self._get_field_size(field.type),
+                bit_offset=0,
+                bit_width=field.bit_width or 0
+            )
+            
+            fields[field.name] = field_layout
+            max_size = max(max_size, field_layout.size)
+            field_alignment = self._get_field_alignment(field.type)
+            max_alignment = max(max_alignment, field_alignment)
+        
+        # Union size is the maximum of all field sizes
+        total_size = max_size
+        if total_size % max_alignment != 0:
+            total_size += max_alignment - (total_size % max_alignment)
+        
+        layout = StructLayout(
+            name=union_decl.name,
+            total_size=total_size,
+            alignment=max_alignment,
+            fields=fields
+        )
+        
+        # Update the union declaration with computed values
+        union_decl.total_size = total_size
+        union_decl.field_offsets = {name: field.offset for name, field in fields.items()}
+        
+        return layout

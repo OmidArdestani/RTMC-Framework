@@ -155,6 +155,26 @@ class Parser:
                 # Not a struct declaration, reset and treat as variable declaration
                 self.current = saved_pos
             
+            # Check for union declaration (union Name { ... })
+            if self.check(TokenType.UNION):
+                # Look ahead to see if this is a union declaration or variable declaration
+                saved_pos = self.current
+                self.advance()  # consume 'union'
+                if self.check(TokenType.IDENTIFIER):
+                    self.advance()  # consume identifier
+                    
+                    if self.check(TokenType.LEFT_BRACE):
+                        # This is a union declaration
+                        self.current = saved_pos
+                        return self.union_declaration()
+                elif self.check(TokenType.LEFT_BRACE):
+                    # This is an anonymous union declaration
+                    self.current = saved_pos
+                    return self.union_declaration()
+                
+                # Not a union declaration, reset and treat as variable declaration
+                self.current = saved_pos
+            
             if self.check_type_specifier():
                 # Try to parse as declaration, but fall back to statement if it fails
                 saved_position = self.current
@@ -180,6 +200,7 @@ class Parser:
         return self.check(TokenType.INT) or self.check(TokenType.FLOAT_TYPE) or \
                self.check(TokenType.CHAR_TYPE) or self.check(TokenType.VOID) or \
                self.check(TokenType.CONST) or self.check(TokenType.STRUCT) or \
+               self.check(TokenType.UNION) or \
                self.check(TokenType.IDENTIFIER)  # Allow custom struct types
     
     def struct_declaration(self) -> StructDeclNode:
@@ -189,33 +210,104 @@ class Parser:
         name = struct_tocketn.value
         line = struct_tocketn.line
         column = struct_tocketn.column
+        filename = struct_tocketn.filename
         
         self.consume(TokenType.LEFT_BRACE, "Expected '{' after struct name")
         
         fields = []
         while not self.check(TokenType.RIGHT_BRACE) and not self.is_at_end():            
-            field_type = self.type_specifier()
-            field_name_token = self.consume(TokenType.IDENTIFIER, "Expected field name")
-            field_name = field_name_token.value
-            line = field_name_token.line
-            column = field_name_token.column
-            filename = field_name_token.filename
-            
-            # Check for bit field
-            bit_width = None
-            if self.match(TokenType.COLON):
-                bit_width_token = self.consume(TokenType.INTEGER, "Expected bit width")
-                bit_width = int(bit_width_token.value)
-            
-            fields.append(FieldNode(field_name, field_type, bit_width, None, line, column))
-            
-            self.consume(TokenType.SEMICOLON, "Expected ';' after field declaration")
+            fields.extend(self.parse_struct_union_fields())
         
         self.consume(TokenType.RIGHT_BRACE, "Expected '}' after struct fields")
         self.consume(TokenType.SEMICOLON, "Expected ';' after struct declaration")
         
         return StructDeclNode(name, fields, line, column, filename)
-    
+
+    def union_declaration(self) -> UnionDeclNode:
+        """Parse union declaration"""
+        self.consume(TokenType.UNION, "Expected 'union'")
+        
+        # Check for anonymous union
+        name = ""
+        line = 0
+        column = 0
+        filename = ""
+        if self.check(TokenType.IDENTIFIER):
+            name_token = self.consume(TokenType.IDENTIFIER, "Expected union name")
+            name = name_token.value
+            line = name_token.line
+            column = name_token.column
+            filename = name_token.filename
+        
+        self.consume(TokenType.LEFT_BRACE, "Expected '{' after union name")
+        
+        fields = []
+        while not self.check(TokenType.RIGHT_BRACE) and not self.is_at_end():            
+            fields.extend(self.parse_struct_union_fields())
+        
+        self.consume(TokenType.RIGHT_BRACE, "Expected '}' after union fields")
+        self.consume(TokenType.SEMICOLON, "Expected ';' after union declaration")
+        
+        return UnionDeclNode(name, fields, line, column, filename)
+
+    def parse_struct_union_fields(self) -> List[FieldNode]:
+        """Parse struct or union fields, handling nested structs/unions"""
+        fields = []
+        
+        # Check for nested struct/union
+        if self.check(TokenType.STRUCT) or self.check(TokenType.UNION):
+            # Handle nested anonymous struct/union
+            if self.check(TokenType.STRUCT):
+                self.advance()  # consume 'struct'
+                if self.check(TokenType.LEFT_BRACE):
+                    # Anonymous struct
+                    self.consume(TokenType.LEFT_BRACE, "Expected '{'")
+                    nested_fields = []
+                    while not self.check(TokenType.RIGHT_BRACE) and not self.is_at_end():
+                        nested_fields.extend(self.parse_struct_union_fields())
+                    self.consume(TokenType.RIGHT_BRACE, "Expected '}' after nested struct")
+                    self.consume(TokenType.SEMICOLON, "Expected ';' after nested struct")
+                    # For now, flatten the nested fields
+                    fields.extend(nested_fields)
+                    return fields
+            elif self.check(TokenType.UNION):
+                self.advance()  # consume 'union'
+                if self.check(TokenType.LEFT_BRACE):
+                    # Anonymous union
+                    self.consume(TokenType.LEFT_BRACE, "Expected '{'")
+                    nested_fields = []
+                    while not self.check(TokenType.RIGHT_BRACE) and not self.is_at_end():
+                        nested_fields.extend(self.parse_struct_union_fields())
+                    self.consume(TokenType.RIGHT_BRACE, "Expected '}' after nested union")
+                    self.consume(TokenType.SEMICOLON, "Expected ';' after nested union")
+                    # For now, flatten the nested fields
+                    fields.extend(nested_fields)
+                    return fields
+        
+        # Regular field declaration
+        field_type = self.type_specifier()
+        field_name_token = self.consume(TokenType.IDENTIFIER, "Expected field name")
+        field_name = field_name_token.value
+        line = field_name_token.line
+        column = field_name_token.column
+        filename = field_name_token.filename
+        
+        # Check for bit field
+        bit_width = None
+        if self.match(TokenType.COLON):
+            bit_width_token = self.consume(TokenType.INTEGER, "Expected bit width")
+            bit_width = int(bit_width_token.value)
+        
+        # Check for field initialization
+        initializer = None
+        if self.match(TokenType.ASSIGN):
+            initializer = self.expression()
+        
+        fields.append(FieldNode(field_name, field_type, bit_width, None, initializer, line, column))
+        
+        self.consume(TokenType.SEMICOLON, "Expected ';' after field declaration")
+        return fields
+
     def task_declaration(self) -> TaskDeclNode:
         """Parse Task declaration: Task<core, priority> Name { ... }"""
         task_token = self.consume(TokenType.TASK, "Expected 'Task'")
@@ -424,10 +516,14 @@ class Parser:
             struct_name = self.consume(TokenType.IDENTIFIER, "Expected struct name").value
             return StructTypeNode(struct_name)
         
+        if self.match(TokenType.UNION):
+            union_name = self.consume(TokenType.IDENTIFIER, "Expected union name").value
+            return UnionTypeNode(union_name)
+        
         if self.check(TokenType.IDENTIFIER):
-            # Assume it's a struct type
-            struct_name = self.advance().value
-            return StructTypeNode(struct_name)
+            # Assume it's a struct or union type
+            type_name = self.advance().value
+            return StructTypeNode(type_name)  # Default to struct for backwards compatibility
         
         raise ParseError("Expected type specifier")
     

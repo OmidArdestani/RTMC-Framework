@@ -246,6 +246,29 @@ class BytecodeGenerator(ASTVisitor):
                     comment += f", bit-field: {field_layout.bit_offset}:{field_layout.bit_width}"
                 self.emit(InstructionBuilder.comment(comment))
     
+    def visit_union_decl(self, node: UnionDeclNode):
+        """Generate code for union declaration"""
+        # Set current position for debug info
+        self.set_current_position(node.line, getattr(node, 'column', 0))
+        
+        # Register union with layout table (treat similar to struct but with overlapping fields)
+        self.struct_layout_table.register_struct(node)
+        
+        # Calculate layout
+        layout = self.struct_layout_table.calculate_layout(node.name)
+        
+        # Store layout information for backwards compatibility
+        self.struct_layouts[node.name] = {name: field.offset for name, field in layout.fields.items()}
+        
+        # In debug mode, emit union metadata
+        if self.mode == CompileMode.DEBUG:
+            self.emit(InstructionBuilder.comment(f"Union {node.name} size: {layout.total_size} bytes"))
+            for field_name, field_layout in layout.fields.items():
+                comment = f"  {field_name}: offset {field_layout.offset}, size {field_layout.size}"
+                if field_layout.bit_width > 0:
+                    comment += f", bit-field: {field_layout.bit_offset}:{field_layout.bit_width}"
+                self.emit(InstructionBuilder.comment(comment))
+
     def visit_task_decl(self, node: TaskDeclNode):
         """Generate bytecode for task declaration"""
         task_name = node.name
@@ -329,6 +352,10 @@ class BytecodeGenerator(ASTVisitor):
         """Type nodes don't generate code"""
         pass
     
+    def visit_union_type(self, node: UnionTypeNode):
+        """Type nodes don't generate code"""
+        pass
+    
     def visit_array_type(self, node: ArrayTypeNode):
         """Type nodes don't generate code"""
         pass
@@ -339,6 +366,8 @@ class BytecodeGenerator(ASTVisitor):
             return type_node.type_name
         elif isinstance(type_node, StructTypeNode):
             return type_node.struct_name
+        elif isinstance(type_node, UnionTypeNode):
+            return type_node.union_name
         elif isinstance(type_node, ArrayTypeNode):
             element_name = self._get_type_name(type_node.element_type)
             return f"{element_name}[{type_node.size}]"

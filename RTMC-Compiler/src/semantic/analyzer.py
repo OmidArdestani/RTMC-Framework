@@ -380,6 +380,8 @@ class SemanticAnalyzer(ASTVisitor):
             return type_node.type_name
         elif isinstance(type_node, StructTypeNode):
             return f"struct {type_node.struct_name}"
+        elif isinstance(type_node, UnionTypeNode):
+            return f"union {type_node.union_name}"
         elif isinstance(type_node, ArrayTypeNode):
             element_type = self.get_type_from_node(type_node.element_type)
             return f"{element_type}[]"
@@ -458,7 +460,26 @@ class SemanticAnalyzer(ASTVisitor):
                              struct_fields=field_symbols)
         
         self.symbol_table.define(struct_symbol)
-    
+
+    def visit_union_decl(self, node: UnionDeclNode):
+        """Visit union declaration"""
+        union_name = node.name
+        
+        # Check if union already exists
+        if self.symbol_table.exists(union_name):
+            self.error(f"Union '{union_name}' already defined", node.line, node.filename)
+        
+        # Create union symbol with field information
+        field_symbols = {}
+        for field in node.fields:
+            field_type = self.get_type_from_node(field.type)
+            field_symbols[field.name] = Symbol(field.name, SymbolType.VARIABLE, field_type)
+        
+        union_symbol = Symbol(union_name, SymbolType.STRUCT, f"union {union_name}",
+                             struct_fields=field_symbols)
+        
+        self.symbol_table.define(union_symbol)
+
     def visit_task_decl(self, node: TaskDeclNode):
         """Visit task declaration"""
         task_name = node.name
@@ -542,7 +563,15 @@ class SemanticAnalyzer(ASTVisitor):
             self.error(f"Undefined struct '{node.struct_name}'", node.line, node.filename)
         
         return f"struct {node.struct_name}"
-    
+
+    def visit_union_type(self, node: UnionTypeNode):
+        """Visit union type node"""
+        union_symbol = self.symbol_table.get(node.union_name)
+        if not union_symbol or union_symbol.symbol_type != SymbolType.STRUCT:
+            self.error(f"Undefined union '{node.union_name}'", node.line, node.filename)
+        
+        return f"union {node.union_name}"
+
     def visit_array_type(self, node: ArrayTypeNode):
         """Visit array type node"""
         element_type = node.element_type.accept(self)

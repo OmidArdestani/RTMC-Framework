@@ -28,6 +28,7 @@ class TokenType(Enum):
     VOID        = auto()
     CONST       = auto()
     STRUCT      = auto()
+    UNION       = auto()
     TASK        = auto()  # Task keyword
     MESSAGE     = auto()  # Message keyword
     IMPORT      = auto()  # Import keyword
@@ -155,6 +156,7 @@ class Tokenizer:
         'void': TokenType.VOID,
         'const': TokenType.CONST,
         'struct': TokenType.STRUCT,
+        'union': TokenType.UNION,
         'Task': TokenType.TASK,
         'message': TokenType.MESSAGE,
         'import': TokenType.IMPORT,

@@ -14,6 +14,7 @@ class NodeType(Enum):
     PROGRAM        = auto()
     FUNCTION_DECL  = auto()
     STRUCT_DECL    = auto()
+    UNION_DECL     = auto()
     VARIABLE_DECL  = auto()
     ARRAY_DECL     = auto()
     TASK_DECL      = auto()
@@ -50,6 +51,7 @@ class NodeType(Enum):
     # Types
     PRIMITIVE_TYPE = auto()
     STRUCT_TYPE    = auto()
+    UNION_TYPE     = auto()
     ARRAY_TYPE     = auto()
     POINTER_TYPE   = auto()  # Pointer type
 
@@ -117,6 +119,19 @@ class StructDeclNode(ASTNode):
     def accept(self, visitor):
         return visitor.visit_struct_decl(self)
 
+class UnionDeclNode(ASTNode):
+    """Union declaration node"""
+    
+    def __init__(self, name: str, fields: List['FieldNode'], line: int = 0, column: int = 0, filename: str = ""):
+        super().__init__(NodeType.UNION_DECL, line, column, filename)
+        self.name = name
+        self.fields = fields
+        self.total_size = 0      # Computed size during semantic analysis (max of all field sizes)
+        self.field_offsets = {}  # Dict mapping field_name -> offset (all start at 0 for unions)
+    
+    def accept(self, visitor):
+        return visitor.visit_union_decl(self)
+
 class TaskDeclNode(ASTNode):
     """Task declaration node for RT-Micro-C"""
     
@@ -161,13 +176,15 @@ class ArrayDeclNode(ASTNode):
 class FieldNode:
     """Structure field with support for nested structs and bit-fields"""
     def __init__(self, name: str, type: 'TypeNode', bit_width: Optional[int] = None, 
-                 offset: Optional[int] = None, line: int = 0, column: int = 0):
+                 offset: Optional[int] = None, initializer: Optional['ExpressionNode'] = None, 
+                 line: int = 0, column: int = 0):
         self.name = name
         self.type = type
         self.bit_width = bit_width
         self.offset = offset         # Byte offset from struct base
         self.bit_offset = 0          # Bit offset within byte (for bit-fields)
         self.size = 0                # Size in bytes (calculated during analysis)
+        self.initializer = initializer  # Default initialization value
         self.is_base_struct = False  # True if this field is used for inheritance
         self.line = line
         self.column = column
@@ -211,6 +228,16 @@ class StructTypeNode(TypeNode):
     
     def accept(self, visitor):
         return visitor.visit_struct_type(self)
+
+class UnionTypeNode(TypeNode):
+    """Union type node"""
+    
+    def __init__(self, union_name: str, line: int = 0):
+        super().__init__(NodeType.UNION_TYPE, line)
+        self.union_name = union_name
+    
+    def accept(self, visitor):
+        return visitor.visit_union_type(self)
 
 class ArrayTypeNode(TypeNode):
     """Array type node"""
@@ -526,6 +553,9 @@ class ASTVisitor(ABC):
     def visit_struct_decl(self, node: StructDeclNode): pass
     
     @abstractmethod
+    def visit_union_decl(self, node: UnionDeclNode): pass
+    
+    @abstractmethod
     def visit_task_decl(self, node: TaskDeclNode): pass
     
     @abstractmethod
@@ -545,6 +575,9 @@ class ASTVisitor(ABC):
     
     @abstractmethod
     def visit_struct_type(self, node: StructTypeNode): pass
+    
+    @abstractmethod
+    def visit_union_type(self, node: UnionTypeNode): pass
     
     @abstractmethod
     def visit_array_type(self, node: ArrayTypeNode): pass
@@ -647,6 +680,12 @@ def ast_to_string(node: ASTNode, indent: int = 0) -> str:
             result += f"{indent_str}  {field.name}: {ast_to_string(field.type, 0).strip()}{bit_info}\n"
         return result
     
+    elif isinstance(node, UnionDeclNode):
+        result = f"{indent_str}UnionDecl: {node.name}\n"
+        for field in node.fields:
+            result += f"{indent_str}  {field.name}: {ast_to_string(field.type, 0).strip()}\n"
+        return result
+    
     elif isinstance(node, TaskDeclNode):
         result = f"{indent_str}TaskDecl: {node.name}\n"
         result += f"{indent_str}  Core: {node.core}\n"
@@ -675,6 +714,9 @@ def ast_to_string(node: ASTNode, indent: int = 0) -> str:
     
     elif isinstance(node, StructTypeNode):
         return f"struct {node.struct_name}"
+    
+    elif isinstance(node, UnionTypeNode):
+        return f"union {node.union_name}"
     
     elif isinstance(node, ArrayTypeNode):
         size_str = f"[{node.size}]" if node.size else "[]"

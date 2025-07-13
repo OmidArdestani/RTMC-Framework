@@ -55,9 +55,13 @@ class ConstantFolder(ASTVisitor):
                               optimized_body, node.line)
     
     def visit_struct_decl(self, node: StructDeclNode) -> StructDeclNode:
-        """Struct declarations don't need optimization"""
-        return node
-    
+        """Optimize struct declaration"""
+        return node  # Struct declarations don't need optimization
+
+    def visit_union_decl(self, node: UnionDeclNode) -> UnionDeclNode:
+        """Optimize union declaration"""
+        return node  # Union declarations don't need optimization
+
     def visit_task_decl(self, node: TaskDeclNode) -> TaskDeclNode:
         """Optimize task declaration"""
         # Optimize task members
@@ -92,6 +96,10 @@ class ConstantFolder(ASTVisitor):
         return node
     
     def visit_struct_type(self, node: StructTypeNode) -> StructTypeNode:
+        """Type nodes don't need optimization"""
+        return node
+
+    def visit_union_type(self, node: UnionTypeNode) -> UnionTypeNode:
         """Type nodes don't need optimization"""
         return node
     
@@ -451,6 +459,10 @@ class DeadCodeEliminator(ASTVisitor):
         """Struct declarations are always reachable"""
         return node
     
+    def visit_union_decl(self, node: UnionDeclNode) -> UnionDeclNode:
+        """Union declarations are always reachable"""
+        return node
+
     def visit_task_decl(self, node: TaskDeclNode) -> TaskDeclNode:
         """Task declarations are always reachable"""
         # Tasks are always reachable since they're entry points
@@ -475,6 +487,9 @@ class DeadCodeEliminator(ASTVisitor):
         return node
     
     def visit_struct_type(self, node: StructTypeNode) -> StructTypeNode:
+        return node
+    
+    def visit_union_type(self, node: UnionTypeNode) -> UnionTypeNode:
         return node
     
     def visit_array_type(self, node: ArrayTypeNode) -> ArrayTypeNode:
