@@ -247,11 +247,36 @@ class Tokenizer:
             self.advance()
     
     def read_number(self) -> Token:
-        """Read a numeric literal"""
+        """Read a numeric literal (decimal, hexadecimal)"""
         start_pos = self.pos
         start_column = self.column
         
-        # Read integer part
+        # Check for hexadecimal numbers (0x or 0X)
+        if (self.current_char() == '0' and 
+            self.peek_char() and 
+            self.peek_char().lower() == 'x'):
+            
+            self.advance()  # consume '0'
+            self.advance()  # consume 'x' or 'X'
+            
+            # Read hexadecimal digits
+            hex_start = self.pos
+            while (self.current_char() and 
+                   (self.current_char().isdigit() or 
+                    self.current_char().lower() in 'abcdef')):
+                self.advance()
+            
+            # Check if we have at least one hex digit
+            if self.pos == hex_start:
+                # No hex digits after 0x, treat as error or invalid
+                # For now, we'll treat it as just "0" and backtrack
+                self.pos = start_pos + 1
+                return Token(TokenType.INTEGER, "0", self.line, start_column, self.filename)
+            
+            hex_value = self.source[start_pos:self.pos]
+            return Token(TokenType.INTEGER, hex_value, self.line, start_column, self.filename)
+        
+        # Read decimal integer part
         while self.current_char() and self.current_char().isdigit():
             self.advance()
         

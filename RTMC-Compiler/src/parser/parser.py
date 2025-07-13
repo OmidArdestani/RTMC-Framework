@@ -25,6 +25,13 @@ class Parser:
     def is_at_end(self) -> bool:
         """Check if we're at the end of tokens"""
         return self.current >= len(self.tokens) or self.peek().type == TokenType.EOF
+
+    def _parse_integer_value(self, token_value: str) -> int:
+        """Parse integer value handling both decimal and hexadecimal"""
+        if token_value.lower().startswith('0x'):
+            return int(token_value, 16)  # Parse as hexadecimal
+        else:
+            return int(token_value)  # Parse as decimal
     
     def peek(self) -> Token:
         """Get current token without advancing"""
@@ -296,7 +303,11 @@ class Parser:
         bit_width = None
         if self.match(TokenType.COLON):
             bit_width_token = self.consume(TokenType.INTEGER, "Expected bit width")
-            bit_width = int(bit_width_token.value)
+            bit_width_value = bit_width_token.value
+            if bit_width_value.lower().startswith('0x'):
+                bit_width = int(bit_width_value, 16)
+            else:
+                bit_width = int(bit_width_value)
         
         # Check for field initialization
         initializer = None
@@ -315,13 +326,21 @@ class Parser:
         
         # Parse core number
         core_token = self.consume(TokenType.INTEGER, "Expected core number")
-        core = int(core_token.value)
+        core_value = core_token.value
+        if core_value.lower().startswith('0x'):
+            core = int(core_value, 16)
+        else:
+            core = int(core_value)
         
         self.consume(TokenType.COMMA, "Expected ',' after core number")
         
         # Parse priority
         priority_token = self.consume(TokenType.INTEGER, "Expected priority number")
-        priority = int(priority_token.value)
+        priority_value = priority_token.value
+        if priority_value.lower().startswith('0x'):
+            priority = int(priority_value, 16)
+        else:
+            priority = int(priority_value)
         
         self.consume(TokenType.GREATER_THAN, "Expected '>' after priority")
         
@@ -435,7 +454,11 @@ class Parser:
         elif self.match(TokenType.LEFT_BRACKET):
             # Array declaration
             size_token = self.consume(TokenType.INTEGER, "Expected array size")
-            size = int(size_token.value)
+            size_value = size_token.value
+            if size_value.lower().startswith('0x'):
+                size = int(size_value, 16)
+            else:
+                size = int(size_value)
             self.consume(TokenType.RIGHT_BRACKET, "Expected ']' after array size")
             
             initializer = None
@@ -841,7 +864,12 @@ class Parser:
     def primary(self) -> ExpressionNode:
         """Parse primary expression"""
         if self.match(TokenType.INTEGER):
-            value = int(self.previous().value)
+            token_value = self.previous().value
+            # Handle hexadecimal literals
+            if token_value.lower().startswith('0x'):
+                value = int(token_value, 16)  # Parse as hexadecimal
+            else:
+                value = int(token_value)  # Parse as decimal
             return LiteralExprNode(value, "int")
         
         if self.match(TokenType.FLOAT):
