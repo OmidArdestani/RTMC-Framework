@@ -1,0 +1,33 @@
+// Test the original complex union syntax from the user requirement
+struct TestStruct1 {
+    union {
+        struct {
+            int item1:16;
+            int item2:16;
+        };
+        int value = 0xBBAD;
+    };
+};
+
+function main() {
+    struct TestStruct1 ts;
+    
+    DBG_PRINT("=== Original Syntax Test ===");
+    
+    // Test that initialization works
+    if (ts.value == 0xBBAD) {
+        DBG_PRINT("PASS: Union initialization with hex literal works");
+    } else {
+        DBG_PRINT("FAIL: Union initialization failed");
+    }
+    
+    // Test overlap with nested struct bitfields
+    ts.item1 = 0x1234;
+    if (ts.value != 0xBBAD) {
+        DBG_PRINT("PASS: Bitfield modification affected union value");
+    } else {
+        DBG_PRINT("FAIL: Bitfield modification did not affect union value");
+    }
+    
+    DBG_PRINT("=== Original Syntax Test Complete ===");
+}

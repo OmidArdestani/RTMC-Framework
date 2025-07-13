@@ -1,0 +1,23 @@
+// Debug union layout calculation
+struct DebugUnion {
+    union {
+        struct {
+            int item1:16;
+            int item2:16;
+        };
+        int value;
+    };
+};
+
+function main() {
+    struct DebugUnion du;
+    DBG_PRINT("Layout test - setting individual fields");
+    
+    // Test just setting the first bitfield
+    du.item1 = 0x1234;
+    DBG_PRINTF("After setting item1=0x1234: item1={0}, item2={1}, value={2}", du.item1, du.item2, du.value);
+    
+    // Test setting the second bitfield
+    du.item2 = 0x5678;
+    DBG_PRINTF("After setting item2=0x5678: item1={0}, item2={1}, value={2}", du.item1, du.item2, du.value);
+}

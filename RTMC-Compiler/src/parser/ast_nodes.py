@@ -177,7 +177,7 @@ class FieldNode:
     """Structure field with support for nested structs and bit-fields"""
     def __init__(self, name: str, type: 'TypeNode', bit_width: Optional[int] = None, 
                  offset: Optional[int] = None, initializer: Optional['ExpressionNode'] = None, 
-                 line: int = 0, column: int = 0):
+                 line: int = 0, column: int = 0, union_group: Optional[str] = None):
         self.name = name
         self.type = type
         self.bit_width = bit_width
@@ -186,6 +186,7 @@ class FieldNode:
         self.size = 0                # Size in bytes (calculated during analysis)
         self.initializer = initializer  # Default initialization value
         self.is_base_struct = False  # True if this field is used for inheritance
+        self.union_group = union_group  # Identifier for union grouping (fields with same group overlap)
         self.line = line
         self.column = column
 

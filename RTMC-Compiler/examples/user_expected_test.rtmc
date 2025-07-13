@@ -1,0 +1,29 @@
+// Test the exact expected behavior from the user
+struct TestStruct1 {
+    union {
+        struct {
+            int item1:16;
+            int item2:16;
+        };
+        int value;
+    };
+};
+
+function main() {
+    struct TestStruct1 ts;
+    
+    DBG_PRINT("=== User Expected Behavior Test ===");
+    
+    // Test the exact case mentioned by the user
+    ts.value = 0xAABBCCDD;
+    DBG_PRINTF("After setting value=0xAABBCCDD:");
+    DBG_PRINTF("  item1={0} (expected: 0xCCDD = 52445)", ts.item1);
+    DBG_PRINTF("  item2={0} (expected: 0xAABB = 43707)", ts.item2);
+    
+    // Verify the values match expected results
+    if (ts.item1 == 52445 && ts.item2 == 43707) {
+        DBG_PRINT("SUCCESS: Union bitfield behavior is correct!");
+    } else {
+        DBG_PRINT("FAIL: Union bitfield behavior is incorrect");
+    }
+}

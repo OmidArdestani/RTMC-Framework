@@ -63,40 +63,91 @@ class StructLayoutTable:
         current_bit_offset = 0
         max_alignment = 1
         base_struct = None
+        union_group_offsets = {}  # Track offset for each union group
+        union_group_bit_state = {}  # Track bit offset state for each union group
         
         for i, field in enumerate(struct_decl.fields):
-            field_layout = self._calculate_field_layout(field, current_offset, current_bit_offset)
-            fields[field.name] = field_layout
             
-            # Check if this is a base struct (first field that's a struct type)
-            if i == 0 and isinstance(field.type, StructTypeNode):
-                base_struct = field.type.struct_name
-                field_layout.is_base_struct = True
-                field_layout.offset = 0  # Base struct always starts at offset 0
-            
-            # Update offset for next field
-            if field.bit_width and field.bit_width > 0:
-                # Bit-field
-                current_bit_offset += field.bit_width
-                if current_bit_offset >= 8:
-                    current_offset += current_bit_offset // 8
-                    current_bit_offset = current_bit_offset % 8
+            # Handle union groups - fields in same union group share same offset
+            if field.union_group:
+                if field.union_group in union_group_offsets:
+                    # Use existing offset for this union group - all union fields share same base address
+                    union_base_offset = union_group_offsets[field.union_group]
+                    union_bit_offset = union_group_bit_state.get(field.union_group, 0)
+                    
+                    field_layout = self._calculate_field_layout(field, union_base_offset, union_bit_offset)
+                    fields[field.name] = field_layout
+                    field_layout.offset = union_base_offset  # All union fields have same base offset
+                    
+                    # Update bit offset for this union group (for consecutive bitfields in nested struct)
+                    if field.bit_width and field.bit_width > 0:
+                        union_bit_offset += field.bit_width
+                        # Don't advance the base offset for union fields - they all share the same memory
+                        union_group_bit_state[field.union_group] = union_bit_offset
+                else:
+                    # First field in this union group - establish the offset
+                    if current_bit_offset > 0:
+                        current_offset += 1  # Complete current byte
+                        current_bit_offset = 0
+                    
+                    field_alignment = self._get_field_alignment(field.type)
+                    if current_offset % field_alignment != 0:
+                        current_offset += field_alignment - (current_offset % field_alignment)
+                    
+                    union_group_offsets[field.union_group] = current_offset
+                    union_group_bit_state[field.union_group] = 0
+                    
+                    field_layout = self._calculate_field_layout(field, current_offset, 0)
+                    fields[field.name] = field_layout
+                    field_layout.offset = current_offset
+                    
+                    # Update bit offset for this union group
+                    if field.bit_width and field.bit_width > 0:
+                        union_bit_offset = field.bit_width
+                        # For union bitfields, don't advance the base offset - all fields share same memory
+                        union_group_bit_state[field.union_group] = union_bit_offset
+                        # Keep the same base offset for all union fields
+                    else:
+                        # Regular field - calculate union size but don't advance until we process all union fields
+                        field_size = field_layout.size
+                        # For now, advance the offset (this will be the union size)
+                        current_offset += field_size
+                    
+                    max_alignment = max(max_alignment, field_alignment)
             else:
-                # Regular field
-                if current_bit_offset > 0:
-                    current_offset += 1  # Complete current byte
-                    current_bit_offset = 0
+                # Regular field (not in a union group)
+                field_layout = self._calculate_field_layout(field, current_offset, current_bit_offset)
+                fields[field.name] = field_layout
                 
-                field_size = field_layout.size
-                field_alignment = self._get_field_alignment(field.type)
+                # Check if this is a base struct (first field that's a struct type)
+                if i == 0 and isinstance(field.type, StructTypeNode):
+                    base_struct = field.type.struct_name
+                    field_layout.is_base_struct = True
+                    field_layout.offset = 0  # Base struct always starts at offset 0
                 
-                # Align current offset
-                if current_offset % field_alignment != 0:
-                    current_offset += field_alignment - (current_offset % field_alignment)
-                
-                field_layout.offset = current_offset
-                current_offset += field_size
-                max_alignment = max(max_alignment, field_alignment)
+                # Update offset for next field
+                if field.bit_width and field.bit_width > 0:
+                    # Bit-field
+                    current_bit_offset += field.bit_width
+                    if current_bit_offset >= 8:
+                        current_offset += current_bit_offset // 8
+                        current_bit_offset = current_bit_offset % 8
+                else:
+                    # Regular field
+                    if current_bit_offset > 0:
+                        current_offset += 1  # Complete current byte
+                        current_bit_offset = 0
+                    
+                    field_size = field_layout.size
+                    field_alignment = self._get_field_alignment(field.type)
+                    
+                    # Align current offset
+                    if current_offset % field_alignment != 0:
+                        current_offset += field_alignment - (current_offset % field_alignment)
+                    
+                    field_layout.offset = current_offset
+                    current_offset += field_size
+                    max_alignment = max(max_alignment, field_alignment)
         
         # Final padding to align struct size
         if current_bit_offset > 0:

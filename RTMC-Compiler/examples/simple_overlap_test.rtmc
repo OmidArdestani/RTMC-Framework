@@ -1,0 +1,30 @@
+// Test union with regular fields (no bitfields)
+struct SimpleOverlap {
+    union {
+        int first;
+        int second;
+    };
+};
+
+function main() {
+    struct SimpleOverlap so;
+    
+    DBG_PRINT("=== Simple Union Overlap Test ===");
+    
+    // Test bidirectional overlap with regular int fields
+    so.first = 0x12345678;
+    if (so.second == 0x12345678) {
+        DBG_PRINT("PASS: Setting first affected second");
+    } else {
+        DBG_PRINT("FAIL: Setting first did not affect second");
+    }
+    
+    so.second = 0xAABBCCDD;
+    if (so.first == 0xAABBCCDD) {
+        DBG_PRINT("PASS: Setting second affected first");
+    } else {
+        DBG_PRINT("FAIL: Setting second did not affect first");
+    }
+    
+    DBG_PRINT("=== Simple Test Complete ===");
+}

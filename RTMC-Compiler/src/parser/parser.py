@@ -257,7 +257,7 @@ class Parser:
         
         return UnionDeclNode(name, fields, line, column, filename)
 
-    def parse_struct_union_fields(self) -> List[FieldNode]:
+    def parse_struct_union_fields(self, union_group_id=None) -> List[FieldNode]:
         """Parse struct or union fields, handling nested structs/unions"""
         fields = []
         
@@ -271,23 +271,32 @@ class Parser:
                     self.consume(TokenType.LEFT_BRACE, "Expected '{'")
                     nested_fields = []
                     while not self.check(TokenType.RIGHT_BRACE) and not self.is_at_end():
-                        nested_fields.extend(self.parse_struct_union_fields())
+                        nested_fields.extend(self.parse_struct_union_fields(union_group_id))
                     self.consume(TokenType.RIGHT_BRACE, "Expected '}' after nested struct")
                     self.consume(TokenType.SEMICOLON, "Expected ';' after nested struct")
-                    # For now, flatten the nested fields
+                    # For nested struct in union, assign union group to all fields
+                    for field in nested_fields:
+                        if union_group_id:
+                            field.union_group = union_group_id
                     fields.extend(nested_fields)
                     return fields
             elif self.check(TokenType.UNION):
                 self.advance()  # consume 'union'
                 if self.check(TokenType.LEFT_BRACE):
-                    # Anonymous union
+                    # Anonymous union - generate unique group ID
+                    union_group_counter = getattr(self, '_union_counter', 0)
+                    self._union_counter = union_group_counter + 1
+                    new_union_group_id = f"union_{union_group_counter}"
+                    
                     self.consume(TokenType.LEFT_BRACE, "Expected '{'")
                     nested_fields = []
                     while not self.check(TokenType.RIGHT_BRACE) and not self.is_at_end():
-                        nested_fields.extend(self.parse_struct_union_fields())
+                        nested_fields.extend(self.parse_struct_union_fields(new_union_group_id))
                     self.consume(TokenType.RIGHT_BRACE, "Expected '}' after nested union")
                     self.consume(TokenType.SEMICOLON, "Expected ';' after nested union")
-                    # For now, flatten the nested fields
+                    # All fields in this union share the same union group
+                    for field in nested_fields:
+                        field.union_group = new_union_group_id
                     fields.extend(nested_fields)
                     return fields
         
@@ -314,7 +323,7 @@ class Parser:
         if self.match(TokenType.ASSIGN):
             initializer = self.expression()
         
-        fields.append(FieldNode(field_name, field_type, bit_width, None, initializer, line, column))
+        fields.append(FieldNode(field_name, field_type, bit_width, None, initializer, line, column, union_group_id))
         
         self.consume(TokenType.SEMICOLON, "Expected ';' after field declaration")
         return fields

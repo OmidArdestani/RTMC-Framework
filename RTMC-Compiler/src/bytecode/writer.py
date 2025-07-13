@@ -40,7 +40,7 @@ class BytecodeWriter:
         
         for const in constants:
             if isinstance(const, int):
-                f.write(struct.pack('<Bi', 0, const))  # Type 0 = int (signed)
+                f.write(struct.pack('<BI', 0, const))  # Type 0 = int (unsigned)
             elif isinstance(const, float):
                 f.write(struct.pack('<Bf', 1, const))  # Type 1 = float
             elif isinstance(const, str):

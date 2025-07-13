@@ -214,7 +214,7 @@ class BytecodeGenerator(ASTVisitor):
         node.body.accept(self)
         
         # Ensure function returns (if no explicit return)
-        if node.return_type.type_name == 'void':
+        if self._get_type_name(node.return_type) == 'void':
             self.emit(InstructionBuilder.ret())
         
         # Restore context
