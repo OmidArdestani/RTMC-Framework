@@ -122,7 +122,7 @@ class TaskDeclNode(ASTNode):
     
     def __init__(self, name: str, core: int, priority: int, members: List[ASTNode], 
                  run_function: 'FunctionDeclNode', line: int = 0, filename: str = ""):
-        super().__init__(NodeType.TASK_DECL, line, line=line, filename=filename)
+        super().__init__(NodeType.TASK_DECL, line=line, filename=filename)
         self.name = name
         self.core = core
         self.priority = priority
