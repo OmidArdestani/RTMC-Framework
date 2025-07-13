@@ -9,7 +9,7 @@ struct SimpleUnion {
     };
 };
 
-function main() {
+main() {
     struct SimpleUnion su;
     
     // Test initial value

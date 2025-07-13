@@ -9,7 +9,7 @@ struct TestBitfield {
     };
 };
 
-function main() {
+main() {
     struct TestBitfield tb;
     
     DBG_PRINT("=== Detailed Union Bitfield Test ===");

@@ -9,7 +9,7 @@ struct TestStruct1 {
     };
 };
 
-function main() {
+main() {
     struct TestStruct1 ts;
     
     DBG_PRINT("=== User Expected Behavior Test ===");

@@ -6,7 +6,8 @@ struct SimpleOverlap {
     };
 };
 
-function main() {
+
+main() {
     struct SimpleOverlap so;
     
     DBG_PRINT("=== Simple Union Overlap Test ===");

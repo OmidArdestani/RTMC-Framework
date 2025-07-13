@@ -8,13 +8,15 @@ Task<1, 1> ReadADCTask {
     int readingId = 0;
 
     void run() {
-        HW_ADC_INIT(sensorPin);
+        // HW_ADC_INIT(sensorPin);
 
-        while(1) {
-            DBG_PRINT("reading ADC");
-            int adcValue = HW_ADC_READ(sensorPin);
-            MsgADCValueQueue.send(adcValue);
-            RTOS_DELAY_MS(1000);
-        }
+        // while(1) {
+        //     DBG_PRINT("reading ADC");
+        //     int adcValue = HW_ADC_READ(sensorPin);
+        //     MsgADCValueQueue.send(adcValue);
+        //     RTOS_DELAY_MS(1000);
+        // }
+
+        DBG_PRINTF("ADC Task started on pin {0}", sensorPin);
     }
 }

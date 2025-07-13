@@ -9,7 +9,7 @@ struct TestUnion {
     };
 };
 
-function main() {
+main() {
     struct TestUnion tu;
     
     DBG_PRINT("=== Union Memory Overlap Test ===");

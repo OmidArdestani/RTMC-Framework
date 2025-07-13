@@ -9,7 +9,7 @@ struct DebugUnion {
     };
 };
 
-function main() {
+main() {
     struct DebugUnion du;
     DBG_PRINT("Layout test - setting individual fields");
     
