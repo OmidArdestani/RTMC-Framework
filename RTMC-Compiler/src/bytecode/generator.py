@@ -839,6 +839,15 @@ class BytecodeGenerator(ASTVisitor):
                 self.emit(InstructionBuilder.dbg_print(0))
         elif func_name == 'DBG_BREAKPOINT':
             self.emit(InstructionBuilder.dbg_breakpoint())
+        elif func_name == 'DBG_PRINTF':
+            # For DBG_PRINTF, process format string and arguments
+            if len(arguments) >= 1:
+                # The format string is the first argument
+                # Arguments for formatting are the rest
+                arg_count = len(arguments) - 1
+                self.emit(InstructionBuilder.dbg_printf(0, arg_count))  # Format string ID from stack
+            else:
+                self.emit(InstructionBuilder.dbg_printf(0, 0))
         
         else:
             raise CodeGenError(f"Unknown built-in function: {func_name}")

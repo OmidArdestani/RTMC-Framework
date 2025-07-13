@@ -121,6 +121,27 @@ void main() {
 }
 ```
 
+#### Debug Output with Variables
+```c
+void main() {
+    int sensor_value = 1024;
+    float temperature = 25.5;
+    int *ptr = &sensor_value;
+    
+    // Simple debug output
+    DBG_PRINT("System initialized");
+    
+    // Formatted debug output with variables
+    DBG_PRINTF("Sensor reading: {0}", sensor_value);
+    DBG_PRINTF("Temperature: {0}°C", temperature);
+    DBG_PRINTF("Pointer address: {0}", ptr);
+    DBG_PRINTF("Multiple values: sensor={0}, temp={1}", sensor_value, temperature);
+    
+    // Simple placeholder syntax
+    DBG_PRINTF("Values: {}, {}", sensor_value, temperature);
+}
+```
+
 ## Bytecode Format
 
 The compiler generates `.vmb` files with the following structure:
@@ -230,6 +251,7 @@ The RT-Micro-C Virtual Machine uses a stack-based instruction set with comprehen
 
 ### Debug and System Instructions
 - **`DBG_PRINT`** - Print debug string by string_id
+- **`DBG_PRINTF`** - Print formatted debug string with variable substitution (format_string_id, arg_count)
 - **`DBG_BREAKPOINT`** - Trigger debugger breakpoint
 - **`SYSCALL`** - Generic system call (call_id, arguments...)
 - **`HALT`** - Halt program execution
@@ -280,4 +302,3 @@ Runtime errors are detected and reported with context:
 - **Invalid Memory Access**: Pointer operations
 - **Timeout Violations**: RTOS operations
 - **Hardware Errors**: Peripheral access failures
-```

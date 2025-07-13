@@ -317,6 +317,9 @@ class SemanticAnalyzer(ASTVisitor):
                               function_return_type='void'),
             'DBG_BREAKPOINT': Symbol('DBG_BREAKPOINT', SymbolType.FUNCTION, 'void',
                                    function_params=[], function_return_type='void'),
+            'DBG_PRINTF': Symbol('DBG_PRINTF', SymbolType.FUNCTION, 'void',
+                               function_params=[Symbol('format', SymbolType.PARAMETER, 'string')],
+                               function_return_type='void'),
         }
         
         for name, symbol in builtins.items():
@@ -708,19 +711,35 @@ class SemanticAnalyzer(ASTVisitor):
                 self.error(f"'{func_name}' is not a function", node.line, node.filename)
                 return "int"
             
-            # Check argument count
+            # Check argument count (special handling for variadic functions)
             expected_params = len(func_symbol.function_params) if func_symbol.function_params else 0
             actual_args = len(node.arguments)
             
-            if actual_args != expected_params:
-                self.error(f"Function '{func_name}' expects {expected_params} arguments, got {actual_args}", node.line)
+            # DBG_PRINTF is variadic - requires at least the format string
+            if func_name == 'DBG_PRINTF':
+                if actual_args < 1:
+                    self.error(f"Function '{func_name}' requires at least 1 argument (format string)", node.line)
+            else:
+                if actual_args != expected_params:
+                    self.error(f"Function '{func_name}' expects {expected_params} arguments, got {actual_args}", node.line)
             
             # Check argument types
             if func_symbol.function_params:
-                for i, (arg, param) in enumerate(zip(node.arguments, func_symbol.function_params)):
-                    arg_type = arg.accept(self)
-                    if not TypeChecker.can_convert(arg_type, param.data_type):
-                        self.error(f"Argument {i+1} to '{func_name}': cannot convert {arg_type} to {param.data_type}", node.line, node.filename)
+                if func_name == 'DBG_PRINTF':
+                    # For DBG_PRINTF, only check the first argument (format string)
+                    if len(node.arguments) > 0:
+                        arg_type = node.arguments[0].accept(self)
+                        if not TypeChecker.can_convert(arg_type, func_symbol.function_params[0].data_type):
+                            self.error(f"First argument to '{func_name}': cannot convert {arg_type} to {func_symbol.function_params[0].data_type}", node.line, node.filename)
+                    # Additional arguments can be any type for formatting
+                    for i in range(1, len(node.arguments)):
+                        node.arguments[i].accept(self)  # Just validate the expressions
+                else:
+                    # Normal function - check all parameters
+                    for i, (arg, param) in enumerate(zip(node.arguments, func_symbol.function_params)):
+                        arg_type = arg.accept(self)
+                        if not TypeChecker.can_convert(arg_type, param.data_type):
+                            self.error(f"Argument {i+1} to '{func_name}': cannot convert {arg_type} to {param.data_type}", node.line, node.filename)
             
             return func_symbol.function_return_type
         

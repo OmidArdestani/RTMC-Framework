@@ -94,6 +94,7 @@ class Opcode(IntEnum):
     
     # Debugging / System
     DBG_PRINT = auto()
+    DBG_PRINTF = auto()  # Formatted print with variables
     DBG_BREAKPOINT = auto()
     SYSCALL = auto()
     
@@ -358,6 +359,10 @@ class InstructionBuilder:
         return Instruction(Opcode.DBG_PRINT, [string_id])
     
     @staticmethod
+    def dbg_printf(format_string_id: int, arg_count: int) -> Instruction:
+        return Instruction(Opcode.DBG_PRINTF, [format_string_id, arg_count])
+    
+    @staticmethod
     def dbg_breakpoint() -> Instruction:
         return Instruction(Opcode.DBG_BREAKPOINT, [])
     
@@ -438,6 +443,7 @@ INSTRUCTION_INFO = {
     Opcode.HW_I2C_READ: {"operands": 2, "description": "Read I2C data"},
     
     Opcode.DBG_PRINT: {"operands": 1, "description": "Debug print"},
+    Opcode.DBG_PRINTF: {"operands": 2, "description": "Debug formatted print"},
     Opcode.DBG_BREAKPOINT: {"operands": 0, "description": "Debug breakpoint"},
     Opcode.SYSCALL: {"operands": -1, "description": "System call"},
     

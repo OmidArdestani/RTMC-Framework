@@ -778,7 +778,7 @@ class Parser:
                      TokenType.HW_I2C_READ, TokenType.RTOS_CREATE_TASK, TokenType.RTOS_DELETE_TASK,
                      TokenType.RTOS_DELAY_MS, TokenType.RTOS_SEMAPHORE_CREATE, TokenType.RTOS_SEMAPHORE_TAKE,
                      TokenType.RTOS_SEMAPHORE_GIVE, TokenType.RTOS_YIELD, TokenType.RTOS_SUSPEND_TASK,
-                     TokenType.RTOS_RESUME_TASK, TokenType.DBG_PRINT, TokenType.DBG_BREAKPOINT):
+                     TokenType.RTOS_RESUME_TASK, TokenType.DBG_PRINT, TokenType.DBG_PRINTF, TokenType.DBG_BREAKPOINT):
             name_token = self.previous()
             name = name_token.value
             return IdentifierExprNode(name, name_token.line, name_token.filename)

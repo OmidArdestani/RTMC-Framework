@@ -75,6 +75,7 @@ class TokenType(Enum):
     
     # Debug Keywords
     DBG_PRINT      = auto()
+    DBG_PRINTF     = auto()
     DBG_BREAKPOINT = auto()
     
     # Operators
@@ -203,6 +204,7 @@ class Tokenizer:
         
         # Debug functions
         'DBG_PRINT': TokenType.DBG_PRINT,
+        'DBG_PRINTF': TokenType.DBG_PRINTF,
         'DBG_BREAKPOINT': TokenType.DBG_BREAKPOINT,
     }
     

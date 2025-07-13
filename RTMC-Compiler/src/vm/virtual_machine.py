@@ -401,6 +401,7 @@ class VirtualMachine:
             
             # Debug instructions
             Opcode.DBG_PRINT: self._handle_dbg_print,
+            Opcode.DBG_PRINTF: self._handle_dbg_printf,
             Opcode.DBG_BREAKPOINT: self._handle_dbg_breakpoint,
             
             Opcode.HALT: self._handle_halt,
@@ -1215,6 +1216,44 @@ class VirtualMachine:
             print(f"DEBUG: {self.program.strings[string_id]}")
         else:
             print(f"DEBUG: <invalid string {string_id}>")
+    
+    def _handle_dbg_printf(self, instruction: Instruction):
+        """Handle DBG_PRINTF instruction with variable formatting"""
+        format_string_id = instruction.operands[0]
+        arg_count = instruction.operands[1]
+        
+        # Pop arguments from stack (in reverse order)
+        args = []
+        for _ in range(arg_count):
+            args.append(self._pop())
+        args.reverse()  # Restore correct order
+        
+        # Get format string
+        if format_string_id == 0:
+            # Format string is on stack
+            format_string_id = self._pop()
+        
+        if format_string_id < len(self.program.strings):
+            format_string = self.program.strings[format_string_id]
+            try:
+                # Simple formatting - replace {0}, {1}, etc. with arguments
+                output = format_string
+                for i, arg in enumerate(args):
+                    placeholder = "{" + str(i) + "}"
+                    if placeholder in output:
+                        output = output.replace(placeholder, str(arg))
+                
+                # Also support simple {} placeholders in order
+                arg_index = 0
+                while "{}" in output and arg_index < len(args):
+                    output = output.replace("{}", str(args[arg_index]), 1)
+                    arg_index += 1
+                
+                print(f"DEBUG: {output}")
+            except Exception as e:
+                print(f"DEBUG: <formatting error: {e}>")
+        else:
+            print(f"DEBUG: <invalid format string {format_string_id}>")
     
     def _handle_dbg_breakpoint(self, instruction: Instruction):
         """Handle DBG_BREAKPOINT instruction"""
