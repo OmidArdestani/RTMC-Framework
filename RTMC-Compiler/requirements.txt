@@ -1,7 +1,7 @@
 # RT-Micro-C RTOS Language Compiler Requirements
 
-# No external dependencies required for basic functionality
-# All components are implemented in pure Python
+# Core dependencies
+ply>=3.11             # Python Lex-Yacc for parsing
 
 # Optional dependencies for enhanced functionality:
 # pytest>=6.0.0        # For running tests

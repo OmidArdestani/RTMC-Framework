@@ -44,6 +44,11 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 
+# PLY (Python Lex-Yacc) generated files
+parser.out
+parsetab.py
+lextab.py
+
 # Environments
 .env
 .venv

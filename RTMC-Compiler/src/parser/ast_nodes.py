@@ -163,12 +163,15 @@ class ArrayDeclNode(ASTNode):
     """Array declaration node for fixed-length arrays"""
     
     def __init__(self, name: str, element_type: 'TypeNode', size: int, 
-                 initializer: Optional['ExpressionNode'] = None, line: int = 0):
+                 initializer: Optional['ExpressionNode'] = None, line: int = 0,
+                 union_group: Optional[str] = None, bit_width: Optional[int] = None):
         super().__init__(NodeType.ARRAY_DECL, line)
         self.name = name
         self.element_type = element_type
         self.size = size
         self.initializer = initializer
+        self.union_group = union_group  # For struct fields that are part of a union
+        self.bit_width = bit_width      # For bitfield support
     
     def accept(self, visitor):
         return visitor.visit_array_decl(self)
@@ -195,12 +198,15 @@ class VariableDeclNode(ASTNode):
     """Variable declaration node"""
     
     def __init__(self, name: str, type: 'TypeNode', initializer: Optional['ExpressionNode'] = None, 
-                 is_const: bool = False, line: int = 0, column: int = 0, filename: str = ""):
+                 is_const: bool = False, line: int = 0, column: int = 0, filename: str = "",
+                 union_group: Optional[str] = None, bit_width: Optional[int] = None):
         super().__init__(NodeType.VARIABLE_DECL, line, column, filename)
         self.name = name
         self.type = type
         self.initializer = initializer
         self.is_const = is_const
+        self.union_group = union_group  # For struct fields that are part of a union
+        self.bit_width = bit_width      # For bitfield support
     
     def accept(self, visitor):
         return visitor.visit_variable_decl(self)

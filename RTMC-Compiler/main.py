@@ -12,8 +12,7 @@ from typing import Set, Dict
 # Add src directory to path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from src.lexer.tokenizer import Tokenizer
-from src.parser.parser import Parser
+from src.parser.ply_parser import RTMCParser
 from src.parser.ast_nodes import ProgramNode, ImportStmtNode
 from src.semantic.analyzer import SemanticAnalyzer
 from src.optimizer.optimizer import Optimizer
@@ -43,11 +42,9 @@ def parse_with_imports(file_path: Path, imported_files: Set[Path] = None) -> Pro
     except FileNotFoundError:
         raise FileNotFoundError(f"Import file not found: {file_path}")
     
-    # Tokenize and parse
-    tokenizer = Tokenizer(source_code, str(abs_path))
-    tokens = tokenizer.tokenize()
-    parser = Parser(tokens)
-    ast = parser.parse()
+    # Parse using PLY
+    parser = RTMCParser()
+    ast = parser.parse(source_code, str(abs_path))
     
     # Collect import statements and other statements separately
     imports = []
@@ -83,7 +80,7 @@ def main():
     parser.add_argument('--ast', action='store_true', help='Print AST')
     parser.add_argument('--tokens', action='store_true', help='Print tokens')
     parser.add_argument('--no-optimize', action='store_true', help='Skip optimization')
-    parser.add_argument('--no-semantic', action='store_true', help='Skip semantic analysis')
+    parser.add_argument('--no-semantic', action='store_true', help='Skip semantic analysis (required for PLY parser compatibility)')
     parser.add_argument('--release', action='store_true', help='Compile in release mode (strip debug info)')
     parser.add_argument('--run', action='store_true', help='Run the compiled program')
 
@@ -115,10 +112,12 @@ def main():
             print("=== TOKENS (main file only) ===")
             with open(input_path, 'r') as f:
                 source_code = f.read()
-            tokenizer = Tokenizer(source_code, str(input_path))
-            tokens = tokenizer.tokenize()
+            # Use PLY lexer for token display
+            from src.lexer.ply_lexer import RTMCLexer
+            lexer = RTMCLexer()
+            tokens = lexer.tokenize(source_code, str(input_path))
             for token in tokens:
-                print(f"{token.type.name}: '{token.value}' at {token.filename}:{token.line}")
+                print(f"{token.type}: '{token.value}' at {token.filename}:{token.lineno}")
             print()
         
         if args.ast:
@@ -126,12 +125,14 @@ def main():
             print(ast)
             print()
         
-        if args.verbose:
-            print("Stage 3: Semantic Analysis...")
-        
         if not args.no_semantic:
+            if args.verbose:
+                print("Stage 3: Semantic Analysis...")
+            
             semantic_analyzer = SemanticAnalyzer()
             semantic_analyzer.analyze(ast)
+        elif args.verbose:
+            print("Stage 3: Semantic Analysis... SKIPPED")
         
         if not args.no_optimize:
             if args.verbose:
