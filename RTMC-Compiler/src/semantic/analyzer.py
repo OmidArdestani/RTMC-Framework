@@ -102,7 +102,19 @@ class TypeChecker:
     @staticmethod
     def is_condition_type(type_name: str) -> bool:
         """Check if type can be used in boolean conditions"""
-        return type_name in {'int', 'float', 'char', 'bool'}
+        return type_name in {'int', 'float', 'char', 'bool'} or TypeChecker.is_pointer_type(type_name)
+    
+    @staticmethod
+    def is_pointer_type(type_name: str) -> bool:
+        """Check if type is a pointer type"""
+        return type_name.endswith('*')
+    
+    @staticmethod
+    def get_pointer_base_type(type_name: str) -> str:
+        """Get the base type of a pointer (remove one level of indirection)"""
+        if TypeChecker.is_pointer_type(type_name):
+            return type_name[:-1]
+        return type_name
     
     @staticmethod
     def can_convert(from_type: str, to_type: str) -> bool:
@@ -117,6 +129,21 @@ class TypeChecker:
         # String conversions
         if from_type == 'string' and to_type == 'string':
             return True
+        
+        # Pointer conversions
+        if TypeChecker.is_pointer_type(from_type) and TypeChecker.is_pointer_type(to_type):
+            # void* can be converted to any pointer type and vice versa
+            if from_type == 'void*' or to_type == 'void*':
+                return True
+            # Same pointer types
+            if from_type == to_type:
+                return True
+        
+        # Address-of can be assigned to pointer
+        if TypeChecker.is_pointer_type(to_type):
+            base_type = TypeChecker.get_pointer_base_type(to_type)
+            if from_type == base_type:
+                return True
         
         return False
     
@@ -290,6 +317,9 @@ class SemanticAnalyzer(ASTVisitor):
                               function_return_type='void'),
             'DBG_BREAKPOINT': Symbol('DBG_BREAKPOINT', SymbolType.FUNCTION, 'void',
                                    function_params=[], function_return_type='void'),
+            'DBG_PRINTF': Symbol('DBG_PRINTF', SymbolType.FUNCTION, 'void',
+                               function_params=[Symbol('format', SymbolType.PARAMETER, 'string')],
+                               function_return_type='void'),
         }
         
         for name, symbol in builtins.items():
@@ -350,9 +380,14 @@ class SemanticAnalyzer(ASTVisitor):
             return type_node.type_name
         elif isinstance(type_node, StructTypeNode):
             return f"struct {type_node.struct_name}"
+        elif isinstance(type_node, UnionTypeNode):
+            return f"union {type_node.union_name}"
         elif isinstance(type_node, ArrayTypeNode):
             element_type = self.get_type_from_node(type_node.element_type)
             return f"{element_type}[]"
+        elif isinstance(type_node, PointerTypeNode):
+            base_type = self.get_type_from_node(type_node.base_type)
+            return base_type + '*' * type_node.pointer_level
         else:
             return "unknown"
     
@@ -425,7 +460,26 @@ class SemanticAnalyzer(ASTVisitor):
                              struct_fields=field_symbols)
         
         self.symbol_table.define(struct_symbol)
-    
+
+    def visit_union_decl(self, node: UnionDeclNode):
+        """Visit union declaration"""
+        union_name = node.name
+        
+        # Check if union already exists
+        if self.symbol_table.exists(union_name):
+            self.error(f"Union '{union_name}' already defined", node.line, node.filename)
+        
+        # Create union symbol with field information
+        field_symbols = {}
+        for field in node.fields:
+            field_type = self.get_type_from_node(field.type)
+            field_symbols[field.name] = Symbol(field.name, SymbolType.VARIABLE, field_type)
+        
+        union_symbol = Symbol(union_name, SymbolType.STRUCT, f"union {union_name}",
+                             struct_fields=field_symbols)
+        
+        self.symbol_table.define(union_symbol)
+
     def visit_task_decl(self, node: TaskDeclNode):
         """Visit task declaration"""
         task_name = node.name
@@ -509,7 +563,15 @@ class SemanticAnalyzer(ASTVisitor):
             self.error(f"Undefined struct '{node.struct_name}'", node.line, node.filename)
         
         return f"struct {node.struct_name}"
-    
+
+    def visit_union_type(self, node: UnionTypeNode):
+        """Visit union type node"""
+        union_symbol = self.symbol_table.get(node.union_name)
+        if not union_symbol or union_symbol.symbol_type != SymbolType.STRUCT:
+            self.error(f"Undefined union '{node.union_name}'", node.line, node.filename)
+        
+        return f"union {node.union_name}"
+
     def visit_array_type(self, node: ArrayTypeNode):
         """Visit array type node"""
         element_type = node.element_type.accept(self)
@@ -678,19 +740,35 @@ class SemanticAnalyzer(ASTVisitor):
                 self.error(f"'{func_name}' is not a function", node.line, node.filename)
                 return "int"
             
-            # Check argument count
+            # Check argument count (special handling for variadic functions)
             expected_params = len(func_symbol.function_params) if func_symbol.function_params else 0
             actual_args = len(node.arguments)
             
-            if actual_args != expected_params:
-                self.error(f"Function '{func_name}' expects {expected_params} arguments, got {actual_args}", node.line)
+            # DBG_PRINTF is variadic - requires at least the format string
+            if func_name == 'DBG_PRINTF':
+                if actual_args < 1:
+                    self.error(f"Function '{func_name}' requires at least 1 argument (format string)", node.line)
+            else:
+                if actual_args != expected_params:
+                    self.error(f"Function '{func_name}' expects {expected_params} arguments, got {actual_args}", node.line)
             
             # Check argument types
             if func_symbol.function_params:
-                for i, (arg, param) in enumerate(zip(node.arguments, func_symbol.function_params)):
-                    arg_type = arg.accept(self)
-                    if not TypeChecker.can_convert(arg_type, param.data_type):
-                        self.error(f"Argument {i+1} to '{func_name}': cannot convert {arg_type} to {param.data_type}", node.line, node.filename)
+                if func_name == 'DBG_PRINTF':
+                    # For DBG_PRINTF, only check the first argument (format string)
+                    if len(node.arguments) > 0:
+                        arg_type = node.arguments[0].accept(self)
+                        if not TypeChecker.can_convert(arg_type, func_symbol.function_params[0].data_type):
+                            self.error(f"First argument to '{func_name}': cannot convert {arg_type} to {func_symbol.function_params[0].data_type}", node.line, node.filename)
+                    # Additional arguments can be any type for formatting
+                    for i in range(1, len(node.arguments)):
+                        node.arguments[i].accept(self)  # Just validate the expressions
+                else:
+                    # Normal function - check all parameters
+                    for i, (arg, param) in enumerate(zip(node.arguments, func_symbol.function_params)):
+                        arg_type = arg.accept(self)
+                        if not TypeChecker.can_convert(arg_type, param.data_type):
+                            self.error(f"Argument {i+1} to '{func_name}': cannot convert {arg_type} to {param.data_type}", node.line, node.filename)
             
             return func_symbol.function_return_type
         
@@ -892,3 +970,55 @@ class SemanticAnalyzer(ASTVisitor):
         # Extract element type from array type (e.g., "int[5]" -> "int")
         element_type = array_type.split('[')[0]
         return element_type
+    
+    def visit_pointer_type(self, node: PointerTypeNode):
+        """Visit pointer type node"""
+        base_type = node.base_type.accept(self)
+        
+        # Build pointer type string with correct level of indirection
+        pointer_type = base_type + '*' * node.pointer_level
+        return pointer_type
+    
+    def visit_pointer_decl(self, node: PointerDeclNode):
+        """Visit pointer declaration node"""
+        # Get the pointer type
+        pointer_type = node.type.accept(self)
+        
+        # Check if variable already exists in current scope
+        if node.name in self.symbol_table.symbols:
+            self.error(f"Pointer '{node.name}' already defined in this scope", node.line, node.filename)
+        
+        # Check initializer type if present
+        if node.initializer:
+            init_type = node.initializer.accept(self)
+            if not TypeChecker.can_convert(init_type, pointer_type):
+                self.error(f"Cannot initialize {pointer_type} with {init_type}", node.line, node.filename)
+        
+        # Create pointer symbol
+        pointer_symbol = Symbol(node.name, SymbolType.VARIABLE, pointer_type, is_const=node.is_const)
+        self.symbol_table.define(pointer_symbol)
+        
+        return pointer_type
+    
+    def visit_address_of(self, node: AddressOfNode):
+        """Visit address-of expression (&)"""
+        operand_type = node.operand.accept(self)
+        
+        # Check that operand is an lvalue (addressable)
+        if not isinstance(node.operand, (IdentifierExprNode, MemberExprNode, ArrayAccessNode)):
+            self.error("Address-of operator requires an lvalue operand", node.line, node.filename)
+        
+        # Return pointer to the operand type
+        return operand_type + '*'
+    
+    def visit_dereference(self, node: DereferenceNode):
+        """Visit dereference expression (*)"""
+        operand_type = node.operand.accept(self)
+        
+        # Check that operand is a pointer type
+        if not operand_type.endswith('*'):
+            self.error(f"Cannot dereference non-pointer type {operand_type}", node.line, node.filename)
+            return "int"  # Return default type to continue analysis
+        
+        # Return the base type (remove one level of pointer indirection)
+        return operand_type[:-1]

@@ -1,0 +1,56 @@
+/* 
+ * Example demonstrating the new RT-Micro-C features
+ * This example shows struct inheritance, pointers, and bit-fields
+ */
+
+// Base struct for inheritance
+struct SensorBase {
+    int id;
+    char status;
+};
+
+// Derived struct using inheritance
+struct TemperatureSensor {
+    SensorBase base;  // C-style inheritance
+    float temperature;
+    int calibration_offset;
+};
+
+// Struct with bit-fields
+struct ConfigRegister {
+    int enable    : 1;
+    int mode      : 2;
+    int speed     : 4;
+    int reserved  : 25;
+};
+
+// Function demonstrating pointer usage
+void test_pointers() {
+    int value = 42;
+    int *ptr = &value;
+    int **double_ptr = &ptr;
+    
+    int result = **double_ptr;  // Should be 42
+}
+
+// Function demonstrating struct features
+void test_structs() {
+    TemperatureSensor sensor;
+    sensor.base.id = 1;
+    sensor.base.status = 'A';
+    sensor.temperature = 25.5;
+    sensor.calibration_offset = 0;
+    
+    ConfigRegister config;
+    config.enable = 1;
+    config.mode = 2;
+    config.speed = 8;
+    config.reserved = 0;
+}
+
+// Main function
+int main() {
+    test_pointers();
+    test_structs();
+    return 0;
+}

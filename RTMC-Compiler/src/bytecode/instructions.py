@@ -26,6 +26,11 @@ class Opcode(IntEnum):
     LOAD_STRUCT_MEMBER_BIT = auto()
     STORE_STRUCT_MEMBER_BIT = auto()
     
+    # Pointer Instructions (NEW)
+    LOAD_ADDR = auto()      # Load address of variable
+    LOAD_DEREF = auto()     # Dereference pointer on stack
+    STORE_DEREF = auto()    # Store value at pointer address
+    
     # Arithmetic and Logical
     ADD = auto()
     SUB = auto()
@@ -89,19 +94,22 @@ class Opcode(IntEnum):
     
     # Debugging / System
     DBG_PRINT = auto()
+    DBG_PRINTF = auto()  # Formatted print with variables
     DBG_BREAKPOINT = auto()
     SYSCALL = auto()
     
     # Special
     HALT = auto()
     NOP = auto()
+    COMMENT = auto()  # NEW: For debug comments
 
 @dataclass
 class Instruction:
-    """A single bytecode instruction"""
+    """A single bytecode instruction with enhanced debug info"""
     opcode: Opcode
     operands: List[Any]
     line: Optional[int] = None
+    column: Optional[int] = None  # NEW: Column information for better debug info
     
     def __str__(self):
         if self.operands:
@@ -134,8 +142,8 @@ class InstructionBuilder:
         return Instruction(Opcode.JUMPIF_FALSE, [cond_addr, jump_addr])
     
     @staticmethod
-    def call(func_id: int) -> Instruction:
-        return Instruction(Opcode.CALL, [func_id])
+    def call(func_id: int, param_count: int = 0) -> Instruction:
+        return Instruction(Opcode.CALL, [func_id, param_count])
     
     @staticmethod
     def ret() -> Instruction:
@@ -168,6 +176,23 @@ class InstructionBuilder:
     @staticmethod
     def store_struct_member_bit(base_addr: int, byte_offset: int, bit_offset: int, width: int) -> Instruction:
         return Instruction(Opcode.STORE_STRUCT_MEMBER_BIT, [base_addr, byte_offset, bit_offset, width])
+    
+    # NEW: Pointer instruction builders
+    @staticmethod
+    def load_addr(address: int) -> Instruction:
+        return Instruction(Opcode.LOAD_ADDR, [address])
+    
+    @staticmethod
+    def load_deref() -> Instruction:
+        return Instruction(Opcode.LOAD_DEREF, [])
+    
+    @staticmethod
+    def store_deref() -> Instruction:
+        return Instruction(Opcode.STORE_DEREF, [])
+    
+    @staticmethod
+    def comment(text: str) -> Instruction:
+        return Instruction(Opcode.COMMENT, [text])
     
     @staticmethod
     def add() -> Instruction:
@@ -334,6 +359,10 @@ class InstructionBuilder:
         return Instruction(Opcode.DBG_PRINT, [string_id])
     
     @staticmethod
+    def dbg_printf(format_string_id: int, arg_count: int) -> Instruction:
+        return Instruction(Opcode.DBG_PRINTF, [format_string_id, arg_count])
+    
+    @staticmethod
     def dbg_breakpoint() -> Instruction:
         return Instruction(Opcode.DBG_BREAKPOINT, [])
     
@@ -354,7 +383,7 @@ INSTRUCTION_INFO = {
     Opcode.JUMP: {"operands": 1, "description": "Unconditional jump"},
     Opcode.JUMPIF_TRUE: {"operands": 2, "description": "Jump if condition is true"},
     Opcode.JUMPIF_FALSE: {"operands": 2, "description": "Jump if condition is false"},
-    Opcode.CALL: {"operands": 1, "description": "Call function"},
+    Opcode.CALL: {"operands": 2, "description": "Call function with parameter count"},
     Opcode.RET: {"operands": 0, "description": "Return from function"},
     
     Opcode.LOAD_CONST: {"operands": 1, "description": "Load constant"},
@@ -414,6 +443,7 @@ INSTRUCTION_INFO = {
     Opcode.HW_I2C_READ: {"operands": 2, "description": "Read I2C data"},
     
     Opcode.DBG_PRINT: {"operands": 1, "description": "Debug print"},
+    Opcode.DBG_PRINTF: {"operands": 2, "description": "Debug formatted print"},
     Opcode.DBG_BREAKPOINT: {"operands": 0, "description": "Debug breakpoint"},
     Opcode.SYSCALL: {"operands": -1, "description": "System call"},
     

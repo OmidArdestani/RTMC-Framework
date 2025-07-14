@@ -1,0 +1,40 @@
+// Debug Printf Demo - showcasing variable printing in RT-Micro-C
+// This demonstrates the new DBG_PRINTF functionality
+
+void main() {
+    // Various data types
+    int count = 42;
+    float pi = 3.14;
+    char letter = 'A';
+    
+    // Pointer examples
+    int value = 100;
+    int *ptr = &value;
+    int **double_ptr = &ptr;
+    
+    // Basic DBG_PRINT (old way)
+    DBG_PRINT("=== Debug Printf Demo ===");
+    
+    // New DBG_PRINTF with variable substitution
+    DBG_PRINTF("Integer value: {0}", count);
+    DBG_PRINTF("Float value: {0}", pi);
+    DBG_PRINTF("Character: {0}", letter);
+    
+    // Pointer demonstrations
+    DBG_PRINTF("Original value: {0}", value);
+    DBG_PRINTF("Pointer address: {0}", ptr);
+    DBG_PRINTF("Dereferenced pointer: {0}", *ptr);
+    DBG_PRINTF("Double pointer value: {0}", **double_ptr);
+    
+    // Multiple variables
+    DBG_PRINTF("Count={0}, Pi={1}", count, pi);
+    DBG_PRINTF("All values: count={0}, pi={1}, letter={2}", count, pi, letter);
+    
+    // Simple placeholder syntax (filled in order)
+    DBG_PRINTF("Simple: {}, {}, {}", count, pi, letter);
+    
+    // Mixed syntax
+    DBG_PRINTF("Mixed: first={0}, second={}, third={2}", count, pi, letter);
+    
+    DBG_PRINT("Demo completed successfully!");
+}

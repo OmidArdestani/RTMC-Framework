@@ -28,8 +28,9 @@ class TokenType(Enum):
     VOID        = auto()
     CONST       = auto()
     STRUCT      = auto()
-    TASK        = auto()  # New Task keyword
-    MESSAGE     = auto()  # New Message keyword
+    UNION       = auto()
+    TASK        = auto()  # Task keyword
+    MESSAGE     = auto()  # Message keyword
     IMPORT      = auto()  # Import keyword
     
     # Message operations
@@ -75,6 +76,7 @@ class TokenType(Enum):
     
     # Debug Keywords
     DBG_PRINT      = auto()
+    DBG_PRINTF     = auto()
     DBG_BREAKPOINT = auto()
     
     # Operators
@@ -154,6 +156,7 @@ class Tokenizer:
         'void': TokenType.VOID,
         'const': TokenType.CONST,
         'struct': TokenType.STRUCT,
+        'union': TokenType.UNION,
         'Task': TokenType.TASK,
         'message': TokenType.MESSAGE,
         'import': TokenType.IMPORT,
@@ -203,6 +206,7 @@ class Tokenizer:
         
         # Debug functions
         'DBG_PRINT': TokenType.DBG_PRINT,
+        'DBG_PRINTF': TokenType.DBG_PRINTF,
         'DBG_BREAKPOINT': TokenType.DBG_BREAKPOINT,
     }
     

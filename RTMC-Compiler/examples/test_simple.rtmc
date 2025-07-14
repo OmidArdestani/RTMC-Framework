@@ -1,0 +1,12 @@
+void main() {
+    int value = 25;
+    int *ptr = &value;
+    
+    DBG_PRINTF("Value: {0}", *ptr);
+    
+    if (*ptr < 20) {
+        DBG_PRINT("Less than 20");
+    } else {
+        DBG_PRINT("20 or more");
+    }
+}

@@ -14,11 +14,13 @@ class NodeType(Enum):
     PROGRAM        = auto()
     FUNCTION_DECL  = auto()
     STRUCT_DECL    = auto()
+    UNION_DECL     = auto()
     VARIABLE_DECL  = auto()
     ARRAY_DECL     = auto()
     TASK_DECL      = auto()
     MESSAGE_DECL   = auto()
     IMPORT_STMT    = auto()
+    POINTER_DECL   = auto()  # Pointer declaration
     
     # Statements
     BLOCK_STMT      = auto()
@@ -43,18 +45,23 @@ class NodeType(Enum):
     MESSAGE_SEND    = auto()
     MESSAGE_RECV    = auto()
     POSTFIX_EXPR    = auto()  # For ++ and --
+    ADDRESS_OF      = auto()  # Address-of operator &
+    DEREFERENCE     = auto()  # Dereference operator *
     
     # Types
     PRIMITIVE_TYPE = auto()
     STRUCT_TYPE    = auto()
+    UNION_TYPE     = auto()
     ARRAY_TYPE     = auto()
+    POINTER_TYPE   = auto()  # Pointer type
 
 class ASTNode(ABC):
     """Base class for all AST nodes"""
     
-    def __init__(self, node_type: NodeType, line: int = 0, filename: str = ""):
+    def __init__(self, node_type: NodeType, line: int = 0, column: int = 0, filename: str = ""):
         self.node_type = node_type
         self.line = line
+        self.column = column  # Enhanced line tracking for better debug info
         self.filename = filename
     
     @abstractmethod
@@ -71,7 +78,7 @@ class ProgramNode(ASTNode):
     """Root node of the AST"""
     
     def __init__(self, declarations: List[ASTNode], line: int = 0, filename: str = ""):
-        super().__init__(NodeType.PROGRAM, line, filename)
+        super().__init__(NodeType.PROGRAM, line, filename=filename)
         self.declarations = declarations
     
     def accept(self, visitor):
@@ -81,8 +88,8 @@ class FunctionDeclNode(ASTNode):
     """Function declaration node"""
     
     def __init__(self, name: str, return_type: 'TypeNode', parameters: List['ParameterNode'], 
-                 body: 'BlockStmtNode', line: int = 0):
-        super().__init__(NodeType.FUNCTION_DECL, line)
+                 body: 'BlockStmtNode', line: int = 0, filename: str = ""):
+        super().__init__(NodeType.FUNCTION_DECL, line, filename=filename)
         self.name = name
         self.return_type = return_type
         self.parameters = parameters
@@ -101,20 +108,36 @@ class ParameterNode:
 class StructDeclNode(ASTNode):
     """Structure declaration node"""
     
-    def __init__(self, name: str, fields: List['FieldNode'], line: int = 0):
-        super().__init__(NodeType.STRUCT_DECL, line)
+    def __init__(self, name: str, fields: List['FieldNode'], line: int = 0, column: int = 0, filename: str = ""):
+        super().__init__(NodeType.STRUCT_DECL, line, column, filename)
         self.name = name
         self.fields = fields
+        self.base_struct = None  # For C-style inheritance via first field
+        self.total_size = 0      # Computed size during semantic analysis
+        self.field_offsets = {}  # Dict mapping field_name -> offset
     
     def accept(self, visitor):
         return visitor.visit_struct_decl(self)
+
+class UnionDeclNode(ASTNode):
+    """Union declaration node"""
+    
+    def __init__(self, name: str, fields: List['FieldNode'], line: int = 0, column: int = 0, filename: str = ""):
+        super().__init__(NodeType.UNION_DECL, line, column, filename)
+        self.name = name
+        self.fields = fields
+        self.total_size = 0      # Computed size during semantic analysis (max of all field sizes)
+        self.field_offsets = {}  # Dict mapping field_name -> offset (all start at 0 for unions)
+    
+    def accept(self, visitor):
+        return visitor.visit_union_decl(self)
 
 class TaskDeclNode(ASTNode):
     """Task declaration node for RT-Micro-C"""
     
     def __init__(self, name: str, core: int, priority: int, members: List[ASTNode], 
-                 run_function: 'FunctionDeclNode', line: int = 0):
-        super().__init__(NodeType.TASK_DECL, line)
+                 run_function: 'FunctionDeclNode', line: int = 0, filename: str = ""):
+        super().__init__(NodeType.TASK_DECL, line=line, filename=filename)
         self.name = name
         self.core = core
         self.priority = priority
@@ -151,21 +174,27 @@ class ArrayDeclNode(ASTNode):
 
 @dataclass
 class FieldNode:
-    """Structure field with support for nested structs"""
+    """Structure field with support for nested structs and bit-fields"""
     def __init__(self, name: str, type: 'TypeNode', bit_width: Optional[int] = None, 
-                 offset: Optional[int] = None, line: int = 0):
+                 offset: Optional[int] = None, initializer: Optional['ExpressionNode'] = None, 
+                 line: int = 0, column: int = 0):
         self.name = name
         self.type = type
         self.bit_width = bit_width
-        self.offset = offset  # Calculated during semantic analysis
+        self.offset = offset         # Byte offset from struct base
+        self.bit_offset = 0          # Bit offset within byte (for bit-fields)
+        self.size = 0                # Size in bytes (calculated during analysis)
+        self.initializer = initializer  # Default initialization value
+        self.is_base_struct = False  # True if this field is used for inheritance
         self.line = line
+        self.column = column
 
 class VariableDeclNode(ASTNode):
     """Variable declaration node"""
     
     def __init__(self, name: str, type: 'TypeNode', initializer: Optional['ExpressionNode'] = None, 
-                 is_const: bool = False, line: int = 0, filename: str = ""):
-        super().__init__(NodeType.VARIABLE_DECL, line, filename)
+                 is_const: bool = False, line: int = 0, column: int = 0, filename: str = ""):
+        super().__init__(NodeType.VARIABLE_DECL, line, column, filename)
         self.name = name
         self.type = type
         self.initializer = initializer
@@ -200,16 +229,37 @@ class StructTypeNode(TypeNode):
     def accept(self, visitor):
         return visitor.visit_struct_type(self)
 
+class UnionTypeNode(TypeNode):
+    """Union type node"""
+    
+    def __init__(self, union_name: str, line: int = 0):
+        super().__init__(NodeType.UNION_TYPE, line)
+        self.union_name = union_name
+    
+    def accept(self, visitor):
+        return visitor.visit_union_type(self)
+
 class ArrayTypeNode(TypeNode):
     """Array type node"""
     
-    def __init__(self, element_type: TypeNode, size: Optional[int] = None, line: int = 0):
-        super().__init__(NodeType.ARRAY_TYPE, line)
+    def __init__(self, element_type: TypeNode, size: Optional[int] = None, line: int = 0, column: int = 0):
+        super().__init__(NodeType.ARRAY_TYPE, line, column)
         self.element_type = element_type
         self.size = size
     
     def accept(self, visitor):
         return visitor.visit_array_type(self)
+
+class PointerTypeNode(TypeNode):
+    """Pointer type node"""
+    
+    def __init__(self, base_type: TypeNode, pointer_level: int = 1, line: int = 0, column: int = 0):
+        super().__init__(NodeType.POINTER_TYPE, line, column)
+        self.base_type = base_type
+        self.pointer_level = pointer_level  # 1 = *, 2 = ** etc.
+    
+    def accept(self, visitor):
+        return visitor.visit_pointer_type(self)
 
 # Statement nodes
 
@@ -392,7 +442,7 @@ class IdentifierExprNode(ExpressionNode):
     """Identifier expression node"""
     
     def __init__(self, name: str, line: int = 0, filename: str = ""):
-        super().__init__(NodeType.IDENTIFIER_EXPR, line, filename)
+        super().__init__(NodeType.IDENTIFIER_EXPR, line, filename=filename)
         self.name = name
     
     def accept(self, visitor):
@@ -444,13 +494,49 @@ class MessageSendNode(ExpressionNode):
 class MessageRecvNode(ExpressionNode):
     """Message receive expression node"""
     
-    def __init__(self, channel: str, timeout: Optional['ExpressionNode'] = None, line: int = 0):
-        super().__init__(NodeType.MESSAGE_RECV, line)
+    def __init__(self, channel: str, timeout: Optional['ExpressionNode'] = None, line: int = 0, column: int = 0):
+        super().__init__(NodeType.MESSAGE_RECV, line, column)
         self.channel = channel
         self.timeout = timeout  # Optional timeout expression
     
     def accept(self, visitor):
         return visitor.visit_message_recv(self)
+
+class AddressOfNode(ExpressionNode):
+    """Address-of expression node (&variable)"""
+    
+    def __init__(self, operand: ExpressionNode, line: int = 0, column: int = 0):
+        super().__init__(NodeType.ADDRESS_OF, line, column)
+        self.operand = operand
+    
+    def accept(self, visitor):
+        return visitor.visit_address_of(self)
+
+class DereferenceNode(ExpressionNode):
+    """Dereference expression node (*pointer)"""
+    
+    def __init__(self, operand: ExpressionNode, line: int = 0, column: int = 0):
+        super().__init__(NodeType.DEREFERENCE, line, column)
+        self.operand = operand
+    
+    def accept(self, visitor):
+        return visitor.visit_dereference(self)
+
+class PointerDeclNode(VariableDeclNode):
+    """Pointer declaration node"""
+    
+    def __init__(self, name: str, base_type: 'TypeNode', pointer_level: int = 1,
+                 initializer: Optional['ExpressionNode'] = None, 
+                 is_const: bool = False, line: int = 0, column: int = 0, filename: str = ""):
+        # Create pointer type for the base class
+        pointer_type = PointerTypeNode(base_type, pointer_level, line, column)
+        super().__init__(name, pointer_type, initializer, is_const, line, column, filename)
+        self.node_type = NodeType.POINTER_DECL
+        self.base_type = base_type
+        self.pointer_level = pointer_level
+    
+    def accept(self, visitor):
+        return visitor.visit_pointer_decl(self)
 
 # Visitor interface
 
@@ -465,6 +551,9 @@ class ASTVisitor(ABC):
     
     @abstractmethod
     def visit_struct_decl(self, node: StructDeclNode): pass
+    
+    @abstractmethod
+    def visit_union_decl(self, node: UnionDeclNode): pass
     
     @abstractmethod
     def visit_task_decl(self, node: TaskDeclNode): pass
@@ -488,7 +577,22 @@ class ASTVisitor(ABC):
     def visit_struct_type(self, node: StructTypeNode): pass
     
     @abstractmethod
+    def visit_union_type(self, node: UnionTypeNode): pass
+    
+    @abstractmethod
     def visit_array_type(self, node: ArrayTypeNode): pass
+    
+    @abstractmethod
+    def visit_pointer_type(self, node: PointerTypeNode): pass
+    
+    @abstractmethod
+    def visit_pointer_decl(self, node: PointerDeclNode): pass
+    
+    @abstractmethod
+    def visit_address_of(self, node: AddressOfNode): pass
+    
+    @abstractmethod
+    def visit_dereference(self, node: DereferenceNode): pass
     
     @abstractmethod
     def visit_block_stmt(self, node: BlockStmtNode): pass
@@ -576,6 +680,12 @@ def ast_to_string(node: ASTNode, indent: int = 0) -> str:
             result += f"{indent_str}  {field.name}: {ast_to_string(field.type, 0).strip()}{bit_info}\n"
         return result
     
+    elif isinstance(node, UnionDeclNode):
+        result = f"{indent_str}UnionDecl: {node.name}\n"
+        for field in node.fields:
+            result += f"{indent_str}  {field.name}: {ast_to_string(field.type, 0).strip()}\n"
+        return result
+    
     elif isinstance(node, TaskDeclNode):
         result = f"{indent_str}TaskDecl: {node.name}\n"
         result += f"{indent_str}  Core: {node.core}\n"
@@ -605,9 +715,28 @@ def ast_to_string(node: ASTNode, indent: int = 0) -> str:
     elif isinstance(node, StructTypeNode):
         return f"struct {node.struct_name}"
     
+    elif isinstance(node, UnionTypeNode):
+        return f"union {node.union_name}"
+    
     elif isinstance(node, ArrayTypeNode):
         size_str = f"[{node.size}]" if node.size else "[]"
         return f"{ast_to_string(node.element_type, 0).strip()}{size_str}"
+    
+    elif isinstance(node, PointerTypeNode):
+        stars = "*" * node.pointer_level
+        return f"{ast_to_string(node.base_type, 0).strip()}{stars}"
+    
+    elif isinstance(node, PointerDeclNode):
+        stars = "*" * node.pointer_level
+        const_str = "const " if node.is_const else ""
+        init_str = f" = {ast_to_string(node.initializer, 0).strip()}" if node.initializer else ""
+        return f"{indent_str}PointerDecl: {const_str}{ast_to_string(node.base_type, 0).strip()}{stars} {node.name}{init_str}\n"
+    
+    elif isinstance(node, AddressOfNode):
+        return f"{indent_str}AddressOf:\n{ast_to_string(node.operand, indent + 1)}"
+    
+    elif isinstance(node, DereferenceNode):
+        return f"{indent_str}Dereference:\n{ast_to_string(node.operand, indent + 1)}"
     
     elif isinstance(node, BlockStmtNode):
         result = f"{indent_str}Block:\n"

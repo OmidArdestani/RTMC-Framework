@@ -86,6 +86,7 @@ class TaskVMContext:
         self.call_stack = []
         self.memory = {}  # Task-local memory
         self.running = True
+        self.saved_params = []  # For parameter restoration on function return
     
     def execute_function(self, func_addr: int):
         """Execute a function starting at the given address"""
@@ -342,6 +343,11 @@ class VirtualMachine:
             Opcode.LOAD_STRUCT_MEMBER_BIT: self._handle_load_struct_member_bit,
             Opcode.STORE_STRUCT_MEMBER_BIT: self._handle_store_struct_member_bit,
             
+            # Pointer instructions
+            Opcode.LOAD_ADDR: self._handle_load_addr,
+            Opcode.LOAD_DEREF: self._handle_load_deref,
+            Opcode.STORE_DEREF: self._handle_store_deref,
+            
             Opcode.ADD: self._handle_add,
             Opcode.SUB: self._handle_sub,
             Opcode.MUL: self._handle_mul,
@@ -396,6 +402,7 @@ class VirtualMachine:
             
             # Debug instructions
             Opcode.DBG_PRINT: self._handle_dbg_print,
+            Opcode.DBG_PRINTF: self._handle_dbg_printf,
             Opcode.DBG_BREAKPOINT: self._handle_dbg_breakpoint,
             
             Opcode.HALT: self._handle_halt,
@@ -484,7 +491,7 @@ class VirtualMachine:
                 print(f"Started task '{task.name}' (ID: {task.id}) as thread")
             
             # Wait for all tasks to complete or until interrupted
-            print("VM running, waiting for tasks to complete...")
+            print("\nVM running, waiting for tasks to complete...")
             while self.running:
                 # Check if any tasks are still running
                 active_tasks = [task for task in self.tasks.values() 
@@ -689,12 +696,53 @@ class VirtualMachine:
     
     def _handle_call(self, instruction: Instruction):
         """Handle CALL instruction"""
+        func_address = instruction.operands[0]
+        param_count = instruction.operands[1] if len(instruction.operands) > 1 else 0
+        
+        # Save current state
         self.call_stack.append(self.pc + 1)
-        self.pc = instruction.operands[0]
+        
+        # Pop parameters from stack and store them in function's parameter slots
+        # Parameters are popped in reverse order (last argument first)
+        params = []
+        for _ in range(param_count):
+            params.append(self._pop())
+        params.reverse()  # Restore correct parameter order
+        
+        # Use a separate address space for parameters (starting from high addresses)
+        # This avoids conflicts with constants and global variables
+        param_base = 10000  # Base address for parameters
+        old_param_values = {}
+        for i, param_value in enumerate(params):
+            param_addr = param_base + i
+            # Save old values to restore later
+            if param_addr in self.memory:
+                old_param_values[param_addr] = self.memory[param_addr]
+            self.memory[param_addr] = param_value
+        
+        # Store old values for restoration on return
+        if not hasattr(self, 'saved_params'):
+            self.saved_params = []
+        self.saved_params.append((old_param_values, param_base, param_count))
+        
+        # Jump to function
+        self.pc = func_address
     
     def _handle_ret(self, instruction: Instruction):
         """Handle RET instruction"""
         if self.call_stack:
+            # Restore saved parameter values
+            if hasattr(self, 'saved_params') and self.saved_params:
+                old_values, param_base, param_count = self.saved_params.pop()
+                # Restore the old values
+                for addr, value in old_values.items():
+                    self.memory[addr] = value
+                # Remove parameter values that didn't exist before
+                for i in range(param_count):
+                    param_addr = param_base + i
+                    if param_addr not in old_values and param_addr in self.memory:
+                        del self.memory[param_addr]
+            
             self.pc = self.call_stack.pop()
         else:
             self.running = False
@@ -710,6 +758,18 @@ class VirtualMachine:
     def _handle_load_var(self, instruction: Instruction):
         """Handle LOAD_VAR instruction"""
         address = instruction.operands[0]
+        
+        # Check if this is a parameter load (addresses 0-9 are typically parameters)
+        # and we're in a function call context
+        if hasattr(self, 'saved_params') and self.saved_params and address < 10:
+            param_base = 10000
+            param_addr = param_base + address
+            if param_addr in self.memory:
+                value = self.memory[param_addr]
+                self._push(value)
+                return
+        
+        # Normal variable load
         value = self.memory.get(address, 0)
         self._push(value)
     
@@ -1211,6 +1271,44 @@ class VirtualMachine:
         else:
             print(f"DEBUG: <invalid string {string_id}>")
     
+    def _handle_dbg_printf(self, instruction: Instruction):
+        """Handle DBG_PRINTF instruction with variable formatting"""
+        format_string_id = instruction.operands[0]
+        arg_count = instruction.operands[1]
+        
+        # Pop arguments from stack (in reverse order)
+        args = []
+        for _ in range(arg_count):
+            args.append(self._pop())
+        args.reverse()  # Restore correct order
+        
+        # Get format string
+        if format_string_id == 0:
+            # Format string is on stack
+            format_string_id = self._pop()
+        
+        if format_string_id < len(self.program.strings):
+            format_string = self.program.strings[format_string_id]
+            try:
+                # Simple formatting - replace {0}, {1}, etc. with arguments
+                output = format_string
+                for i, arg in enumerate(args):
+                    placeholder = "{" + str(i) + "}"
+                    if placeholder in output:
+                        output = output.replace(placeholder, str(arg))
+                
+                # Also support simple {} placeholders in order
+                arg_index = 0
+                while "{}" in output and arg_index < len(args):
+                    output = output.replace("{}", str(args[arg_index]), 1)
+                    arg_index += 1
+                
+                print(f"DEBUG: {output}")
+            except Exception as e:
+                print(f"DEBUG: <formatting error: {e}>")
+        else:
+            print(f"DEBUG: <invalid format string {format_string_id}>")
+    
     def _handle_dbg_breakpoint(self, instruction: Instruction):
         """Handle DBG_BREAKPOINT instruction"""
         print(f"BREAKPOINT at PC {self.pc}")
@@ -1225,3 +1323,26 @@ class VirtualMachine:
     def _handle_nop(self, instruction: Instruction):
         """Handle NOP instruction"""
         pass  # Do nothing
+
+    # Pointer instruction handlers
+    def _handle_load_addr(self, instruction: Instruction):
+        """Handle LOAD_ADDR instruction - pushes address of variable onto stack"""
+        address = instruction.operands[0]
+        self._push(address)
+    
+    def _handle_load_deref(self, instruction: Instruction):
+        """Handle LOAD_DEREF instruction - dereferences pointer on top of stack"""
+        pointer_value = self._pop()
+        # The pointer value is the address to read from
+        if pointer_value not in self.memory:
+            raise VMError(f"Dereferencing null or invalid pointer: {pointer_value}")
+        value = self.memory[pointer_value]
+        self._push(value)
+    
+    def _handle_store_deref(self, instruction: Instruction):
+        """Handle STORE_DEREF instruction - stores value at pointer address"""
+        value = self._pop()  # Value to store
+        pointer_value = self._pop()  # Address to store at
+        if pointer_value is None:
+            raise VMError("Cannot dereference null pointer")
+        self.memory[pointer_value] = value
