@@ -781,23 +781,56 @@ class SemanticAnalyzer(ASTVisitor):
         object_type = node.object.accept(self)
         
         if node.computed:
-            # Array access
-            if not object_type.endswith('[]'):
-                self.error(f"Cannot index non-array type {object_type}", node.line, node.filename)
+            # This is either array access (obj[index]) or pointer member access (ptr->field)
+            # Check if it's a pointer member access (arrow operator)
+            if isinstance(node.property, str):
+                # Pointer member access: ptr->field
+                if not object_type.endswith('*'):
+                    self.error(f"Cannot use arrow operator on non-pointer type {object_type}", node.line, node.filename)
+                    return "int"
+                
+                # Get the pointed-to type
+                pointed_type = object_type[:-1]  # Remove '*'
+                
+                # Check if pointed type is a struct
+                if not pointed_type.startswith('struct '):
+                    self.error(f"Cannot access field of non-struct pointer type {object_type}", node.line, node.filename)
+                    return "int"
+                
+                struct_name = pointed_type[7:]  # Remove 'struct '
+                struct_symbol = self.symbol_table.get(struct_name)
+                
+                if not struct_symbol or not struct_symbol.struct_fields:
+                    self.error(f"Unknown struct '{struct_name}'", node.line, node.filename)
+                    return "int"
+                
+                field_name = node.property
+                if field_name not in struct_symbol.struct_fields:
+                    self.error(f"Struct '{struct_name}' has no field '{field_name}'", node.line, node.filename)
+                    return "int"
+                
+                return struct_symbol.struct_fields[field_name].data_type
             
-            # Index should be integer
-            if isinstance(node.property, ExpressionNode):
-                index_type = node.property.accept(self)
-                if not TypeChecker.is_integer_type(index_type):
-                    self.error(f"Array index must be integer, got {index_type}", node.line)
-            
-            # Return element type
-            return object_type[:-2]  # Remove '[]'
+            else:
+                # Array access: obj[index]
+                if not object_type.endswith('[]'):
+                    self.error(f"Cannot index non-array type {object_type}", node.line, node.filename)
+                    return "int"
+                
+                # Index should be integer
+                if isinstance(node.property, ExpressionNode):
+                    index_type = node.property.accept(self)
+                    if not TypeChecker.is_integer_type(index_type):
+                        self.error(f"Array index must be integer, got {index_type}", node.line)
+                
+                # Return element type
+                return object_type[:-2]  # Remove '[]'
         
         else:
-            # Struct field access
+            # Struct field access: obj.field
             if not object_type.startswith('struct '):
                 self.error(f"Cannot access field of non-struct type {object_type}", node.line, node.filename)
+                return "int"
             
             struct_name = object_type[7:]  # Remove 'struct '
             struct_symbol = self.symbol_table.get(struct_name)
@@ -906,14 +939,24 @@ class SemanticAnalyzer(ASTVisitor):
     def visit_array_decl(self, node: ArrayDeclNode):
         """Visit array declaration node"""
         # Validate array size
-        if node.size <= 0:
-            self.error(f"Array size must be positive, got {node.size}", node.line)
+        size_value = node.size
+        if isinstance(node.size, LiteralExprNode):
+            size_value = node.size.value
+        elif isinstance(node.size, int):
+            size_value = node.size
+        else:
+            # For more complex expressions, we'd need to evaluate them
+            # For now, assume they're valid
+            size_value = 1
+        
+        if size_value <= 0:
+            self.error(f"Array size must be positive, got {size_value}", node.line)
         
         # Get element type
         element_type = node.element_type.accept(self)
         
         # Create array type string
-        array_type = f"{element_type}[{node.size}]"
+        array_type = f"{element_type}[]"
         
         # Validate initializer if present
         if node.initializer:

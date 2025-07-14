@@ -665,7 +665,7 @@ class BytecodeGenerator(ASTVisitor):
     def _get_struct_name_for_member(self, member_expr: MemberExprNode) -> str:
         """Get the struct name for a member expression using dynamic type resolution"""
         if isinstance(member_expr.object, IdentifierExprNode):
-            # Simple case: variable.field
+            # Simple case: variable.field or ptr->field
             var_name = member_expr.object.name
             
             # First, try to get the variable's type from the struct layout table
@@ -673,7 +673,22 @@ class BytecodeGenerator(ASTVisitor):
             try:
                 var_type = self.struct_layout_table.get_variable_type(var_name)
                 if var_type:
-                    return var_type
+                    # Handle pointer types for arrow operator
+                    if member_expr.computed and isinstance(member_expr.property, str) and var_type.endswith('*'):
+                        # This is pointer member access (ptr->field)
+                        pointed_type = var_type[:-1]  # Remove '*'
+                        if pointed_type.startswith('struct '):
+                            return pointed_type[7:]  # Remove 'struct '
+                        else:
+                            return pointed_type
+                    elif not member_expr.computed:
+                        # This is regular member access (obj.field)
+                        if var_type.startswith('struct '):
+                            return var_type[7:]  # Remove 'struct '
+                        else:
+                            return var_type
+                    else:
+                        return var_type
             except (AttributeError, KeyError):
                 pass
             
@@ -681,7 +696,22 @@ class BytecodeGenerator(ASTVisitor):
             # we need to look up the variable declaration to find its type
             variable_type = self._resolve_variable_type(var_name)
             if variable_type:
-                return variable_type
+                # Handle pointer types for arrow operator
+                if member_expr.computed and isinstance(member_expr.property, str) and variable_type.endswith('*'):
+                    # This is pointer member access (ptr->field)
+                    pointed_type = variable_type[:-1]  # Remove '*'
+                    if pointed_type.startswith('struct '):
+                        return pointed_type[7:]  # Remove 'struct '
+                    else:
+                        return pointed_type
+                elif not member_expr.computed:
+                    # This is regular member access (obj.field)
+                    if variable_type.startswith('struct '):
+                        return variable_type[7:]  # Remove 'struct '
+                    else:
+                        return variable_type
+                else:
+                    return variable_type
             
             # As a fallback, try to find the struct type by checking which struct contains this field
             field_name = member_expr.property
@@ -928,22 +958,53 @@ class BytecodeGenerator(ASTVisitor):
     def visit_member_expr(self, node: MemberExprNode):
         """Generate code for member expression"""
         if node.computed:
-            # Array access
-            node.object.accept(self)
-            
-            if isinstance(node.property, ExpressionNode):
-                node.property.accept(self)
+            # This is either array access (obj[index]) or pointer member access (ptr->field)
+            if isinstance(node.property, str):
+                # Pointer member access: ptr->field
+                # Get struct name and field offset
+                struct_name = self._get_struct_name_for_member(node)
+                field_offset = self._get_simple_field_offset(struct_name, node.property)
+                
+                # Generate code to load the pointer value
+                node.object.accept(self)
+                
+                # Check if this is a bit-field
+                bit_field_info = self._get_bit_field_info(struct_name, node.property)
+                if bit_field_info:
+                    byte_offset, bit_offset, bit_width = bit_field_info
+                    # For pointer access, we need to load the address, add the byte offset,
+                    # then load the bit field
+                    if byte_offset > 0:
+                        offset_const = self.add_constant(byte_offset)
+                        self.emit(InstructionBuilder.load_const(offset_const))
+                        self.emit(InstructionBuilder.add())
+                    self.emit(InstructionBuilder.load_struct_member_bit(0, 0, bit_offset, bit_width))
+                else:
+                    # Regular field access through pointer
+                    # Add field offset to the pointer address
+                    if field_offset > 0:
+                        offset_const = self.add_constant(field_offset)
+                        self.emit(InstructionBuilder.load_const(offset_const))
+                        self.emit(InstructionBuilder.add())
+                    # Load the value at the computed address
+                    self.emit(InstructionBuilder.load_deref())
+                
+                return
             else:
-                const_idx = self.add_constant(node.property)
-                self.emit(InstructionBuilder.load_const(const_idx))
-            
-            # Load array element (simplified)
-            self.emit(InstructionBuilder.add())  # Add index to base address
-            # In a real implementation, we'd need to handle array element loading
+                # Array access: obj[index]
+                node.object.accept(self)
+                
+                if isinstance(node.property, ExpressionNode):
+                    node.property.accept(self)
+                else:
+                    const_idx = self.add_constant(node.property)
+                    self.emit(InstructionBuilder.load_const(const_idx))
+                
+                # Load array element (simplified)
+                self.emit(InstructionBuilder.add())  # Add index to base address
+                # In a real implementation, we'd need to handle array element loading
         else:
-            # Struct field access
-            # node.object.accept(self)
-            
+            # Struct field access: obj.field
             # Get struct name and field offset
             struct_name = self._get_struct_name_for_member(node)
             field_offset = self._get_simple_field_offset(struct_name, node.property)
@@ -1092,7 +1153,41 @@ class BytecodeGenerator(ASTVisitor):
     
     def _generate_member_store(self, node: MemberExprNode):
         """Generate code to store to a member expression"""
-        if isinstance(node.object, IdentifierExprNode):
+        if node.computed and isinstance(node.property, str):
+            # Arrow operator: ptr->field = value
+            # At this point, the value to store is already on the stack
+            
+            # Get the pointer variable and compute the address
+            if isinstance(node.object, IdentifierExprNode):
+                pointer_name = node.object.name
+                pointer_address = self.get_variable_address(pointer_name)
+                
+                # Allocate a temporary variable to store the value
+                temp_var_addr = self.allocate_variable(f"__temp_store_{self.temp_counter}")
+                self.temp_counter += 1
+                
+                # Store the value temporarily
+                self.emit(InstructionBuilder.store_var(temp_var_addr))
+                
+                # Load the pointer value (which is an address)
+                self.emit(InstructionBuilder.load_var(pointer_address))
+                
+                # Add the field offset
+                struct_name = self._get_struct_name_for_member(node)
+                field_offset = self._get_simple_field_offset(struct_name, node.property)
+                if field_offset > 0:
+                    offset_const = self.add_constant(field_offset)
+                    self.emit(InstructionBuilder.load_const(offset_const))
+                    self.emit(InstructionBuilder.add())
+                
+                # Load the value back
+                self.emit(InstructionBuilder.load_var(temp_var_addr))
+                
+                # Store through the pointer
+                self.emit(InstructionBuilder.store_deref())
+            else:
+                raise CodeGenError("Complex pointer member assignment not supported yet")
+        elif isinstance(node.object, IdentifierExprNode):
             # Simple case: variable.field = value
             base_address = self.get_variable_address(node.object.name)
             

@@ -572,6 +572,7 @@ class RTMCParser:
                 # Other node types (message_send, rtos_call, etc.)
                 p[0] = p[1]
         else:
+            # Parenthesized expression: (expression)
             p[0] = p[2]
     
     def p_array_literal(self, p):
