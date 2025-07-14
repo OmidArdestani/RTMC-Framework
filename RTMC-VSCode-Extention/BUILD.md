@@ -30,7 +30,10 @@
    ```bash
    vsce package
    ```
-
+   Or using npx (if vsce is not globally installed):
+   ```bash
+   npx @vscode/vsce package
+   ```
    This creates a `.vsix` file that can be installed in VS Code.
 
 ## Installing the Extension
