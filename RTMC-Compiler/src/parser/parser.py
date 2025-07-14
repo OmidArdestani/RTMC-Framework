@@ -807,6 +807,47 @@ class Parser:
             right = self.unary()
             return DereferenceNode(right, self.previous().line, self.previous().column)
         
+        return self.cast_expr()
+    
+    def cast_expr(self) -> ExpressionNode:
+        """Parse cast expression"""
+        # Check for cast: (type)expression
+        if self.check(TokenType.LEFT_PAREN):
+            # Save current position to backtrack if this isn't a cast
+            saved_pos = self.current
+            
+            try:
+                self.advance()  # consume '('
+                
+                # Try to parse a type
+                if self.check_type_specifier():
+                    cast_type = self.type_specifier()
+                    
+                    # Handle pointer levels
+                    pointer_level = 0
+                    while self.match(TokenType.MULTIPLY):
+                        pointer_level += 1
+                    
+                    # Create the appropriate type node
+                    if pointer_level > 0:
+                        cast_type = PointerTypeNode(cast_type, pointer_level)
+                    
+                    if self.match(TokenType.RIGHT_PAREN):
+                        # This is a cast expression
+                        operand = self.cast_expr()
+                        return CastExprNode(cast_type, operand, self.previous().line, self.previous().column)
+                    else:
+                        # Not a cast, backtrack
+                        self.current = saved_pos
+                        
+                else:
+                    # Not a cast, backtrack
+                    self.current = saved_pos
+                    
+            except:
+                # Error during type parsing, backtrack
+                self.current = saved_pos
+        
         return self.call()
     
     def call(self) -> ExpressionNode:
@@ -846,6 +887,12 @@ class Parser:
                     # Regular member access
                     name = self.consume(TokenType.IDENTIFIER, "Expected property name after '.'").value
                     expr = MemberExprNode(expr, name, False)
+            elif self.match(TokenType.ARROW):
+                # Handle pointer member access: ptr->member
+                name = self.consume(TokenType.IDENTIFIER, "Expected property name after '->'").value
+                # Create a dereference node first, then member access
+                deref_expr = DereferenceNode(expr, self.previous().line, self.previous().column)
+                expr = MemberExprNode(deref_expr, name, False)
             elif self.match(TokenType.LEFT_BRACKET):
                 index = self.expression()
                 self.consume(TokenType.RIGHT_BRACKET, "Expected ']' after array index")

@@ -1022,3 +1022,16 @@ class SemanticAnalyzer(ASTVisitor):
         
         # Return the base type (remove one level of pointer indirection)
         return operand_type[:-1]
+    
+    def visit_cast_expr(self, node: CastExprNode):
+        """Visit cast expression"""
+        # Get the operand type (mainly for validation)
+        operand_type = node.operand.accept(self)
+        
+        # Get the target type
+        target_type = self.get_type_from_node(node.target_type)
+        
+        # For now, allow all casts (in a full implementation, we'd check for valid casts)
+        # In the future, we could add warnings for potentially dangerous casts
+        
+        return target_type

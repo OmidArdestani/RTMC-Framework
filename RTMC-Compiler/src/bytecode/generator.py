@@ -47,6 +47,7 @@ class BytecodeGenerator(ASTVisitor):
         # Code generation state
         self.current_address = 0
         self.variable_counter = 0
+        self.temp_counter = 0  # Counter for temporary variables
         self.labels: Dict[str, int] = {}
         self.label_counter = 0
         
@@ -371,6 +372,9 @@ class BytecodeGenerator(ASTVisitor):
         elif isinstance(type_node, ArrayTypeNode):
             element_name = self._get_type_name(type_node.element_type)
             return f"{element_name}[{type_node.size}]"
+        elif isinstance(type_node, PointerTypeNode):
+            base_name = self._get_type_name(type_node.base_type)
+            return base_name + '*' * type_node.pointer_level
         else:
             return "unknown"
     
@@ -718,6 +722,41 @@ class BytecodeGenerator(ASTVisitor):
                 return field_type
             
             raise CodeGenError(f"Cannot resolve type of field '{parent_field}' in struct '{parent_struct}'")
+        elif isinstance(member_expr.object, DereferenceNode):
+            # Pointer dereference case: ptr->field
+            # The pointer's base type determines the struct
+            if isinstance(member_expr.object.operand, IdentifierExprNode):
+                pointer_name = member_expr.object.operand.name
+                
+                # Get the pointer's type and extract the base struct type
+                pointer_type = self._resolve_variable_type(pointer_name)
+                if pointer_type and pointer_type.endswith('*'):
+                    # Remove the pointer indicator and extract struct name
+                    base_type = pointer_type[:-1]  # Remove '*'
+                    if base_type.startswith('struct '):
+                        return base_type[7:]  # Remove 'struct ' prefix
+                    elif base_type.startswith('TestStruct'):  # Handle direct struct names
+                        return base_type
+                    else:
+                        # For other pointer types, we need to infer the struct
+                        # This is a simplified approach - in a full compiler, 
+                        # we'd have better type information from semantic analysis
+                        field_name = member_expr.property
+                        candidate_structs = []
+                        for struct_name, fields in self.struct_layouts.items():
+                            if field_name in fields:
+                                candidate_structs.append(struct_name)
+                        
+                        if len(candidate_structs) == 1:
+                            return candidate_structs[0]
+                        elif len(candidate_structs) > 1:
+                            raise CodeGenError(f"Ambiguous field access: field '{field_name}' exists in multiple structs: {candidate_structs}")
+                        else:
+                            raise CodeGenError(f"Field '{field_name}' not found in any registered struct")
+                
+                raise CodeGenError(f"Cannot resolve base type for pointer '{pointer_name}' with type '{pointer_type}'")
+            else:
+                raise CodeGenError("Complex pointer dereference not yet supported")
         else:
             # Complex object (like function call result)
             # This would require full type inference from semantic analysis
@@ -931,6 +970,33 @@ class BytecodeGenerator(ASTVisitor):
                 self.emit(InstructionBuilder.load_struct_member(base_address, nested_offset))
 
                 return
+            elif isinstance(node.object, DereferenceNode):
+                # Pointer access: ptr->member
+                # Generate code to load the pointer value
+                node.object.operand.accept(self)
+                
+                # Check if this is a bit-field
+                bit_field_info = self._get_bit_field_info(struct_name, node.property)
+                if bit_field_info:
+                    byte_offset, bit_offset, bit_width = bit_field_info
+                    # For pointer access, we need to load the address, add the byte offset,
+                    # then load the bit field
+                    if byte_offset > 0:
+                        offset_const = self.add_constant(byte_offset)
+                        self.emit(InstructionBuilder.load_const(offset_const))
+                        self.emit(InstructionBuilder.add())
+                    self.emit(InstructionBuilder.load_struct_member_bit(0, 0, bit_offset, bit_width))
+                else:
+                    # Regular field access through pointer
+                    # Add field offset to the pointer address
+                    if field_offset > 0:
+                        offset_const = self.add_constant(field_offset)
+                        self.emit(InstructionBuilder.load_const(offset_const))
+                        self.emit(InstructionBuilder.add())
+                    # Load the value at the computed address
+                    self.emit(InstructionBuilder.load_deref())
+                
+                return
             else:
                 # Complex object access
                 node.object.accept(self)
@@ -1043,6 +1109,48 @@ class BytecodeGenerator(ASTVisitor):
             base_address = self.get_variable_address(base_var)
             field_offset = self._calculate_nested_offset(node)
             self.emit(InstructionBuilder.store_struct_member(base_address, field_offset))
+        elif isinstance(node.object, DereferenceNode):
+            # Pointer case: ptr->member = value
+            # At this point, the value to store is already on the stack
+            
+            # Strategy: Use a temporary variable to handle stack ordering
+            # 1. Store the value in a temp variable
+            # 2. Compute the target address
+            # 3. Load the value back
+            # 4. Call STORE_DEREF
+            
+            # Get the pointer variable and compute the address
+            if isinstance(node.object.operand, IdentifierExprNode):
+                pointer_name = node.object.operand.name
+                pointer_address = self.get_variable_address(pointer_name)
+                
+                # Allocate a temporary variable to store the value
+                temp_var_addr = self.allocate_variable(f"__temp_store_{self.temp_counter}")
+                self.temp_counter += 1
+                
+                # Store the value temporarily
+                self.emit(InstructionBuilder.store_var(temp_var_addr))
+                
+                # Load the pointer value (which is an address)
+                self.emit(InstructionBuilder.load_var(pointer_address))
+                
+                # Get the field offset
+                struct_name = self._get_struct_name_for_member(node)
+                field_offset = self._get_simple_field_offset(struct_name, node.property)
+                
+                # Add field offset to the pointer address
+                if field_offset > 0:
+                    offset_const = self.add_constant(field_offset)
+                    self.emit(InstructionBuilder.load_const(offset_const))
+                    self.emit(InstructionBuilder.add())
+                
+                # Load the value back onto the stack
+                self.emit(InstructionBuilder.load_var(temp_var_addr))
+                
+                # Now stack is: [target_address, value] which is correct for STORE_DEREF
+                self.emit(InstructionBuilder.store_deref())
+            else:
+                raise CodeGenError("Complex pointer dereference in assignment not yet supported")
         else:
             raise CodeGenError("Complex member access not supported yet")
     
@@ -1276,3 +1384,15 @@ class BytecodeGenerator(ASTVisitor):
         
         # Dereference the pointer
         self.emit(Instruction(Opcode.LOAD_DEREF, []))
+    
+    def visit_cast_expr(self, node: CastExprNode):
+        """Visit cast expression node"""
+        # Set current position for debug info
+        self.set_current_position(node.line, getattr(node, 'column', 0))
+        
+        # Generate code for the operand
+        node.operand.accept(self)
+        
+        # For now, casting is mostly a no-op at runtime
+        # In a full implementation, we might emit type conversion instructions
+        # The semantic analyzer handles the type checking

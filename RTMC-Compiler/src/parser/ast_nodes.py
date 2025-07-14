@@ -47,6 +47,7 @@ class NodeType(Enum):
     POSTFIX_EXPR    = auto()  # For ++ and --
     ADDRESS_OF      = auto()  # Address-of operator &
     DEREFERENCE     = auto()  # Dereference operator *
+    CAST_EXPR       = auto()  # Cast expression
     
     # Types
     PRIMITIVE_TYPE = auto()
@@ -523,6 +524,17 @@ class DereferenceNode(ExpressionNode):
     def accept(self, visitor):
         return visitor.visit_dereference(self)
 
+class CastExprNode(ExpressionNode):
+    """Cast expression node (type)expression"""
+    
+    def __init__(self, target_type: 'TypeNode', operand: ExpressionNode, line: int = 0, column: int = 0):
+        super().__init__(NodeType.CAST_EXPR, line, column)
+        self.target_type = target_type
+        self.operand = operand
+    
+    def accept(self, visitor):
+        return visitor.visit_cast_expr(self)
+
 class PointerDeclNode(VariableDeclNode):
     """Pointer declaration node"""
     
@@ -594,6 +606,9 @@ class ASTVisitor(ABC):
     
     @abstractmethod
     def visit_dereference(self, node: DereferenceNode): pass
+    
+    @abstractmethod
+    def visit_cast_expr(self, node: CastExprNode): pass
     
     @abstractmethod
     def visit_block_stmt(self, node: BlockStmtNode): pass

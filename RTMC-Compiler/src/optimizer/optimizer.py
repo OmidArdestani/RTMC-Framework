@@ -31,6 +31,11 @@ class ConstantFolder(ASTVisitor):
         """Optimize dereference expression"""
         optimized_operand = node.operand.accept(self)
         return DereferenceNode(optimized_operand, node.line)
+
+    def visit_cast_expr(self, node: CastExprNode) -> CastExprNode:
+        """Optimize cast expression"""
+        optimized_operand = node.operand.accept(self)
+        return CastExprNode(node.target_type, optimized_operand, node.line)
     """Constant folding optimizer"""
     
     def __init__(self):
@@ -430,6 +435,9 @@ class DeadCodeEliminator(ASTVisitor):
         return node
 
     def visit_dereference(self, node: DereferenceNode) -> DereferenceNode:
+        return node
+
+    def visit_cast_expr(self, node: CastExprNode) -> CastExprNode:
         return node
     """Dead code elimination optimizer"""
     

@@ -16,12 +16,12 @@ struct TestStruct1
 
 };
 
-// struct TestStruct2
-// {
-//     TestStruct1 structItem1;
-//     int item1;
-//     int item2;
-// };
+struct TestStruct2
+{
+    TestStruct1 structItem1;
+    int item1;
+    int item2;
+};
 
 // void checkVariable(int *var)
 // {
@@ -45,18 +45,31 @@ void main()
 
     TestStruct1 testStruct1;
 
-    testStruct1.item1 = 0xBBAD;
-    testStruct1.item2 = 0x52FC;
-    DBG_PRINTF("testStruct1.item1={0}, testStruct1.item2={1}", testStruct1.item1, testStruct1.item2);
+    // testStruct1.item1 = 0xBBAD;
+    // testStruct1.item2 = 0x52FC;
+    // DBG_PRINTF("testStruct1.item1={0}, testStruct1.item2={1}", testStruct1.item1, testStruct1.item2);
     
-    testStruct1.value = 0xAABBCCDD;
-    DBG_PRINTF("testStruct1.item1={0}, testStruct1.item2={1}", testStruct1.item1, testStruct1.item2);
+    // testStruct1.value = 0xAABBCCDD;
+    // DBG_PRINTF("testStruct1.item1={0}, testStruct1.item2={1}", testStruct1.item1, testStruct1.item2);
 
-    testStruct1.item3 = 1370;
-    DBG_PRINTF("testStruct1.item3={0}", testStruct1.item3);
+    // testStruct1.item3 = 1370;
+    // DBG_PRINTF("testStruct1.item3={0}", testStruct1.item3);
 
-    // TestStruct1* ptrTestStruct1 = &testStruct1;
-    // int* ptrItem1 = (int*)ptrTestStruct1;
+    TestStruct1* ptrTestStruct1 = &testStruct1;
+    int* ptrItem1 = (int*)ptrTestStruct1;
+
+    
+    TestStruct2* testStruct2 = (TestStruct2*)(ptrItem1);
+    testStruct2->item1 = 30;
+    if(testStruct2->item2 == 0xAABBCCDD)
+    {
+        DBG_PRINT("Condition passed");
+    }
+    else
+    {
+        DBG_PRINT("Condition failed");
+    }
+
 
     // int a = 10;  // Back to original value
     // int *b = &a;
