@@ -50,7 +50,7 @@ class ConstantFolder(ASTVisitor):
             if optimized_decl:
                 optimized_declarations.append(optimized_decl)
         
-        return ProgramNode(optimized_declarations, node.line)
+        return ProgramNode(optimized_declarations, node.line, node.filename)
     
     def visit_function_decl(self, node: FunctionDeclNode) -> FunctionDeclNode:
         """Optimize function declaration"""

@@ -88,7 +88,10 @@ class RTMCParser:
     # Grammar rules
     def p_program(self, p):
         '''program : declaration_list'''
-        p[0] = ProgramNode(p[1])
+        
+        line = p.lineno(1)
+        filename = getattr(self, 'filename', '')
+        p[0] = ProgramNode(p[1], line, filename)
     
     def p_declaration_list(self, p):
         '''declaration_list : declaration
@@ -114,8 +117,8 @@ class RTMCParser:
                                | type_specifier IDENTIFIER LEFT_PAREN RIGHT_PAREN compound_statement'''
         
         line = p.lineno(2)
-        
         filename = getattr(self, 'filename', '')
+        
         if len(p) == 7:
             p[0] = FunctionDeclNode(p[2], p[1], p[4], p[6], line=line, filename=filename)
         else:
@@ -166,8 +169,8 @@ class RTMCParser:
         '''struct_declaration : STRUCT IDENTIFIER LEFT_BRACE struct_member_list RIGHT_BRACE SEMICOLON'''
         
         line = p.lineno(1)
-        
         filename = getattr(self, 'filename', '')
+        
         p[0] = StructDeclNode(p[2], p[4], line=line, filename=filename)
     
     def p_struct_member_list(self, p):
@@ -268,8 +271,8 @@ class RTMCParser:
         '''union_declaration : UNION IDENTIFIER LEFT_BRACE struct_member_list RIGHT_BRACE SEMICOLON'''
         
         line = p.lineno(1)
-        
         filename = getattr(self, 'filename', '')
+        
         p[0] = UnionDeclNode(p[2], p[4], line=line, filename=filename)
     
     # Task declaration
@@ -279,8 +282,8 @@ class RTMCParser:
         # Task<core, priority> TaskName { ... }
         
         line = p.lineno(1)
-        
         filename = getattr(self, 'filename', '')
+        
         members, run_function = self._extract_task_members(p[9])
         p[0] = TaskDeclNode(p[7], p[3], p[5], members, run_function, line, filename)
 
@@ -382,10 +385,12 @@ class RTMCParser:
     def p_compound_statement(self, p):
         '''compound_statement : LEFT_BRACE statement_list RIGHT_BRACE
                              | LEFT_BRACE RIGHT_BRACE'''
+        
+        line = p.lineno(1)
         if len(p) == 4:
-            p[0] = BlockStmtNode(p[2])
+            p[0] = BlockStmtNode(p[2], line)
         else:
-            p[0] = BlockStmtNode([])
+            p[0] = BlockStmtNode([], line)
     
     def p_statement_list(self, p):
         '''statement_list : statement
@@ -398,46 +403,61 @@ class RTMCParser:
     def p_expression_statement(self, p):
         '''expression_statement : expression SEMICOLON
                                | SEMICOLON'''
+        
         if len(p) == 3:
-            p[0] = ExpressionStmtNode(p[1])
+            line = p.lineno(2)
+            p[0] = ExpressionStmtNode(p[1], line)
         else:
-            p[0] = ExpressionStmtNode(None)
+            line = p.lineno(1)
+            p[0] = ExpressionStmtNode(None, line)
     
     def p_if_statement(self, p):
         '''if_statement : IF LEFT_PAREN expression RIGHT_PAREN statement
                        | IF LEFT_PAREN expression RIGHT_PAREN statement ELSE statement'''
+        
+        line = p.lineno(1)
         if len(p) == 6:
-            p[0] = IfStmtNode(p[3], p[5])
+            p[0] = IfStmtNode(p[3], p[5], line=line)
         else:
-            p[0] = IfStmtNode(p[3], p[5], p[7])
+            p[0] = IfStmtNode(p[3], p[5], p[7], line=line)
     
     def p_while_statement(self, p):
         '''while_statement : WHILE LEFT_PAREN expression RIGHT_PAREN statement'''
-        p[0] = WhileStmtNode(p[3], p[5])
+        
+        line = p.lineno(1)
+        p[0] = WhileStmtNode(p[3], p[5], line=line)
     
     def p_for_statement(self, p):
         '''for_statement : FOR LEFT_PAREN expression_statement expression_statement expression RIGHT_PAREN statement
                         | FOR LEFT_PAREN expression_statement expression_statement RIGHT_PAREN statement'''
+        
+        line = p.lineno(1)
         if len(p) == 8:
-            p[0] = ForStmtNode(p[3], p[4], p[5], p[7])
+            p[0] = ForStmtNode(p[3], p[4], p[5], p[7], line=line)
         else:
-            p[0] = ForStmtNode(p[3], p[4], None, p[6])
+            p[0] = ForStmtNode(p[3], p[4], None, p[6], line=line)
     
     def p_return_statement(self, p):
         '''return_statement : RETURN SEMICOLON
                            | RETURN expression SEMICOLON'''
+        
+        line = p.lineno(1)
         if len(p) == 3:
-            p[0] = ReturnStmtNode()
+            p[0] = ReturnStmtNode(line=line)
         else:
-            p[0] = ReturnStmtNode(p[2])
+            p[0] = ReturnStmtNode(p[2], line=line)
     
     def p_break_statement(self, p):
         '''break_statement : BREAK SEMICOLON'''
-        p[0] = BreakStmtNode()
+        
+        line = p.lineno(1)
+        p[0] = BreakStmtNode(line)
     
     def p_continue_statement(self, p):
         '''continue_statement : CONTINUE SEMICOLON'''
-        p[0] = ContinueStmtNode()
+        
+        line = p.lineno(1)
+        p[0] = ContinueStmtNode(line)
     
     # Expressions
     def p_expression(self, p):
@@ -454,7 +474,8 @@ class RTMCParser:
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = AssignmentExprNode(p[1], p[2], p[3])
+            line = p.lineno(1)
+            p[0] = AssignmentExprNode(p[1], p[2], p[3], line=line)
     
     def p_logical_or_expression(self, p):
         '''logical_or_expression : logical_and_expression
@@ -462,7 +483,8 @@ class RTMCParser:
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = BinaryExprNode(p[1], p[2], p[3])
+            line = p.lineno(2)
+            p[0] = BinaryExprNode(p[1], p[2], p[3], line)
     
     def p_logical_and_expression(self, p):
         '''logical_and_expression : bitwise_or_expression
@@ -470,7 +492,8 @@ class RTMCParser:
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = BinaryExprNode(p[1], p[2], p[3])
+            line = p.lineno(2)
+            p[0] = BinaryExprNode(p[1], p[2], p[3], line)
     
     def p_bitwise_or_expression(self, p):
         '''bitwise_or_expression : bitwise_xor_expression
@@ -478,7 +501,8 @@ class RTMCParser:
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = BinaryExprNode(p[1], p[2], p[3])
+            line = p.lineno(2)
+            p[0] = BinaryExprNode(p[1], p[2], p[3], line)
     
     def p_bitwise_xor_expression(self, p):
         '''bitwise_xor_expression : bitwise_and_expression
@@ -486,7 +510,8 @@ class RTMCParser:
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = BinaryExprNode(p[1], p[2], p[3])
+            line = p.lineno(2)
+            p[0] = BinaryExprNode(p[1], p[2], p[3], line)
     
     def p_bitwise_and_expression(self, p):
         '''bitwise_and_expression : equality_expression
@@ -494,7 +519,8 @@ class RTMCParser:
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = BinaryExprNode(p[1], p[2], p[3])
+            line = p.lineno(2)
+            p[0] = BinaryExprNode(p[1], p[2], p[3], line)
     
     def p_equality_expression(self, p):
         '''equality_expression : relational_expression
@@ -503,7 +529,8 @@ class RTMCParser:
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = BinaryExprNode(p[1], p[2], p[3])
+            line = p.lineno(2)
+            p[0] = BinaryExprNode(p[1], p[2], p[3], line)
     
     def p_relational_expression(self, p):
         '''relational_expression : shift_expression
@@ -514,7 +541,8 @@ class RTMCParser:
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = BinaryExprNode(p[1], p[2], p[3])
+            line = p.lineno(2)
+            p[0] = BinaryExprNode(p[1], p[2], p[3], line)
     
     def p_shift_expression(self, p):
         '''shift_expression : additive_expression
@@ -523,7 +551,8 @@ class RTMCParser:
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = BinaryExprNode(p[1], p[2], p[3])
+            line = p.lineno(2)
+            p[0] = BinaryExprNode(p[1], p[2], p[3], line)
     
     def p_additive_expression(self, p):
         '''additive_expression : multiplicative_expression
@@ -532,7 +561,8 @@ class RTMCParser:
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = BinaryExprNode(p[1], p[2], p[3])
+            line = p.lineno(2)
+            p[0] = BinaryExprNode(p[1], p[2], p[3], line)
     
     def p_multiplicative_expression(self, p):
         '''multiplicative_expression : unary_expression
@@ -542,7 +572,8 @@ class RTMCParser:
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = BinaryExprNode(p[1], p[2], p[3])
+            line = p.lineno(2)
+            p[0] = BinaryExprNode(p[1], p[2], p[3], line)
     
     def p_unary_expression(self, p):
         '''unary_expression : postfix_expression
@@ -555,22 +586,25 @@ class RTMCParser:
                            | INCREMENT unary_expression
                            | DECREMENT unary_expression
                            | LEFT_PAREN type_specifier RIGHT_PAREN unary_expression'''
+        
+        line = p.lineno(1)
+        
         if len(p) == 2:
             p[0] = p[1]
         elif len(p) == 5:
             # Type cast: (type)expression
-            p[0] = CastExprNode(p[2], p[4])
+            p[0] = CastExprNode(p[2], p[4], line=line)
         else:
             if p[1] == '&':
-                p[0] = AddressOfNode(p[2])
+                p[0] = AddressOfNode(p[2], line=line)
             elif p[1] == '*':
-                p[0] = DereferenceNode(p[2])
+                p[0] = DereferenceNode(p[2], line=line)
             elif p[1] == '++':
-                p[0] = PostfixExprNode(p[2], '++')
+                p[0] = PostfixExprNode(p[2], '++', line=line)
             elif p[1] == '--':
-                p[0] = PostfixExprNode(p[2], '--')
+                p[0] = PostfixExprNode(p[2], '--', line=line)
             else:
-                p[0] = UnaryExprNode(p[1], p[2])
+                p[0] = UnaryExprNode(p[1], p[2], line=line)
     
     def p_postfix_expression(self, p):
         '''postfix_expression : primary_expression
@@ -581,22 +615,25 @@ class RTMCParser:
          | postfix_expression ARROW IDENTIFIER
          | postfix_expression INCREMENT
          | postfix_expression DECREMENT'''
+        
+        line = p.lineno(1)
+
         if len(p) == 2:
             p[0] = p[1]
         elif len(p) == 3:
-            p[0] = PostfixExprNode(p[1], p[2])
+            p[0] = PostfixExprNode(p[1], p[2], line=line)
         elif len(p) == 4:
             if p[2] == '.':
-                p[0] = MemberExprNode(p[1], p[3], False)
+                p[0] = MemberExprNode(p[1], p[3], False, line=line)
             elif p[2] == '->':
-                p[0] = MemberExprNode(p[1], p[3], True)
+                p[0] = MemberExprNode(p[1], p[3], True, line=line)
             else:
-                p[0] = CallExprNode(p[1], [])
+                p[0] = CallExprNode(p[1], [], line=line)
         else:
             if p[2] == '[':
-                p[0] = ArrayAccessNode(p[1], p[3])
+                p[0] = ArrayAccessNode(p[1], p[3], line=line)
             else:
-                p[0] = CallExprNode(p[1], p[3])
+                p[0] = CallExprNode(p[1], p[3], line=line)
     
     def p_argument_list(self, p):
         '''argument_list : expression
@@ -650,10 +687,13 @@ class RTMCParser:
     def p_array_literal(self, p):
         '''array_literal : LEFT_BRACE expression_list RIGHT_BRACE
                         | LEFT_BRACE RIGHT_BRACE'''
+        
+        line = p.lineno(1)
+
         if len(p) == 4:
-            p[0] = ArrayLiteralNode(p[2])
+            p[0] = ArrayLiteralNode(p[2], line)
         else:
-            p[0] = ArrayLiteralNode([])
+            p[0] = ArrayLiteralNode([], line)
     
     def p_expression_list(self, p):
         '''expression_list : expression
@@ -665,16 +705,21 @@ class RTMCParser:
     
     # Message operations
     def p_message_send(self, p):
-        '''message_send : postfix_expression DOT SEND LEFT_PAREN expression RIGHT_PAREN
-                       | postfix_expression ARROW SEND LEFT_PAREN expression RIGHT_PAREN'''
+        '''message_send : postfix_expression DOT SEND LEFT_PAREN expression RIGHT_PAREN SEMICOLON'''
         # Handle both dot and arrow syntax for message send
-        p[0] = MessageSendNode(p[1], p[5])
+        line = p.lineno(1)
+        p[0] = MessageSendNode(p[1], p[5], line)
     
     def p_message_recv(self, p):
-        '''message_recv : postfix_expression DOT RECV LEFT_PAREN RIGHT_PAREN
-                       | postfix_expression ARROW RECV LEFT_PAREN RIGHT_PAREN'''
+        '''message_recv : postfix_expression DOT RECV LEFT_PAREN RIGHT_PAREN SEMICOLON
+                        | postfix_expression DOT RECV LEFT_PAREN expression RIGHT_PAREN SEMICOLON'''
         # Handle both dot and arrow syntax for message receive
-        p[0] = MessageRecvNode(p[1])
+        line = p.lineno(1)
+
+        if len(p) == 7:
+            p[0] = MessageRecvNode(p[1], line=line)
+        else:
+            p[0] = MessageRecvNode(p[1], p[5], line=line)
 
     def p_rtos_call(self, p):
         '''rtos_call : RTOS_CREATE_TASK LEFT_PAREN argument_list RIGHT_PAREN
@@ -695,10 +740,12 @@ class RTMCParser:
                     | RTOS_YIELD LEFT_PAREN RIGHT_PAREN
                     | RTOS_SUSPEND_TASK LEFT_PAREN RIGHT_PAREN
                     | RTOS_RESUME_TASK LEFT_PAREN RIGHT_PAREN'''
+        
+        line = p.lineno(1)
         if len(p) == 5:
-            p[0] = CallExprNode(IdentifierExprNode(p[1]), p[3])
+            p[0] = CallExprNode(IdentifierExprNode(p[1]), p[3], line=line)
         else:
-            p[0] = CallExprNode(IdentifierExprNode(p[1]), [])
+            p[0] = CallExprNode(IdentifierExprNode(p[1]), [], line=line)
     
     def p_hw_call(self, p):
         '''hw_call : HW_GPIO_INIT LEFT_PAREN argument_list RIGHT_PAREN
@@ -727,10 +774,12 @@ class RTMCParser:
                   | HW_SPI_TRANSFER LEFT_PAREN RIGHT_PAREN
                   | HW_I2C_WRITE LEFT_PAREN RIGHT_PAREN
                   | HW_I2C_READ LEFT_PAREN RIGHT_PAREN'''
+        
+        line = p.lineno(1)
         if len(p) == 5:
-            p[0] = CallExprNode(IdentifierExprNode(p[1]), p[3])
+            p[0] = CallExprNode(IdentifierExprNode(p[1]), p[3], line=line)
         else:
-            p[0] = CallExprNode(IdentifierExprNode(p[1]), [])
+            p[0] = CallExprNode(IdentifierExprNode(p[1]), [], line=line)
     
     # Error rule for syntax errors
     def p_error(self, p):
