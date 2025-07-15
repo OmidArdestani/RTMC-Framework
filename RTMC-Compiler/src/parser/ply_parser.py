@@ -34,12 +34,12 @@ class RTMCParser:
     
     def __init__(self):
         self.lexer = RTMCLexer()
-        self.parser = yacc.yacc(module=self, debug=False, write_tables=False)
+        self.parser = yacc.yacc(module=self, debug=True, write_tables=True)
     
-    def _create_type_node(self, type_str: str) -> TypeNode:
+    def _create_type_node(self, type_str: str, line) -> TypeNode:
         """Convert a type string to a proper TypeNode"""
         if not type_str:
-            return PrimitiveTypeNode("void")
+            return PrimitiveTypeNode("void", line)
         
         # Handle pointer types
         if type_str.endswith('*'):
@@ -50,10 +50,10 @@ class RTMCParser:
                 base_type_str = base_type_str[:-1].strip()
             
             # Create base type
-            base_type = self._create_type_node(base_type_str)
+            base_type = self._create_type_node(base_type_str, line)
             
             # Wrap in pointer type
-            return PointerTypeNode(base_type, pointer_count)
+            return PointerTypeNode(base_type, pointer_count, line=line)
         
         # Handle const qualifier
         if type_str.startswith('const '):
@@ -63,21 +63,22 @@ class RTMCParser:
         # Handle struct/union types
         if type_str.startswith('struct '):
             struct_name = type_str[7:].strip()
-            return StructTypeNode(struct_name)
+            return StructTypeNode(struct_name, line)
         elif type_str.startswith('union '):
             union_name = type_str[6:].strip()
-            return UnionTypeNode(union_name)
+            return UnionTypeNode(union_name, line)
         
         # Handle primitive types
         if type_str in ['int', 'float', 'char', 'bool', 'void']:
-            return PrimitiveTypeNode(type_str)
+            return PrimitiveTypeNode(type_str, line)
         
         # Handle custom types (might be struct/union names)
-        return StructTypeNode(type_str)  # Assume it's a struct for now
+        return StructTypeNode(type_str, line)  # Assume it's a struct for now
     
     def parse(self, input_text: str, filename: str = "") -> ProgramNode:
         """Parse input text and return AST"""
         try:
+            self.filename = filename
             result = self.parser.parse(input_text, lexer=self.lexer.lexer)
             return result if result else ProgramNode([])
         except Exception as e:
@@ -111,10 +112,14 @@ class RTMCParser:
     def p_function_declaration(self, p):
         '''function_declaration : type_specifier IDENTIFIER LEFT_PAREN parameter_list RIGHT_PAREN compound_statement
                                | type_specifier IDENTIFIER LEFT_PAREN RIGHT_PAREN compound_statement'''
+        
+        line = p.lineno(2)
+        
+        filename = getattr(self, 'filename', '')
         if len(p) == 7:
-            p[0] = FunctionDeclNode(p[2], p[1], p[4], p[6])
+            p[0] = FunctionDeclNode(p[2], p[1], p[4], p[6], line=line, filename=filename)
         else:
-            p[0] = FunctionDeclNode(p[2], p[1], [], p[5])
+            p[0] = FunctionDeclNode(p[2], p[1], [], p[5], line=line, filename=filename)
     
     def p_parameter_list(self, p):
         '''parameter_list : parameter
@@ -127,12 +132,15 @@ class RTMCParser:
     def p_parameter(self, p):
         '''parameter : type_specifier IDENTIFIER
                     | type_specifier IDENTIFIER LEFT_BRACKET RIGHT_BRACKET'''
+        
+        line = p.lineno(2)
+        
         if len(p) == 3:
-            p[0] = ParameterNode(p[2], p[1])
+            p[0] = ParameterNode(p[2], p[1], line=line)
         else:
             # For array parameters, create an array type
             array_type = ArrayTypeNode(p[1])
-            p[0] = ParameterNode(p[2], array_type)
+            p[0] = ParameterNode(p[2], array_type, line=line)
     
     # Variable declaration
     def p_variable_declaration(self, p):
@@ -140,19 +148,27 @@ class RTMCParser:
                                | type_specifier IDENTIFIER ASSIGN expression SEMICOLON
                                | type_specifier IDENTIFIER LEFT_BRACKET expression RIGHT_BRACKET SEMICOLON
                                | type_specifier IDENTIFIER LEFT_BRACKET expression RIGHT_BRACKET ASSIGN array_literal SEMICOLON'''
+        
+        
+        line = p.lineno(2)
+        
         if len(p) == 4:
-            p[0] = VariableDeclNode(p[2], p[1])
+            p[0] = VariableDeclNode(p[2], p[1], line=line)
         elif len(p) == 6:
-            p[0] = VariableDeclNode(p[2], p[1], p[4])
+            p[0] = VariableDeclNode(p[2], p[1], p[4], line=line)
         elif len(p) == 7:
-            p[0] = ArrayDeclNode(p[2], p[1], p[4])
+            p[0] = ArrayDeclNode(p[2], p[1], p[4], line=line)
         else:
-            p[0] = ArrayDeclNode(p[2], p[1], p[4], p[7])
+            p[0] = ArrayDeclNode(p[2], p[1], p[4], p[7], line=line)
     
     # Struct declaration
     def p_struct_declaration(self, p):
         '''struct_declaration : STRUCT IDENTIFIER LEFT_BRACE struct_member_list RIGHT_BRACE SEMICOLON'''
-        p[0] = StructDeclNode(p[2], p[4])
+        
+        line = p.lineno(1)
+        
+        filename = getattr(self, 'filename', '')
+        p[0] = StructDeclNode(p[2], p[4], line=line, filename=filename)
     
     def p_struct_member_list(self, p):
         '''struct_member_list : struct_member
@@ -180,28 +196,32 @@ class RTMCParser:
                         | type_specifier IDENTIFIER COLON INTEGER ASSIGN expression SEMICOLON
                         | anonymous_union_declaration
                         | anonymous_struct_declaration'''
+        
+        
+        line = p.lineno(2)
+
         if len(p) == 4:
             # Simple field: type_specifier IDENTIFIER SEMICOLON
-            p[0] = FieldNode(p[2], p[1])
+            p[0] = FieldNode(p[2], p[1], line=line)
         elif len(p) == 6:
             if p[3] == ':':
                 # Bitfield declaration: type_specifier IDENTIFIER COLON INTEGER SEMICOLON
-                p[0] = FieldNode(p[2], p[1], bit_width=p[4])
+                p[0] = FieldNode(p[2], p[1], bit_width=p[4], line=line)
             elif p[3] == '=':
                 # Default initialization: type_specifier IDENTIFIER ASSIGN expression SEMICOLON
-                p[0] = FieldNode(p[2], p[1], initializer=p[4])
+                p[0] = FieldNode(p[2], p[1], initializer=p[4], line=line)
             else:
                 # Array declaration: type_specifier IDENTIFIER LEFT_BRACKET expression RIGHT_BRACKET SEMICOLON
                 # For now, treat array size as None for struct fields, since we pass an expression
-                array_type = ArrayTypeNode(p[1], None)
+                array_type = ArrayTypeNode(p[1], None, line=line)
                 p[0] = FieldNode(p[2], array_type)
         elif len(p) == 7:
             # Array declaration with initializer (handled by previous case)
-            array_type = ArrayTypeNode(p[1], None)
+            array_type = ArrayTypeNode(p[1], None, line=line)
             p[0] = FieldNode(p[2], array_type)
         elif len(p) == 8:
             # Bitfield with default value: type_specifier IDENTIFIER COLON INTEGER ASSIGN expression SEMICOLON
-            p[0] = FieldNode(p[2], p[1], bit_width=p[4], initializer=p[6])
+            p[0] = FieldNode(p[2], p[1], bit_width=p[4], initializer=p[6], line=line)
         else:
             # Anonymous struct/union - return the flattened fields
             p[0] = p[1]
@@ -246,31 +266,23 @@ class RTMCParser:
     # Union declaration
     def p_union_declaration(self, p):
         '''union_declaration : UNION IDENTIFIER LEFT_BRACE struct_member_list RIGHT_BRACE SEMICOLON'''
-        p[0] = UnionDeclNode(p[2], p[4])
+        
+        line = p.lineno(1)
+        
+        filename = getattr(self, 'filename', '')
+        p[0] = UnionDeclNode(p[2], p[4], line=line, filename=filename)
     
     # Task declaration
     def p_task_declaration(self, p):
-        '''task_declaration : TASK LESS_THAN core_no COMMA priority GREATER_THAN IDENTIFIER LEFT_BRACE task_body_list RIGHT_BRACE
-                           | TASK LESS_THAN core_no COMMA priority GREATER_THAN IDENTIFIER LEFT_BRACE RIGHT_BRACE
-                           | TASK_LOWER IDENTIFIER LEFT_PAREN parameter_list RIGHT_PAREN compound_statement
-                           | TASK_LOWER IDENTIFIER LEFT_PAREN RIGHT_PAREN compound_statement'''
-        if len(p) == 11:
-            # New syntax: Task<core, priority> TaskName { ... }
-            members, run_function = self._extract_task_members(p[9])
-            p[0] = TaskDeclNode(p[7], p[3], p[5], members, run_function)
-        elif len(p) == 10:
-            # New syntax: Task<core, priority> TaskName { }
-            p[0] = TaskDeclNode(p[7], p[3], p[5], [], None)
-        elif len(p) == 7:
-            # Old syntax: task TaskName(params) { ... }
-            # For old syntax, use default core=0, priority=1, and wrap body in a run() function
-            run_function = FunctionDeclNode("run", PrimitiveTypeNode("void"), [], p[6])
-            p[0] = TaskDeclNode(p[2], 0, 1, [], run_function)
-        else:
-            # Old syntax: task TaskName() { ... }
-            # For old syntax, use default core=0, priority=1, and wrap body in a run() function
-            run_function = FunctionDeclNode("run", PrimitiveTypeNode("void"), [], p[5])
-            p[0] = TaskDeclNode(p[2], 0, 1, [], run_function)
+        '''task_declaration : TASK LESS_THAN core_no COMMA priority GREATER_THAN IDENTIFIER LEFT_BRACE task_body_list RIGHT_BRACE'''
+        
+        # Task<core, priority> TaskName { ... }
+        
+        line = p.lineno(1)
+        
+        filename = getattr(self, 'filename', '')
+        members, run_function = self._extract_task_members(p[9])
+        p[0] = TaskDeclNode(p[7], p[3], p[5], members, run_function, line, filename)
 
     def p_core_no(self, p):
         '''core_no : INTEGER'''
@@ -309,12 +321,16 @@ class RTMCParser:
     # Message declaration
     def p_message_declaration(self, p):
         '''message_declaration : MESSAGE LESS_THAN type_specifier GREATER_THAN IDENTIFIER SEMICOLON'''
-        p[0] = MessageDeclNode(p[2], p[4])
+        
+        line = p.lineno(1)
+        p[0] = MessageDeclNode(p[5], p[3], line)
     
     # Import declaration
     def p_import_declaration(self, p):
         '''import_declaration : IMPORT STRING SEMICOLON'''
-        p[0] = ImportStmtNode(p[2])
+        
+        line = p.lineno(1)
+        p[0] = ImportStmtNode(p[2], line)
     
     # Type specifiers
     def p_type_specifier(self, p):
@@ -328,9 +344,12 @@ class RTMCParser:
                          | UNION IDENTIFIER
                          | IDENTIFIER
                          | type_specifier MULTIPLY'''
+        
+        line = p.lineno(1)
+        
         if len(p) == 2:
             # Simple type
-            p[0] = self._create_type_node(p[1])
+            p[0] = self._create_type_node(p[1], line)
         elif len(p) == 3:
             if p[1] == 'const':
                 # const type_specifier - for now just return the inner type
@@ -338,14 +357,14 @@ class RTMCParser:
             elif p[2] == '*':
                 # pointer type
                 if isinstance(p[1], str):
-                    base_type = self._create_type_node(p[1])
+                    base_type = self._create_type_node(p[1], line)
                 else:
                     base_type = p[1]
                 p[0] = PointerTypeNode(base_type, 1)
             else:
                 # struct/union IDENTIFIER
                 type_str = f"{p[1]} {p[2]}"
-                p[0] = self._create_type_node(type_str)
+                p[0] = self._create_type_node(type_str, line)
     
     # Statements
     def p_statement(self, p):
@@ -601,22 +620,26 @@ class RTMCParser:
                              | message_recv
                              | rtos_call
                              | hw_call'''
+        
+        line = p.lineno(1)
+        filename = getattr(self, 'filename', '')
+        
         if len(p) == 2:
             # Handle based on token type, not value type
             if p.slice[1].type == 'IDENTIFIER':
-                p[0] = IdentifierExprNode(p[1])
+                p[0] = IdentifierExprNode(p[1], line=line, filename=filename)
             elif p.slice[1].type == 'INTEGER':
-                p[0] = LiteralExprNode(p[1], 'int')
+                p[0] = LiteralExprNode(p[1], 'int', line)
             elif p.slice[1].type == 'FLOAT':
-                p[0] = LiteralExprNode(p[1], 'float')
+                p[0] = LiteralExprNode(p[1], 'float', line)
             elif p.slice[1].type == 'STRING':
-                p[0] = LiteralExprNode(p[1], 'string')
+                p[0] = LiteralExprNode(p[1], 'string', line)
             elif p.slice[1].type == 'CHAR':
-                p[0] = LiteralExprNode(p[1], 'char')
+                p[0] = LiteralExprNode(p[1], 'char', line)
             elif p.slice[1].type == 'TRUE':
-                p[0] = LiteralExprNode(True, 'bool')
+                p[0] = LiteralExprNode(True, 'bool', line)
             elif p.slice[1].type == 'FALSE':
-                p[0] = LiteralExprNode(False, 'bool')
+                p[0] = LiteralExprNode(False, 'bool', line)
             else:
                 # Other node types (message_send, rtos_call, etc.)
                 p[0] = p[1]
@@ -640,14 +663,19 @@ class RTMCParser:
         else:
             p[0] = p[1] + [p[3]]
     
+    # Message operations
     def p_message_send(self, p):
-        '''message_send : SEND LEFT_PAREN expression COMMA expression RIGHT_PAREN'''
-        p[0] = MessageSendNode(p[3], p[5])
+        '''message_send : postfix_expression DOT SEND LEFT_PAREN expression RIGHT_PAREN
+                       | postfix_expression ARROW SEND LEFT_PAREN expression RIGHT_PAREN'''
+        # Handle both dot and arrow syntax for message send
+        p[0] = MessageSendNode(p[1], p[5])
     
     def p_message_recv(self, p):
-        '''message_recv : RECV LEFT_PAREN expression RIGHT_PAREN'''
-        p[0] = MessageRecvNode(p[3])
-    
+        '''message_recv : postfix_expression DOT RECV LEFT_PAREN RIGHT_PAREN
+                       | postfix_expression ARROW RECV LEFT_PAREN RIGHT_PAREN'''
+        # Handle both dot and arrow syntax for message receive
+        p[0] = MessageRecvNode(p[1])
+
     def p_rtos_call(self, p):
         '''rtos_call : RTOS_CREATE_TASK LEFT_PAREN argument_list RIGHT_PAREN
                     | RTOS_DELETE_TASK LEFT_PAREN argument_list RIGHT_PAREN
