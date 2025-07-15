@@ -250,12 +250,61 @@ class RTMCParser:
     
     # Task declaration
     def p_task_declaration(self, p):
-        '''task_declaration : TASK IDENTIFIER LEFT_PAREN parameter_list RIGHT_PAREN compound_statement
-                           | TASK IDENTIFIER LEFT_PAREN RIGHT_PAREN compound_statement'''
-        if len(p) == 7:
-            p[0] = TaskDeclNode(p[2], p[4], p[6])
+        '''task_declaration : TASK LESS_THAN core_no COMMA priority GREATER_THAN IDENTIFIER LEFT_BRACE task_body_list RIGHT_BRACE
+                           | TASK LESS_THAN core_no COMMA priority GREATER_THAN IDENTIFIER LEFT_BRACE RIGHT_BRACE
+                           | TASK_LOWER IDENTIFIER LEFT_PAREN parameter_list RIGHT_PAREN compound_statement
+                           | TASK_LOWER IDENTIFIER LEFT_PAREN RIGHT_PAREN compound_statement'''
+        if len(p) == 11:
+            # New syntax: Task<core, priority> TaskName { ... }
+            members, run_function = self._extract_task_members(p[9])
+            p[0] = TaskDeclNode(p[7], p[3], p[5], members, run_function)
+        elif len(p) == 10:
+            # New syntax: Task<core, priority> TaskName { }
+            p[0] = TaskDeclNode(p[7], p[3], p[5], [], None)
+        elif len(p) == 7:
+            # Old syntax: task TaskName(params) { ... }
+            # For old syntax, use default core=0, priority=1, and wrap body in a run() function
+            run_function = FunctionDeclNode("run", PrimitiveTypeNode("void"), [], p[6])
+            p[0] = TaskDeclNode(p[2], 0, 1, [], run_function)
         else:
-            p[0] = TaskDeclNode(p[2], [], p[5])
+            # Old syntax: task TaskName() { ... }
+            # For old syntax, use default core=0, priority=1, and wrap body in a run() function
+            run_function = FunctionDeclNode("run", PrimitiveTypeNode("void"), [], p[5])
+            p[0] = TaskDeclNode(p[2], 0, 1, [], run_function)
+
+    def p_core_no(self, p):
+        '''core_no : INTEGER'''
+        p[0] = p[1]
+
+    def p_priority(self, p):
+        '''priority : INTEGER'''
+        p[0] = p[1]
+    
+    def p_task_body_list(self, p):
+        '''task_body_list : task_body_item
+                         | task_body_list task_body_item'''
+        if len(p) == 2:
+            p[0] = [p[1]]
+        else:
+            p[0] = p[1] + [p[2]]
+    
+    def p_task_body_item(self, p):
+        '''task_body_item : variable_declaration
+                         | function_declaration'''
+        p[0] = p[1]
+    
+    def _extract_task_members(self, body_list):
+        """Extract task members and run function from task body"""
+        members = []
+        run_function = None
+        
+        for item in body_list:
+            if isinstance(item, FunctionDeclNode) and item.name == 'run':
+                run_function = item
+            else:
+                members.append(item)
+        
+        return members, run_function
     
     # Message declaration
     def p_message_declaration(self, p):

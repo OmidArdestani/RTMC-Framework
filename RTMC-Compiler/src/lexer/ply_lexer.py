@@ -52,6 +52,7 @@ class RTMCLexer:
         'struct': 'STRUCT',
         'union': 'UNION',
         'Task': 'TASK',
+        'task': 'TASK_LOWER',
         'message': 'MESSAGE',
         'import': 'IMPORT',
         
