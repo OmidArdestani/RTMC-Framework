@@ -308,7 +308,7 @@ class RTMCParser:
     
     # Message declaration
     def p_message_declaration(self, p):
-        '''message_declaration : MESSAGE IDENTIFIER LEFT_BRACE struct_member_list RIGHT_BRACE SEMICOLON'''
+        '''message_declaration : MESSAGE LESS_THAN type_specifier GREATER_THAN IDENTIFIER SEMICOLON'''
         p[0] = MessageDeclNode(p[2], p[4])
     
     # Import declaration
