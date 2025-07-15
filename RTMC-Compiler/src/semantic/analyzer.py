@@ -890,14 +890,20 @@ class SemanticAnalyzer(ASTVisitor):
     def visit_message_send(self, node: MessageSendNode):
         """Visit message send expression"""
         # Check if the message queue exists
-        symbol = self.symbol_table.get(node.channel)
+        # Extract the channel name from the IdentifierExprNode
+        if hasattr(node.channel, 'name'):
+            channel_name = node.channel.name
+        else:
+            channel_name = str(node.channel)
+        
+        symbol = self.symbol_table.get(channel_name)
         
         if not symbol:
-            self.error(f"Undefined message queue '{node.channel}'", node.line, node.filename)
+            self.error(f"Undefined message queue '{channel_name}'", node.line, node.filename)
             return "void"
         
         if symbol.symbol_type != SymbolType.MESSAGE:
-            self.error(f"'{node.channel}' is not a message queue", node.line, node.filename)
+            self.error(f"'{channel_name}' is not a message queue", node.line, node.filename)
             return "void"
         
         # Check payload type matches message type
@@ -911,14 +917,20 @@ class SemanticAnalyzer(ASTVisitor):
     def visit_message_recv(self, node: MessageRecvNode):
         """Visit message receive expression"""
         # Check if the message queue exists
-        symbol = self.symbol_table.get(node.channel)
+        # Extract the channel name from the IdentifierExprNode
+        if hasattr(node.channel, 'name'):
+            channel_name = node.channel.name
+        else:
+            channel_name = str(node.channel)
+        
+        symbol = self.symbol_table.get(channel_name)
         
         if not symbol:
-            self.error(f"Undefined message queue '{node.channel}'", node.line, node.filename)
+            self.error(f"Undefined message queue '{channel_name}'", node.line, node.filename)
             return "int"
         
         if symbol.symbol_type != SymbolType.MESSAGE:
-            self.error(f"'{node.channel}' is not a message queue", node.line, node.filename)
+            self.error(f"'{channel_name}' is not a message queue", node.line, node.filename)
             return "int"
         
         # Check timeout parameter if present

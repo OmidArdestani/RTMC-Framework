@@ -174,10 +174,18 @@ class BytecodeGenerator(ASTVisitor):
             if isinstance(decl, FunctionDeclNode):
                 self.functions[decl.name] = -1  # Placeholder
         
-        # Second pass: generate code
+        # Second pass: generate initialization code for global declarations
         for decl in node.declarations:
             self.current_line = decl.line
-            decl.accept(self)
+            # Only generate code for non-function declarations during initialization
+            if not isinstance(decl, FunctionDeclNode):
+                decl.accept(self)
+        
+        # Generate function code
+        for decl in node.declarations:
+            self.current_line = decl.line
+            if isinstance(decl, FunctionDeclNode):
+                decl.accept(self)
         
         # Patch jump addresses
         self.patch_jumps()
@@ -1348,10 +1356,11 @@ class BytecodeGenerator(ASTVisitor):
         node.payload.accept(self)
         
         # Get the message queue ID
-        if node.channel not in self.symbol_table:
-            raise CodeGenError(f"Undefined message queue: {node.channel}")
+        channel_name = node.channel.name if hasattr(node.channel, 'name') else str(node.channel)
+        if channel_name not in self.symbol_table:
+            raise CodeGenError(f"Undefined message queue: {channel_name}")
         
-        message_id = self.symbol_table[node.channel]
+        message_id = self.symbol_table[channel_name]
         
         # Emit message send instruction
         self.emit(Instruction(Opcode.MSG_SEND, [message_id]))
@@ -1359,10 +1368,11 @@ class BytecodeGenerator(ASTVisitor):
     def visit_message_recv(self, node: MessageRecvNode):
         """Generate code for message receive"""
         # Get the message queue ID
-        if node.channel not in self.symbol_table:
-            raise CodeGenError(f"Undefined message queue: {node.channel}")
+        channel_name = node.channel.name if hasattr(node.channel, 'name') else str(node.channel)
+        if channel_name not in self.symbol_table:
+            raise CodeGenError(f"Undefined message queue: {channel_name}")
         
-        message_id = self.symbol_table[node.channel]
+        message_id = self.symbol_table[channel_name]
         
         # Handle timeout parameter
         if node.timeout is not None:
@@ -1370,8 +1380,9 @@ class BytecodeGenerator(ASTVisitor):
             node.timeout.accept(self)
             # The timeout value is now on the stack
         else:
-            # No timeout specified, use -1 for blocking receive
-            self.emit(Instruction(Opcode.LOAD_CONST, [self.add_constant(-1)]))
+            # No timeout specified, use blocking receive (we'll handle this differently)
+            # Use a large positive timeout value instead of -1
+            self.emit(Instruction(Opcode.LOAD_CONST, [self.add_constant(999999)]))
         
         # Emit message receive instruction with timeout
         # Stack order: [timeout_value] -> MSG_RECV will pop timeout and use it

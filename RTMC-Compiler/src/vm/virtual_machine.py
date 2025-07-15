@@ -480,6 +480,9 @@ class VirtualMachine:
             raise VMError("No program loaded")
         
         try:
+            # Execute global initialization code first
+            self._execute_global_initialization()
+            
             # Create tasks based on RTOS_CREATE_TASK instructions found in bytecode
             self._initialize_tasks_from_bytecode()
             
@@ -1126,7 +1129,7 @@ class VirtualMachine:
         """Handle MSG_RECV instruction with timeout support"""
         message_id = instruction.operands[0]
         
-        # Pop timeout value from stack (-1 means blocking, >=0 means timeout in ms)
+        # Pop timeout value from stack (999999 means blocking, 0 means non-blocking, >0 means timeout in ms)
         timeout_ms = self._pop()
         
         if message_id in self.message_queues:
@@ -1150,7 +1153,7 @@ class VirtualMachine:
                 # No message available
                 task_id = self.current_task_id
                 if task_id in self.tasks:
-                    if timeout_ms == -1:
+                    if timeout_ms >= 999999:
                         # Blocking receive - block indefinitely
                         self.tasks[task_id].state = TaskState.BLOCKED
                         queue.waiting_receivers.append(task_id)
@@ -1346,3 +1349,26 @@ class VirtualMachine:
         if pointer_value is None:
             raise VMError("Cannot dereference null pointer")
         self.memory[pointer_value] = value
+
+    def _execute_global_initialization(self):
+        """Execute global initialization code before starting tasks"""
+        if not self.program:
+            return
+        
+        # Execute instructions from the beginning until we hit a function definition
+        pc = 0
+        while pc < len(self.program.instructions):
+            instruction = self.program.instructions[pc]
+            
+            # Stop if we hit a function definition or task creation
+            if instruction.opcode in [Opcode.RTOS_CREATE_TASK, Opcode.RET]:
+                break
+            
+            # Execute the instruction
+            self.pc = pc
+            self._execute_instruction(instruction)
+            
+            if self.debug:
+                print(f"Global init: PC={pc} {instruction.opcode.name} {instruction.operands}")
+            
+            pc += 1

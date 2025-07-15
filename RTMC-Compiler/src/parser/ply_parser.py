@@ -705,18 +705,18 @@ class RTMCParser:
     
     # Message operations
     def p_message_send(self, p):
-        '''message_send : postfix_expression DOT SEND LEFT_PAREN expression RIGHT_PAREN SEMICOLON'''
-        # Handle both dot and arrow syntax for message send
+        '''message_send : postfix_expression DOT SEND LEFT_PAREN expression RIGHT_PAREN'''
+        # Handle message send: queue.send(value)
         line = p.lineno(1)
         p[0] = MessageSendNode(p[1], p[5], line)
     
     def p_message_recv(self, p):
-        '''message_recv : postfix_expression DOT RECV LEFT_PAREN RIGHT_PAREN SEMICOLON
-                        | postfix_expression DOT RECV LEFT_PAREN expression RIGHT_PAREN SEMICOLON'''
-        # Handle both dot and arrow syntax for message receive
+        '''message_recv : postfix_expression DOT RECV LEFT_PAREN RIGHT_PAREN
+                        | postfix_expression DOT RECV LEFT_PAREN expression RIGHT_PAREN'''
+        # Handle message receive: queue.recv() or queue.recv(timeout)
         line = p.lineno(1)
 
-        if len(p) == 7:
+        if len(p) == 6:
             p[0] = MessageRecvNode(p[1], line=line)
         else:
             p[0] = MessageRecvNode(p[1], p[5], line=line)
