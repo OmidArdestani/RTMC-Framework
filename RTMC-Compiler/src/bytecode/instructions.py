@@ -55,6 +55,11 @@ class Opcode(IntEnum):
     FREE_VAR = auto()
     ALLOC_STRUCT = auto()
     
+    # Array Instructions
+    ALLOC_ARRAY = auto()        # Allocate array memory
+    LOAD_ARRAY_ELEM = auto()    # Load array element
+    STORE_ARRAY_ELEM = auto()   # Store array element
+    
     # RTOS Task Instructions
     RTOS_CREATE_TASK = auto()
     RTOS_DELETE_TASK = auto()
@@ -267,6 +272,18 @@ class InstructionBuilder:
         return Instruction(Opcode.ALLOC_STRUCT, [size])
     
     @staticmethod
+    def alloc_array(element_size: int, count: int) -> Instruction:
+        return Instruction(Opcode.ALLOC_ARRAY, [element_size, count])
+    
+    @staticmethod
+    def load_array_elem(element_size: int = 4) -> Instruction:
+        return Instruction(Opcode.LOAD_ARRAY_ELEM, [element_size])
+    
+    @staticmethod
+    def store_array_elem(element_size: int = 4) -> Instruction:
+        return Instruction(Opcode.STORE_ARRAY_ELEM, [element_size])
+    
+    @staticmethod
     def rtos_create_task(func_id: int, name_id: int, stack_size: int, priority: int, core: int) -> Instruction:
         return Instruction(Opcode.RTOS_CREATE_TASK, [func_id, name_id, stack_size, priority, core])
     
@@ -414,6 +431,10 @@ INSTRUCTION_INFO = {
     Opcode.ALLOC_VAR: {"operands": 1, "description": "Allocate variable"},
     Opcode.FREE_VAR: {"operands": 1, "description": "Free variable"},
     Opcode.ALLOC_STRUCT: {"operands": 1, "description": "Allocate struct"},
+    
+    Opcode.ALLOC_ARRAY: {"operands": 2, "description": "Allocate array"},
+    Opcode.LOAD_ARRAY_ELEM: {"operands": 1, "description": "Load array element"},
+    Opcode.STORE_ARRAY_ELEM: {"operands": 1, "description": "Store array element"},
     
     Opcode.RTOS_CREATE_TASK: {"operands": 5, "description": "Create RTOS task"},
     Opcode.RTOS_DELETE_TASK: {"operands": 1, "description": "Delete RTOS task"},

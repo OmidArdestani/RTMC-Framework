@@ -369,6 +369,11 @@ class VirtualMachine:
             Opcode.FREE_VAR: self._handle_free_var,
             Opcode.ALLOC_STRUCT: self._handle_alloc_struct,
             
+            # Array instructions
+            Opcode.ALLOC_ARRAY: self._handle_alloc_array,
+            Opcode.LOAD_ARRAY_ELEM: self._handle_load_array_elem,
+            Opcode.STORE_ARRAY_ELEM: self._handle_store_array_elem,
+            
             # RTOS instructions
             Opcode.RTOS_CREATE_TASK: self._handle_rtos_create_task,
             Opcode.RTOS_DELETE_TASK: self._handle_rtos_delete_task,
@@ -407,6 +412,7 @@ class VirtualMachine:
             
             Opcode.HALT: self._handle_halt,
             Opcode.NOP: self._handle_nop,
+            Opcode.COMMENT: self._handle_comment,
         }
     
     def load_program(self, program: BytecodeProgram):
@@ -952,6 +958,40 @@ class VirtualMachine:
             self.memory[address + i] = 0
         self._push(address)
     
+    def _handle_alloc_array(self, instruction: Instruction):
+        """Handle ALLOC_ARRAY instruction"""
+        element_size = instruction.operands[0]
+        count = instruction.operands[1]
+        total_size = element_size * count
+        address = len(self.memory)
+        for i in range(total_size):
+            self.memory[address + i] = 0
+        self._push(address)
+    
+    def _handle_load_array_elem(self, instruction: Instruction):
+        """Handle LOAD_ARRAY_ELEM instruction"""
+        # Pop values from stack
+        index = self._pop()
+        base_addr = self._pop()
+        element_size = instruction.operands[0] if len(instruction.operands) > 0 else 4
+        
+        # Calculate element address
+        element_addr = base_addr + (index * element_size)
+        value = self.memory.get(element_addr, 0)
+        self._push(value)
+    
+    def _handle_store_array_elem(self, instruction: Instruction):
+        """Handle STORE_ARRAY_ELEM instruction"""
+        # Pop values from stack
+        value = self._pop()
+        index = self._pop()
+        base_addr = self._pop()
+        element_size = instruction.operands[0] if len(instruction.operands) > 0 else 4
+        
+        # Calculate element address
+        element_addr = base_addr + (index * element_size)
+        self.memory[element_addr] = value
+    
     # RTOS instruction handlers
     
     def _handle_rtos_create_task(self, instruction: Instruction):
@@ -1326,6 +1366,10 @@ class VirtualMachine:
     def _handle_nop(self, instruction: Instruction):
         """Handle NOP instruction"""
         pass  # Do nothing
+
+    def _handle_comment(self, instruction: Instruction):
+        """Handle COMMENT instruction"""
+        pass  # Comments are ignored at runtime
 
     # Pointer instruction handlers
     def _handle_load_addr(self, instruction: Instruction):

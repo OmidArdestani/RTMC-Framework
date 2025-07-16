@@ -1013,8 +1013,11 @@ class SemanticAnalyzer(ASTVisitor):
         # Get the array type
         array_type = node.array.accept(self)
         
-        # Check that it's actually an array type
-        if not ('[' in array_type and ']' in array_type):
+        # Check that it's either an array type or a pointer type
+        is_array = '[' in array_type and ']' in array_type
+        is_pointer = array_type.endswith('*')
+        
+        if not (is_array or is_pointer):
             self.error(f"Cannot index non-array type {array_type}", node.line, node.filename)
         
         # Get the index type
@@ -1022,8 +1025,14 @@ class SemanticAnalyzer(ASTVisitor):
         if index_type != "int":
             self.error(f"Array index must be int, got {index_type}", node.line)
         
-        # Extract element type from array type (e.g., "int[5]" -> "int")
-        element_type = array_type.split('[')[0]
+        # Extract element type 
+        if is_array:
+            # Extract element type from array type (e.g., "int[5]" -> "int")
+            element_type = array_type.split('[')[0]
+        else:
+            # For pointers, remove one level of indirection (e.g., "int*" -> "int")
+            element_type = array_type[:-1]
+        
         return element_type
     
     def visit_pointer_type(self, node: PointerTypeNode):

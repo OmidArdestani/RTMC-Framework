@@ -760,6 +760,45 @@ class BytecodeGenerator(ASTVisitor):
                 return field_type
             
             raise CodeGenError(f"Cannot resolve type of field '{parent_field}' in struct '{parent_struct}'")
+        elif isinstance(member_expr.object, ArrayAccessNode):
+            # Array access case: array_ptr[index].field
+            # We need to get the type of the array element
+            if isinstance(member_expr.object.array, IdentifierExprNode):
+                # Simple case: array_ptr[index].field
+                array_name = member_expr.object.array.name
+                array_type = self._resolve_variable_type(array_name)
+                
+                if array_type:
+                    element_type = None
+                    if '[' in array_type:
+                        # Array type: extract element type
+                        element_type = array_type.split('[')[0]
+                    elif array_type.endswith('*'):
+                        # Pointer type: remove one level of indirection
+                        element_type = array_type[:-1]
+                    
+                    if element_type:
+                        # Remove 'struct ' prefix if present
+                        if element_type.startswith('struct '):
+                            return element_type[7:]
+                        else:
+                            return element_type
+                
+                # Fallback: try to find the struct type by checking which struct contains this field
+                field_name = member_expr.property
+                candidate_structs = []
+                for struct_name, fields in self.struct_layouts.items():
+                    if field_name in fields:
+                        candidate_structs.append(struct_name)
+                
+                if len(candidate_structs) == 1:
+                    return candidate_structs[0]
+                elif len(candidate_structs) > 1:
+                    raise CodeGenError(f"Ambiguous field access: field '{field_name}' exists in multiple structs: {candidate_structs}")
+                else:
+                    raise CodeGenError(f"Field '{field_name}' not found in any registered struct")
+            else:
+                raise CodeGenError("Complex array access in member expression not yet supported")
         elif isinstance(member_expr.object, DereferenceNode):
             # Pointer dereference case: ptr->field
             # The pointer's base type determines the struct
@@ -1042,6 +1081,22 @@ class BytecodeGenerator(ASTVisitor):
                 # field_offset = base_address + nested_offset
                 self.emit(InstructionBuilder.load_struct_member(base_address, nested_offset))
 
+                return
+            elif isinstance(node.object, ArrayAccessNode):
+                # Array access result: array_ptr[index].member
+                # First, generate the array access to get the element address
+                node.object.accept(self)
+                
+                # The array access leaves the element address on the stack
+                # Now we need to add the field offset to access the member
+                if field_offset > 0:
+                    offset_const = self.add_constant(field_offset)
+                    self.emit(InstructionBuilder.load_const(offset_const))
+                    self.emit(InstructionBuilder.add())
+                
+                # Load the value at the computed address
+                self.emit(InstructionBuilder.load_deref())
+                
                 return
             elif isinstance(node.object, DereferenceNode):
                 # Pointer access: ptr->member
@@ -1394,34 +1449,57 @@ class BytecodeGenerator(ASTVisitor):
     
     def visit_array_decl(self, node: ArrayDeclNode):
         """Visit array declaration node"""
-        # For now, treat array as a regular variable allocation
-        # TODO: Implement proper array support in VM
+        # Get the actual size value from the expression
+        array_size = self._evaluate_constant_expression(node.size)
         
-        # Store array reference in symbol table
+        # Allocate array memory
+        element_size = self.get_type_size(node.element_type)
+        self.emit(InstructionBuilder.alloc_array(element_size, array_size))
+
+        # Update memory size for the array
+        self.variable_counter += element_size * array_size
+        
+        # Store array base address in symbol table
         array_address = self.allocate_variable(node.name)
+        self.emit(InstructionBuilder.store_var(array_address))
         
         # Track the array type
-        array_type = f"{self._get_type_name(node.element_type)}[{node.size}]"
+        array_type = f"{self._get_type_name(node.element_type)}[{array_size}]"
         if self.current_function:
             self.local_variable_types[node.name] = array_type
         else:
             self.variable_types[node.name] = array_type
         
-        # Initialize to null/zero for now
-        const_idx = self.add_constant(0)
-        self.emit(Instruction(Opcode.LOAD_CONST, [const_idx]))
-        self.emit(Instruction(Opcode.STORE_VAR, [array_address]))
-        
         # If there's an initializer, process it
         if node.initializer:
-            # For now, just evaluate the initializer but don't store it
-            # TODO: Implement proper array initialization
-            node.initializer.accept(self)
+            # Initialize array elements
+            if isinstance(node.initializer, ArrayLiteralNode):
+                for i, element in enumerate(node.initializer.elements):
+                    if i >= array_size:
+                        break  # Don't exceed array bounds
+                    
+                    # Load array base address for initialization
+                    self.emit(InstructionBuilder.load_var(array_address))
+                    
+                    # Load index
+                    const_idx = self.add_constant(i)
+                    self.emit(InstructionBuilder.load_const(const_idx))
+                    
+                    # Generate element value
+                    element.accept(self)
+                    
+                    # Store element: array[i] = value
+                    # Stack now contains [base_addr, index, value]
+                    self.emit(InstructionBuilder.store_array_elem(element_size))
+            else:
+                # Single initializer for all elements
+                node.initializer.accept(self)
     
     def visit_array_literal(self, node: ArrayLiteralNode):
         """Visit array literal node"""
+        # For array literals, we need to handle them in context
+        # This is typically called from array declaration initialization
         # For now, just emit the first element or zero
-        # TODO: Implement proper array literal support
         if node.elements:
             node.elements[0].accept(self)
         else:
@@ -1430,15 +1508,63 @@ class BytecodeGenerator(ASTVisitor):
     
     def visit_array_access(self, node: ArrayAccessNode):
         """Visit array access node"""
-        # For now, just treat array access as loading the array variable
-        # TODO: Implement proper array indexing
-        if hasattr(node.array, 'name'):
-            # Simple case: array[index]
-            array_address = self.get_variable_address(node.array.name)
-            self.emit(Instruction(Opcode.LOAD_VAR, [array_address]))
+        if isinstance(node.array, IdentifierExprNode):
+            # Simple case: array[index] or pointer[index]
+            array_name = node.array.name
+            array_address = self.get_variable_address(array_name)
+            
+            # Load array base address
+            self.emit(InstructionBuilder.load_var(array_address))
+            
+            # Generate index
+            node.index.accept(self)
+            
+            # Get element type and size
+            array_type = self.local_variable_types.get(array_name) or self.variable_types.get(array_name)
+            element_size = 4  # Default to 4 bytes for int
+            
+            if array_type:
+                if '[' in array_type:
+                    # Array type: extract element type
+                    element_type_name = array_type.split('[')[0]
+                elif array_type.endswith('*'):
+                    # Pointer type: remove one level of indirection
+                    element_type_name = array_type[:-1]
+                    # Handle nested pointers like "struct MyStruct*"
+                    if element_type_name.startswith('struct '):
+                        element_type_name = element_type_name[7:]  # Remove 'struct ' prefix
+                        if element_type_name in self.struct_layouts:
+                            element_size = self.struct_layouts[element_type_name]['size']
+                        else:
+                            element_size = 20  # Default struct size
+                    else:
+                        # Simple types
+                        if element_type_name == 'char':
+                            element_size = 1
+                        elif element_type_name == 'float':
+                            element_size = 4
+                        elif element_type_name == 'int':
+                            element_size = 4
+                else:
+                    # Fallback for other types
+                    element_type_name = array_type
+                    
+                # Set element size based on type
+                if element_type_name == 'char':
+                    element_size = 1
+                elif element_type_name == 'float':
+                    element_size = 4
+                elif element_type_name == 'int':
+                    element_size = 4
+            
+            # Load array element
+            self.emit(InstructionBuilder.load_array_elem(element_size))
         else:
             # Complex array access
             node.array.accept(self)
+            node.index.accept(self)
+            # For now, just use default element size
+            self.emit(InstructionBuilder.load_array_elem(4))
     
     def visit_pointer_type(self, node: PointerTypeNode):
         """Visit pointer type node"""
@@ -1494,6 +1620,17 @@ class BytecodeGenerator(ASTVisitor):
         
         # Dereference the pointer
         self.emit(Instruction(Opcode.LOAD_DEREF, []))
+    
+    def _evaluate_constant_expression(self, expr_node):
+        """Evaluate a constant expression to get its integer value"""
+        if isinstance(expr_node, LiteralExprNode):
+            return expr_node.value
+        elif isinstance(expr_node, int):
+            return expr_node
+        else:
+            # For more complex expressions, we'd need a full constant evaluator
+            # For now, assume it's a simple integer literal
+            return 0  # Default fallback
     
     def visit_cast_expr(self, node: CastExprNode):
         """Visit cast expression node"""
