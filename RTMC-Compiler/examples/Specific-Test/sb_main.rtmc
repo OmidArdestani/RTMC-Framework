@@ -1,0 +1,86 @@
+
+
+
+message<int> SBTestMsg;
+
+const int USB4_BE_CMD_PROTOCOL_TYPE_UNDEFINED = 0;
+const int USB4_BE_CMD_PROTOCOL_TYPE_SIDEBAND  = 0;
+const int USB4_BE_CMD_OPCODE_UNDEFINED        = 0;
+
+struct USB4BECommand
+{
+    int ProtocolType :  4;
+    int Opcode       : 12;
+};
+
+struct USB4SBTransactionHead
+{
+    int DLE         : 8;
+    int CmdNotResp  : 1;
+    int Rsvd2       : 5;
+    int TrType      : 2;
+
+    int DataSymbl : 32;
+};
+
+void processSbCommand(int data)
+{
+    int packet_addr = data + 4; // 1 DWord offset for the command structure
+    USB4SBTransactionHead* sb_packet = (USB4SBTransactionHead*)packet_addr;
+
+    if(sb_packet->CmdNotResp == 1)
+    {
+        DBG_PRINTF("Processing SB command without response, Data Symbol: %d", sb_packet->DataSymbl);
+    }
+    else
+    {
+        DBG_PRINTF("Processing SB command with Opcode: %d", sb_packet->DataSymbl);
+        // Add specific processing logic for SB commands here
+    }
+}
+
+void processOtherCommand(int data)
+{
+    DBG_PRINTF("Processing other command with data: %d", data);
+    // Add specific processing logic for other commands here
+}
+
+void process_data(int data)
+{
+    USB4BECommand* be_cmd = (USB4BECommand*)data;
+
+    if(be_cmd->ProtocolType == USB4_BE_CMD_PROTOCOL_TYPE_SIDEBAND)
+    {
+        processSbCommand(data);
+    }
+    else
+    {
+        processOtherCommand(data);
+    }
+}
+
+Task<1, 1> SBTask
+{
+    void run()
+    {
+        while (1)
+        {
+            int data_addr = SBTestMsg.recv();
+
+            process_data(data_addr);
+        }
+    }
+}
+
+
+void main()
+{
+    while(1)
+    {
+        int data[10] = {0x12345678, 0x87654321, 0xAABBCCDD, 0x11223344, 0x55667788, 0x99AABBCC, 0xDDEEFF00, 0xFFEEDDCC, 0x00112233, 0x44556677};
+        int addr     = (int)data;
+
+        SBTestMsg.send(addr);
+        RTOS_DELAY_MS(500);
+    }
+}
