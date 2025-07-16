@@ -166,12 +166,20 @@ class RTMCParser:
     
     # Struct declaration
     def p_struct_declaration(self, p):
-        '''struct_declaration : STRUCT IDENTIFIER LEFT_BRACE struct_member_list RIGHT_BRACE SEMICOLON'''
+        '''struct_declaration : STRUCT IDENTIFIER LEFT_BRACE struct_member_list RIGHT_BRACE SEMICOLON
+                             | STRUCT LEFT_BRACE struct_member_list RIGHT_BRACE SEMICOLON'''
         
         line = p.lineno(1)
         filename = getattr(self, 'filename', '')
-        
-        p[0] = StructDeclNode(p[2], p[4], line=line, filename=filename)
+
+        if len(p) == 7:
+            p[0] = StructDeclNode(p[2], p[4], line=line, filename=filename)
+        else:
+            # Anonymous struct - generate a unique struct name
+            import uuid
+            struct_id = f"struct_{uuid.uuid4().hex[:8]}"
+            p[0] = StructDeclNode(struct_id, p[4], line=line, filename=filename)
+
     
     def p_struct_member_list(self, p):
         '''struct_member_list : struct_member
@@ -184,7 +192,7 @@ class RTMCParser:
                 p[0] = [p[1]]
         else:
             # Combine existing list with new member(s)
-            result = p[1]
+            result = p[1][:]  # Create a copy to avoid modifying the original
             if isinstance(p[2], list):
                 result.extend(p[2])
             else:
@@ -200,7 +208,11 @@ class RTMCParser:
                         | anonymous_union_declaration
                         | anonymous_struct_declaration'''
         
-        
+        if len(p) == 2:
+            # Anonymous struct/union - return the flattened fields
+            p[0] = p[1]
+            return
+            
         line = p.lineno(2)
 
         if len(p) == 4:
@@ -215,19 +227,15 @@ class RTMCParser:
                 p[0] = FieldNode(p[2], p[1], initializer=p[4], line=line)
             else:
                 # Array declaration: type_specifier IDENTIFIER LEFT_BRACKET expression RIGHT_BRACKET SEMICOLON
-                # For now, treat array size as None for struct fields, since we pass an expression
                 array_type = ArrayTypeNode(p[1], None, line=line)
-                p[0] = FieldNode(p[2], array_type)
+                p[0] = FieldNode(p[2], array_type, line=line)
         elif len(p) == 7:
-            # Array declaration with initializer (handled by previous case)
+            # Array declaration with initializer
             array_type = ArrayTypeNode(p[1], None, line=line)
-            p[0] = FieldNode(p[2], array_type)
+            p[0] = FieldNode(p[2], array_type, line=line)
         elif len(p) == 8:
             # Bitfield with default value: type_specifier IDENTIFIER COLON INTEGER ASSIGN expression SEMICOLON
             p[0] = FieldNode(p[2], p[1], bit_width=p[4], initializer=p[6], line=line)
-        else:
-            # Anonymous struct/union - return the flattened fields
-            p[0] = p[1]
     
     # Anonymous union declaration
     def p_anonymous_union_declaration(self, p):
@@ -268,12 +276,33 @@ class RTMCParser:
     
     # Union declaration
     def p_union_declaration(self, p):
-        '''union_declaration : UNION IDENTIFIER LEFT_BRACE struct_member_list RIGHT_BRACE SEMICOLON'''
+        '''union_declaration : UNION IDENTIFIER LEFT_BRACE struct_member_list RIGHT_BRACE SEMICOLON
+                             | UNION LEFT_BRACE struct_member_list RIGHT_BRACE SEMICOLON'''
         
         line = p.lineno(1)
         filename = getattr(self, 'filename', '')
-        
-        p[0] = UnionDeclNode(p[2], p[4], line=line, filename=filename)
+        if len(p) == 7:
+            p[0] = UnionDeclNode(p[2], p[4], line=line, filename=filename)
+        else:
+            # Anonymous union - generate a unique union group name
+            import uuid
+            union_group_id = f"union_{uuid.uuid4().hex[:8]}"
+            
+            # Flatten the union - mark all fields as belonging to the same union group
+            flattened_fields = []
+            for field in p[3]:
+                if isinstance(field, list):
+                    # Handle nested anonymous struct/union
+                    for subfield in field:
+                        if hasattr(subfield, 'union_group'):
+                            subfield.union_group = union_group_id
+                        flattened_fields.append(subfield)
+                else:
+                    if hasattr(field, 'union_group'):
+                        field.union_group = union_group_id
+                    flattened_fields.append(field)
+            
+            p[0] = UnionDeclNode(union_group_id, flattened_fields, line=line, filename=filename)
     
     # Task declaration
     def p_task_declaration(self, p):
