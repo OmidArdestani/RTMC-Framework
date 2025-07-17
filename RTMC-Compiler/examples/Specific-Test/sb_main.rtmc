@@ -20,7 +20,7 @@ struct USB4SBTransactionHead
     int Rsvd2       : 5;
     int TrType      : 2;
 
-    int DataSymbl : 32;
+    int DataSymbl : 16;
 };
 
 void processSbCommand(int data)
@@ -63,9 +63,9 @@ void task1_run_function()
 {
     while (1)
     {
-        // int data_addr = SBTestMsg.recv();
+        int data_addr = SBTestMsg.recv();
 
-        // process_data(data_addr);
+        process_data(data_addr);
         RTOS_DELAY_MS(500);
     }
 }
@@ -78,7 +78,6 @@ void main()
     int stack_size = 1024;
     int task_id    = 1010;
     StartTask(stack_size, core, priority, task_id, task1_run_function);
-    
 
     while(1)
     {

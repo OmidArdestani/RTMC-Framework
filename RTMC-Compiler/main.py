@@ -165,7 +165,8 @@ def main():
 
         if args.run:
             from src.vm.virtual_machine import VirtualMachine
-            vm = VirtualMachine(debug=False, trace=False)
+            is_debug_mode = compile_mode == CompileMode.DEBUG
+            vm = VirtualMachine(debug=is_debug_mode, trace=False)
             vm.load_program(bytecode_program)
             vm.run()
         

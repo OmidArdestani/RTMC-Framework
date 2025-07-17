@@ -97,7 +97,7 @@ class TaskVMContext:
                 instruction = self.main_vm.program.instructions[self.pc]
                 
                 if self.main_vm.trace:
-                    print(f"Task {self.task.name}: PC={self.pc} {instruction}")
+                    print(f"\nTask {self.task.name}: PC={self.pc} {instruction}")
                 
                 self._execute_instruction(instruction)
                 
@@ -111,7 +111,7 @@ class TaskVMContext:
                     time.sleep(0.001)  # Small yield for cooperative threading
                     
         except Exception as e:
-            print(f"Task {self.task.name} execution error: {e}")
+            print(f"\nTask {self.task.name} execution error: {e}")
             raise
     
     def _execute_instruction(self, instruction: Instruction):
@@ -122,13 +122,13 @@ class TaskVMContext:
             return
         elif instruction.opcode == Opcode.RTOS_DELAY_MS:
             delay_ms = self._pop()
-            print(f"Task {self.task.name}: Delaying {delay_ms}ms")
+            print(f"\nTask {self.task.name}: Delaying {delay_ms}ms")
             time.sleep(delay_ms / 1000.0)
             return
         elif instruction.opcode == Opcode.DBG_PRINT:
             string_id = self._pop()
             if string_id < len(self.main_vm.program.strings):
-                print(f"Task {self.task.name}: DEBUG: {self.main_vm.program.strings[string_id]}")
+                print(f"\nTask {self.task.name}: DEBUG: {self.main_vm.program.strings[string_id]}")
             return
         
         # For other instructions, use the main VM's handlers but with our context
@@ -187,7 +187,7 @@ class HardwareSimulator:
             'value': 0,
             'pull': 0      # 0=none, 1=up, 2=down
         }
-        print(f"GPIO{pin} initialized as {'OUTPUT' if mode == 1 else 'INPUT'}")
+        print(f"\nGPIO{pin} initialized as {'OUTPUT' if mode == 1 else 'INPUT'}")
     
     def gpio_set(self, pin: int, value: int):
         """Set GPIO pin value"""
@@ -198,7 +198,7 @@ class HardwareSimulator:
             raise VMError(f"GPIO{pin} not configured as output")
         
         self.gpio_pins[pin]['value'] = value
-        print(f"GPIO{pin} set to {value}")
+        print(f"\nGPIO{pin} set to {value}")
     
     def gpio_get(self, pin: int) -> int:
         """Get GPIO pin value"""
@@ -210,7 +210,7 @@ class HardwareSimulator:
             import random
             value = random.randint(0, 1)
             self.gpio_pins[pin]['value'] = value
-            print(f"GPIO{pin} read: {value}")
+            print(f"\nGPIO{pin} read: {value}")
             return value
         else:
             return self.gpio_pins[pin]['value']
@@ -224,7 +224,7 @@ class HardwareSimulator:
             'count': 0,
             'pwm_duty': 0
         }
-        print(f"Timer{timer_id} initialized: mode={mode}, freq={freq}Hz")
+        print(f"\nTimer{timer_id} initialized: mode={mode}, freq={freq}Hz")
     
     def timer_start(self, timer_id: int):
         """Start timer"""
@@ -232,7 +232,7 @@ class HardwareSimulator:
             raise VMError(f"Timer{timer_id} not initialized")
         
         self.timers[timer_id]['running'] = True
-        print(f"Timer{timer_id} started")
+        print(f"\nTimer{timer_id} started")
     
     def timer_stop(self, timer_id: int):
         """Stop timer"""
@@ -240,7 +240,7 @@ class HardwareSimulator:
             raise VMError(f"Timer{timer_id} not initialized")
         
         self.timers[timer_id]['running'] = False
-        print(f"Timer{timer_id} stopped")
+        print(f"\nTimer{timer_id} stopped")
     
     def timer_set_pwm_duty(self, timer_id: int, duty: int):
         """Set PWM duty cycle"""
@@ -248,12 +248,12 @@ class HardwareSimulator:
             raise VMError(f"Timer{timer_id} not initialized")
         
         self.timers[timer_id]['pwm_duty'] = duty
-        print(f"Timer{timer_id} PWM duty set to {duty}%")
+        print(f"\nTimer{timer_id} PWM duty set to {duty}%")
     
     def adc_init(self, pin: int):
         """Initialize ADC channel"""
         self.adc_channels[pin] = 0
-        print(f"ADC{pin} initialized")
+        print(f"\nADC{pin} initialized")
     
     def adc_read(self, pin: int) -> int:
         """Read ADC value"""
@@ -264,20 +264,20 @@ class HardwareSimulator:
         import random
         value = random.randint(0, 4095)  # 12-bit ADC
         self.adc_channels[pin] = value
-        print(f"ADC{pin} read: {value}")
+        print(f"\nADC{pin} read: {value}")
         return value
     
     def uart_write(self, data: bytes):
         """Write data to UART"""
         self.uart_buffer.append(data)
-        print(f"UART TX: {data.hex()}")
+        print(f"\nUART TX: {data.hex()}")
     
     def spi_transfer(self, tx_data: bytes) -> bytes:
         """SPI transfer"""
         self.spi_buffer.append(tx_data)
         # Simulate response
         rx_data = bytes([0xFF] * len(tx_data))
-        print(f"SPI TX: {tx_data.hex()}, RX: {rx_data.hex()}")
+        print(f"\nSPI TX: {tx_data.hex()}, RX: {rx_data.hex()}")
         return rx_data
     
     def i2c_write(self, addr: int, data: int):
@@ -287,7 +287,7 @@ class HardwareSimulator:
         
         # Simulate register write
         self.i2c_devices[addr][0] = data
-        print(f"I2C write to 0x{addr:02X}: 0x{data:02X}")
+        print(f"\nI2C write to 0x{addr:02X}: 0x{data:02X}")
     
     def i2c_read(self, addr: int, reg: int) -> int:
         """Read data from I2C device"""
@@ -296,7 +296,7 @@ class HardwareSimulator:
         
         # Simulate register read
         value = self.i2c_devices[addr].get(reg, 0)
-        print(f"I2C read from 0x{addr:02X} reg 0x{reg:02X}: 0x{value:02X}")
+        print(f"\nI2C read from 0x{addr:02X} reg 0x{reg:02X}: 0x{value:02X}")
         return value
 
 class VirtualMachine:
@@ -447,7 +447,7 @@ class VirtualMachine:
     def _run_task_thread(self, task: Task):
         """Run a task in its own thread"""
         try:
-            print(f"Starting task thread: {task.name} (ID: {task.id})")
+            print(f"\nStarting task thread: {task.name} (ID: {task.id})")
             task.state = TaskState.RUNNING
             
             # Create a separate VM context for this task
@@ -457,13 +457,13 @@ class VirtualMachine:
             task_vm.execute_function(task.func_addr)
             
         except Exception as e:
-            print(f"Task {task.name} (ID: {task.id}) encountered error: {e}")
+            print(f"\nTask {task.name} (ID: {task.id}) encountered error: {e}")
             if self.debug:
                 import traceback
                 traceback.print_exc()
         finally:
             task.state = TaskState.DELETED
-            print(f"Task {task.name} (ID: {task.id}) finished")
+            print(f"\nTask {task.name} (ID: {task.id}) finished")
     
     def _start_task_thread(self, task: Task):
         """Start a task as a Python thread"""
@@ -475,7 +475,12 @@ class VirtualMachine:
             )
             task.thread.daemon = True  # Don't block program exit
             task.thread.start()
+            print(f"\nStarted task '{task.name}' (ID: {task.id}) as thread")
+            
             return True
+        
+        print(f"\nTask '{task.name}' (ID: {task.id}) is already running")
+
         return False
 
     def run(self):
@@ -489,15 +494,9 @@ class VirtualMachine:
             # Execute global initialization code first
             self._execute_global_initialization()
             
-            # Create tasks based on RTOS_CREATE_TASK instructions found in bytecode
-            self._initialize_tasks_from_bytecode()
-            
-            print(f"Initialized {len(self.tasks)} tasks.")
-            
-            # Start all tasks as threads (including main if it exists)
-            for task in self.tasks.values():
-                self._start_task_thread(task)
-                print(f"Started task '{task.name}' (ID: {task.id}) as thread")
+            print(f"\nInitialized {len(self.tasks)} tasks.")
+            # Start the main task thread
+            self._start_task_thread(self.tasks[0])
             
             # Wait for all tasks to complete or until interrupted
             print("\nVM running, waiting for tasks to complete...")
@@ -516,7 +515,7 @@ class VirtualMachine:
                 # Check for any task errors or completions
                 for task in list(self.tasks.values()):
                     if task.thread and not task.thread.is_alive() and task.state != TaskState.DELETED:
-                        print(f"Task {task.name} (ID: {task.id}) finished")
+                        print(f"\nTask {task.name} (ID: {task.id}) finished")
                         task.state = TaskState.DELETED
         
         except KeyboardInterrupt:
@@ -526,11 +525,11 @@ class VirtualMachine:
             # Wait for threads to finish gracefully
             for task in self.tasks.values():
                 if task.thread and task.thread.is_alive():
-                    print(f"Waiting for task {task.name} to finish...")
+                    print(f"\nWaiting for task {task.name} to finish...")
                     task.thread.join(timeout=1.0)
                     
         except Exception as e:
-            print(f"Runtime error: {e}")
+            print(f"\nRuntime error: {e}")
             if self.debug:
                 import traceback
                 traceback.print_exc()
@@ -549,6 +548,11 @@ class VirtualMachine:
                 const_idx = instruction.operands[0]
                 if const_idx < len(self.program.constants):
                     temp_stack.append(self.program.constants[const_idx])
+            elif instruction.opcode == Opcode.LOAD_VAR:
+                # Load variable value onto temp stack
+                var_addr = instruction.operands[0]
+                value = self.memory.get(var_addr, 0)
+                temp_stack.append(value)
                 
             elif instruction.opcode == Opcode.RTOS_CREATE_TASK:
                 # Process task creation with the last 5 values on temp stack
@@ -559,7 +563,7 @@ class VirtualMachine:
                     name_id = temp_stack.pop()
                     func_name_id = temp_stack.pop()
                     
-                    print(f"Creating task: func_name_id={func_name_id}, name_id={name_id}, stack_size={stack_size}, priority={priority}, core={core}")
+                    print(f"\nCreating task: func_name_id={func_name_id}, name_id={name_id}, stack_size={stack_size}, priority={priority}, core={core}")
                     
                     # Get task name and function name from string pool
                     if isinstance(name_id, int) and name_id < len(self.program.strings):
@@ -574,7 +578,7 @@ class VirtualMachine:
                     else:
                         func_name = None
                     
-                    print(f"Task name: {task_name}, Function name: {func_name}")
+                    print(f"\nTask name: {task_name}, Function name: {func_name}")
                     
                     # Get function address
                     if func_name and func_name in self.program.functions:
@@ -596,9 +600,9 @@ class VirtualMachine:
                         self.tasks[self.task_counter] = task
                         self.task_counter += 1
                         
-                        print(f"Created task '{task_name}' (ID: {task.id}) -> function '{func_name}' at address {func_addr}")
+                        print(f"\nCreated task '{task_name}' (ID: {task.id}) -> function '{func_name}' at address {func_addr}")
                     else:
-                        print(f"Warning: Function '{func_name}' not found for task '{task_name}'")
+                        print(f"\nWarning: Function '{func_name}' not found for task '{task_name}'")
             
             else:
                 # Reset temp stack for other instructions to avoid accumulation
@@ -615,7 +619,7 @@ class VirtualMachine:
     def _trace_instruction(self, instruction: Instruction):
         """Trace instruction execution"""
         stack_info = f"Stack: {self.stack[-3:] if len(self.stack) > 3 else self.stack}"
-        print(f"PC:{self.pc:4d} {instruction} {stack_info}")
+        print(f"\nPC:{self.pc:4d} {instruction} {stack_info}")
     
     def _check_timeouts(self):
         """Check for timed out message receives"""
@@ -654,7 +658,7 @@ class VirtualMachine:
                     self.stack = saved_stack
                     
                     if self.debug:
-                        print(f"Task ID: {task_id} timed out waiting for message")
+                        print(f"\nTask ID: {task_id} timed out waiting for message")
 
     def _yield_task(self):
         """Yield current task (simplified scheduling)"""
@@ -1032,7 +1036,9 @@ class VirtualMachine:
         self.tasks[self.task_counter] = task
         self.task_counter += 1
         
-        print(f"Created task '{task_name}' (ID: {task.id}) -> function '{func_name}' at address {func_addr}")
+        print(f"\nCreated task '{task_name}' (ID: {task.id}) -> function '{func_name}' at address {func_addr}")
+
+        self._start_task_thread(task)
     
     def _handle_rtos_delete_task(self, instruction: Instruction):
         """Handle RTOS_DELETE_TASK instruction"""
@@ -1040,14 +1046,14 @@ class VirtualMachine:
         
         if task_id in self.tasks:
             self.tasks[task_id].state = TaskState.DELETED
-            print(f"Deleted task ID: {task_id}")
+            print(f"\nDeleted task ID: {task_id}")
         else:
-            print(f"Task ID {task_id} not found")
+            print(f"\nTask ID {task_id} not found")
     
     def _handle_rtos_delay_ms(self, instruction: Instruction):
         """Handle RTOS_DELAY_MS instruction"""
         ms = self._pop()
-        print(f"Delaying {ms}ms")
+        print(f"\nDelaying {ms}ms")
         time.sleep(ms / 1000.0)
     
     def _handle_rtos_semaphore_create(self, instruction: Instruction):
@@ -1063,7 +1069,7 @@ class VirtualMachine:
         self._push(self.semaphore_counter)
         self.semaphore_counter += 1
         
-        print(f"Created semaphore ID: {semaphore.id}")
+        print(f"\nCreated semaphore ID: {semaphore.id}")
     
     def _handle_rtos_semaphore_take(self, instruction: Instruction):
         """Handle RTOS_SEMAPHORE_TAKE instruction"""
@@ -1075,10 +1081,10 @@ class VirtualMachine:
             if semaphore.count > 0:
                 semaphore.count -= 1
                 self._push(1)  # Success
-                print(f"Took semaphore {handle}")
+                print(f"\nTook semaphore {handle}")
             else:
                 self._push(0)  # Failed
-                print(f"Failed to take semaphore {handle}")
+                print(f"\nFailed to take semaphore {handle}")
         else:
             self._push(0)  # Invalid handle
     
@@ -1090,11 +1096,11 @@ class VirtualMachine:
             semaphore = self.semaphores[handle]
             if semaphore.count < semaphore.max_count:
                 semaphore.count += 1
-                print(f"Gave semaphore {handle}")
+                print(f"\nGave semaphore {handle}")
             else:
-                print(f"Semaphore {handle} already at max count")
+                print(f"\nSemaphore {handle} already at max count")
         else:
-            print(f"Invalid semaphore handle: {handle}")
+            print(f"\nInvalid semaphore handle: {handle}")
     
     def _handle_rtos_yield(self, instruction: Instruction):
         """Handle RTOS_YIELD instruction"""
@@ -1107,9 +1113,9 @@ class VirtualMachine:
         
         if task_id in self.tasks:
             self.tasks[task_id].state = TaskState.SUSPENDED
-            print(f"Suspended task ID: {task_id}")
+            print(f"\nSuspended task ID: {task_id}")
         else:
-            print(f"Task ID {task_id} not found")
+            print(f"\nTask ID {task_id} not found")
     
     def _handle_rtos_resume_task(self, instruction: Instruction):
         """Handle RTOS_RESUME_TASK instruction"""
@@ -1118,11 +1124,11 @@ class VirtualMachine:
         if task_id in self.tasks:
             if self.tasks[task_id].state == TaskState.SUSPENDED:
                 self.tasks[task_id].state = TaskState.READY
-                print(f"Resumed task ID: {task_id}")
+                print(f"\nResumed task ID: {task_id}")
             else:
-                print(f"Task ID {task_id} not suspended")
+                print(f"\nTask ID {task_id} not suspended")
         else:
-            print(f"Task ID {task_id} not found")
+            print(f"\nTask ID {task_id} not found")
     
     def _handle_msg_declare(self, instruction: Instruction):
         """Handle MSG_DECLARE instruction"""
@@ -1140,7 +1146,7 @@ class VirtualMachine:
         
         self.message_queues[message_id] = queue
         if self.debug:
-            print(f"Declared message queue ID: {message_id}, Type: {message_type}")
+            print(f"\nDeclared message queue ID: {message_id}, Type: {message_type}")
     
     def _handle_msg_send(self, instruction: Instruction):
         """Handle MSG_SEND instruction"""
@@ -1158,14 +1164,14 @@ class VirtualMachine:
                     if receiver_id in self.tasks:
                         self.tasks[receiver_id].state = TaskState.READY
                         if self.debug:
-                            print(f"Woke up receiver task ID: {receiver_id}")
+                            print(f"\nWoke up receiver task ID: {receiver_id}")
                 
                 if self.debug:
-                    print(f"Sent message to queue ID: {message_id}, payload: {payload}")
+                    print(f"\nSent message to queue ID: {message_id}, payload: {payload}")
             else:
                 # Queue is full, block sender (or drop message in this simple implementation)
                 if self.debug:
-                    print(f"Message queue ID: {message_id} is full, dropping message")
+                    print(f"\nMessage queue ID: {message_id} is full, dropping message")
         else:
             raise VMError(f"Invalid message queue ID: {message_id}")
     
@@ -1189,10 +1195,10 @@ class VirtualMachine:
                     if sender_id in self.tasks:
                         self.tasks[sender_id].state = TaskState.READY
                         if self.debug:
-                            print(f"Woke up sender task ID: {sender_id}")
+                            print(f"\nWoke up sender task ID: {sender_id}")
                 
                 if self.debug:
-                    print(f"Received message from queue ID: {message_id}, payload: {message}")
+                    print(f"\nReceived message from queue ID: {message_id}, payload: {message}")
             else:
                 # No message available
                 task_id = self.current_task_id
@@ -1202,20 +1208,20 @@ class VirtualMachine:
                         self.tasks[task_id].state = TaskState.BLOCKED
                         queue.waiting_receivers.append(task_id)
                         if self.debug:
-                            print(f"Task ID: {task_id} blocked indefinitely, waiting for message")
+                            print(f"\nTask ID: {task_id} blocked indefinitely, waiting for message")
                         self._yield_task()
                     elif timeout_ms == 0:
                         # Non-blocking receive - return immediately with 0
                         self._push(0)
                         if self.debug:
-                            print(f"Non-blocking receive from queue ID: {message_id}, no message available")
+                            print(f"\nNon-blocking receive from queue ID: {message_id}, no message available")
                     else:
                         # Timeout receive - block with timeout
                         self.tasks[task_id].state = TaskState.BLOCKED
                         queue.waiting_receivers.append(task_id)
                         queue.waiting_timeouts[task_id] = time.time() + (timeout_ms / 1000.0)
                         if self.debug:
-                            print(f"Task ID: {task_id} blocked with timeout {timeout_ms}ms, waiting for message")
+                            print(f"\nTask ID: {task_id} blocked with timeout {timeout_ms}ms, waiting for message")
                         self._yield_task()
                 else:
                     # In non-task context, push 0 as default value
@@ -1314,9 +1320,9 @@ class VirtualMachine:
         """Handle DBG_PRINT instruction"""
         string_id = self._pop()
         if string_id < len(self.program.strings):
-            print(f"DEBUG: {self.program.strings[string_id]}")
+            print(f"\nDEBUG: {self.program.strings[string_id]}")
         else:
-            print(f"DEBUG: <invalid string {string_id}>")
+            print(f"\nDEBUG: <invalid string {string_id}>")
     
     def _handle_dbg_printf(self, instruction: Instruction):
         """Handle DBG_PRINTF instruction with variable formatting"""
@@ -1330,9 +1336,9 @@ class VirtualMachine:
         args.reverse()  # Restore correct order
         
         # Get format string
-        if format_string_id == 0:
-            # Format string is on stack
-            format_string_id = self._pop()
+        # if format_string_id == 0:
+        #     # Format string is on stack
+        #     format_string_id = self._pop()
         
         if format_string_id < len(self.program.strings):
             format_string = self.program.strings[format_string_id]
@@ -1350,15 +1356,15 @@ class VirtualMachine:
                     output = output.replace("{}", str(args[arg_index]), 1)
                     arg_index += 1
                 
-                print(f"DEBUG: {output}")
+                print(f"\nDEBUG: {output}")
             except Exception as e:
-                print(f"DEBUG: <formatting error: {e}>")
+                print(f"\nDEBUG: <formatting error: {e}>")
         else:
-            print(f"DEBUG: <invalid format string {format_string_id}>")
+            print(f"\nDEBUG: <invalid format string {format_string_id}>")
     
     def _handle_dbg_breakpoint(self, instruction: Instruction):
         """Handle DBG_BREAKPOINT instruction"""
-        print(f"BREAKPOINT at PC {self.pc}")
+        print(f"\nBREAKPOINT at PC {self.pc}")
         if self.debug:
             input("Press Enter to continue...")
     
@@ -1417,6 +1423,6 @@ class VirtualMachine:
             self._execute_instruction(instruction)
             
             if self.debug:
-                print(f"Global init: PC={pc} {instruction.opcode.name} {instruction.operands}")
+                print(f"\nGlobal init: PC={pc} {instruction.opcode.name} {instruction.operands}")
             
             pc += 1
