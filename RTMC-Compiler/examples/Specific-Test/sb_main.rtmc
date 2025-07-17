@@ -30,18 +30,18 @@ void processSbCommand(int data)
 
     if(sb_packet->CmdNotResp == 1)
     {
-        DBG_PRINTF("Processing SB command without response, Data Symbol: %d", sb_packet->DataSymbl);
+        DBG_PRINTF("Processing SB command without response, Data Symbol: {}", sb_packet->DataSymbl);
     }
     else
     {
-        DBG_PRINTF("Processing SB command with Opcode: %d", sb_packet->DataSymbl);
+        DBG_PRINTF("Processing SB command with Opcode: {}", sb_packet->DataSymbl);
         // Add specific processing logic for SB commands here
     }
 }
 
 void processOtherCommand(int data)
 {
-    DBG_PRINTF("Processing other command with data: %d", data);
+    DBG_PRINTF("Processing other command with data: {}", data);
     // Add specific processing logic for other commands here
 }
 
@@ -59,25 +59,30 @@ void process_data(int data)
     }
 }
 
-Task<1, 1> SBTask
+void task1_run_function()
 {
-    void run()
+    while (1)
     {
-        while (1)
-        {
-            int data_addr = SBTestMsg.recv();
+        // int data_addr = SBTestMsg.recv();
 
-            process_data(data_addr);
-        }
+        // process_data(data_addr);
+        RTOS_DELAY_MS(500);
     }
 }
 
 
 void main()
 {
+    int core       = 1;
+    int priority   = 1;
+    int stack_size = 1024;
+    int task_id    = 1010;
+    StartTask(stack_size, core, priority, task_id, task1_run_function);
+    
+
     while(1)
     {
-        int data[10] = {0x12345678, 0x87654321, 0xAABBCCDD, 0x11223344, 0x55667788, 0x99AABBCC, 0xDDEEFF00, 0xFFEEDDCC, 0x00112233, 0x44556677};
+        int data[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
         int addr     = (int)data;
 
         SBTestMsg.send(addr);

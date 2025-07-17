@@ -996,25 +996,29 @@ class VirtualMachine:
     
     def _handle_rtos_create_task(self, instruction: Instruction):
         """Handle RTOS_CREATE_TASK instruction"""
-        core = self._pop()
-        priority = self._pop()
-        stack_size = self._pop()
-        name_id = self._pop()
-        func_name_id = self._pop()
+        func_addr    = self._pop()
+        task_id      = self._pop()
+        priority     = self._pop()
+        core         = self._pop()
+        stack_size   = self._pop()
         
         # Get task name from string pool
-        task_name = self.program.strings[name_id] if name_id < len(self.program.strings) else f"Task{self.task_counter}"
+        task_name = f"Task-{task_id}"
         
         # Get function name and resolve to address
-        func_name = self.program.strings[func_name_id] if func_name_id < len(self.program.strings) else None
-        if func_name and func_name in self.program.functions:
-            func_addr = self.program.functions[func_name]
-        else:
-            raise VMError(f"Function '{func_name}' not found for task '{task_name}'")
+        # Get function name from function dict using func_addr
+        func_name = None
+        for name, addr in self.program.functions.items():
+            if addr == func_addr:
+                func_name = name
+                break
+        
+        if not func_name:
+            func_name = f"func_at_{func_addr}"
         
         # Create new task
         task = Task(
-            id=self.task_counter,
+            id=task_id,
             name=task_name,
             func_addr=func_addr,
             stack_size=stack_size,

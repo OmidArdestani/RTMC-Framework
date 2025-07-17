@@ -1,27 +1,41 @@
 import "definitions.rtmc";
 
-Task<0, 1> SimpleTask1 
+void simple_task1_run()
 {
-    void run() 
+    for(int i = 0; i < 5; i++)
     {
-        for(int i = 0; i < 5; i++) {
-            DBG_PRINT("Task1 iteration");
-            RTOS_DELAY_MS(500);
-        }
+        DBG_PRINT("Task1 iteration");
+        RTOS_DELAY_MS(500);
     }
 }
 
-Task<1, 2> SimpleTask2 {
-    void run() {
-        for(int i = 0; i < 3; i++) {
-            DBG_PRINT("Task2 iteration");
-            RTOS_DELAY_MS(800);
-        }
+void simple_task2_run()
+{
+    for(int i = 0; i < 3; i++)
+    {
+        DBG_PRINT("Task2 iteration");
+        RTOS_DELAY_MS(800);
     }
 }
 
-void main() {
+void main()
+{
     DBG_PRINT("Main task starting");
+    
+    // Create task 1
+    int core1 = 0;
+    int priority1 = 1;
+    int stack_size1 = 1024;
+    int task_id1 = 1;
+    StartTask(stack_size1, core1, priority1, task_id1, simple_task1_run);
+    
+    // Create task 2
+    int core2 = 1;
+    int priority2 = 2;
+    int stack_size2 = 1024;
+    int task_id2 = 2;
+    StartTask(stack_size2, core2, priority2, task_id2, simple_task2_run);
+    
     RTOS_DELAY_MS(2000);
     DBG_PRINT("Main task ending");
 }

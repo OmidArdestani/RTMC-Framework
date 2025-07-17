@@ -82,6 +82,7 @@ class RTMCLexer:
         'RTOS_YIELD': 'RTOS_YIELD',
         'RTOS_SUSPEND_TASK': 'RTOS_SUSPEND_TASK',
         'RTOS_RESUME_TASK': 'RTOS_RESUME_TASK',
+        'StartTask': 'START_TASK',
         
         # Hardware functions
         'HW_GPIO_INIT': 'HW_GPIO_INIT',

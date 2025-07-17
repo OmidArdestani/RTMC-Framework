@@ -278,57 +278,6 @@ class BytecodeGenerator(ASTVisitor):
                     comment += f", bit-field: {field_layout.bit_offset}:{field_layout.bit_width}"
                 self.emit(InstructionBuilder.comment(comment))
 
-    def visit_task_decl(self, node: TaskDeclNode):
-        """Generate bytecode for task declaration"""
-        task_name = node.name
-        
-        # Store task info for later reference
-        if not hasattr(self, 'tasks'):
-            self.tasks = {}
-        
-        # Generate code for task members (variables and helper functions)
-        for member in node.members:
-            member.accept(self)
-        
-        # Rename the run function to avoid conflicts
-        original_name = node.run_function.name
-        run_function_name = f"{task_name}_run"
-        node.run_function.name = run_function_name
-        
-        # Generate code for run function
-        run_function_address = self.current_address
-        self.functions[run_function_name] = run_function_address
-        
-        # Visit the run function body
-        node.run_function.accept(self)
-        
-        # Restore original name
-        node.run_function.name = original_name
-        
-        # Store task information for RTOS task creation
-        self.tasks[task_name] = {
-            'core': node.core,
-            'priority': node.priority,
-            'run_function': run_function_name,
-            'stack_size': 1024  # Default stack size
-        }
-        
-        # Generate RTOS task creation bytecode
-        # This will be called at program startup
-        func_id = self.add_constant(f"{task_name}_run")
-        task_name_const = self.add_constant(task_name)
-        stack_const = self.add_constant(1024)  # Default stack size
-        priority_const = self.add_constant(node.priority)
-        core_const = self.add_constant(node.core)
-        
-        # Generate task creation instructions
-        self.emit(InstructionBuilder.load_const(func_id))
-        self.emit(InstructionBuilder.load_const(task_name_const))
-        self.emit(InstructionBuilder.load_const(stack_const))
-        self.emit(InstructionBuilder.load_const(priority_const))
-        self.emit(InstructionBuilder.load_const(core_const))
-        self.emit(Instruction(Opcode.RTOS_CREATE_TASK, []))
-    
     def visit_variable_decl(self, node: VariableDeclNode):
         """Generate code for variable declaration"""
         # Allocate space
@@ -898,8 +847,11 @@ class BytecodeGenerator(ASTVisitor):
         if isinstance(node.callee, IdentifierExprNode):
             func_name = node.callee.name
             
+            # Check if it's StartTask function
+            if func_name == 'StartTask':
+                self.generate_start_task_call(node.arguments)
             # Check if it's a built-in function
-            if func_name.startswith('RTOS_') or func_name.startswith('HW_') or func_name.startswith('DBG_'):
+            elif func_name.startswith('RTOS_') or func_name.startswith('HW_') or func_name.startswith('DBG_'):
                 self.generate_builtin_call(func_name, node.arguments)
             else:
                 # Regular function call
@@ -916,6 +868,19 @@ class BytecodeGenerator(ASTVisitor):
                     raise CodeGenError(f"Unknown function: {func_name}")
         else:
             raise CodeGenError("Complex function calls not supported yet")
+    
+    def generate_start_task_call(self, arguments: List[ExpressionNode]):
+        """Generate code for StartTask function call"""
+        # StartTask(stack_size, core, priority, task_id, function_pointer)
+        if len(arguments) != 5:
+            raise CodeGenError("StartTask requires exactly 5 arguments: stack_size, core, priority, task_id, function_pointer")
+        
+        # Generate arguments in reverse order (stack_size, core, priority, task_id, function_pointer)
+        for arg in arguments:
+            arg.accept(self)
+        
+        # Emit RTOS_CREATE_TASK instruction
+        self.emit(Instruction(Opcode.RTOS_CREATE_TASK, []))
     
     def generate_builtin_call(self, func_name: str, arguments: List[ExpressionNode]):
         """Generate code for built-in function calls"""
@@ -998,6 +963,11 @@ class BytecodeGenerator(ASTVisitor):
                 self.emit(InstructionBuilder.dbg_printf(0, arg_count))  # Format string ID from stack
             else:
                 self.emit(InstructionBuilder.dbg_printf(0, 0))
+        
+        elif func_name == 'StartTask':
+            # StartTask(stack_size, core, priority, task_id, function_pointer)
+            if len(arguments) >= 5:
+                self.emit(InstructionBuilder.rtos_create_task(0, 0, 0, 0, 0))  # VM will pop args
         
         else:
             raise CodeGenError(f"Unknown built-in function: {func_name}")

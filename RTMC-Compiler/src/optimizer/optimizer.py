@@ -67,21 +67,6 @@ class ConstantFolder(ASTVisitor):
         """Optimize union declaration"""
         return node  # Union declarations don't need optimization
 
-    def visit_task_decl(self, node: TaskDeclNode) -> TaskDeclNode:
-        """Optimize task declaration"""
-        # Optimize task members
-        optimized_members = []
-        for member in node.members:
-            optimized_member = member.accept(self)
-            if optimized_member:
-                optimized_members.append(optimized_member)
-        
-        # Optimize run function
-        optimized_run_function = node.run_function.accept(self)
-        
-        return TaskDeclNode(node.name, node.core, node.priority, 
-                           optimized_members, optimized_run_function, node.line)
-
     def visit_variable_decl(self, node: VariableDeclNode) -> VariableDeclNode:
         """Optimize variable declaration"""
         optimized_initializer = None
@@ -470,22 +455,6 @@ class DeadCodeEliminator(ASTVisitor):
     def visit_union_decl(self, node: UnionDeclNode) -> UnionDeclNode:
         """Union declarations are always reachable"""
         return node
-
-    def visit_task_decl(self, node: TaskDeclNode) -> TaskDeclNode:
-        """Task declarations are always reachable"""
-        # Tasks are always reachable since they're entry points
-        optimized_members = []
-        for member in node.members:
-            optimized_member = member.accept(self)
-            if optimized_member:
-                optimized_members.append(optimized_member)
-        
-        # Optimize run function
-        self.reachable_code = True
-        optimized_run_function = node.run_function.accept(self)
-        
-        return TaskDeclNode(node.name, node.core, node.priority, 
-                           optimized_members, optimized_run_function, node.line)
 
     def visit_variable_decl(self, node: VariableDeclNode) -> VariableDeclNode:
         """Variable declarations are always reachable"""

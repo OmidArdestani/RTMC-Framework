@@ -1,50 +1,63 @@
-// RT-Micro-C Task Example - New Syntax
-// This demonstrates the new Task<core, priority> syntax
+// RT-Micro-C Task Example - New Function-Based Syntax
+// This demonstrates the new function-based task syntax
 
-Task<0, 2> BlinkTask {
+void blink_task_run()
+{
     int ledPin = 13;
     int blinkDelay = 500;
-
-    void run() {
-        HW_GPIO_INIT(ledPin, 1);  // Initialize as output
+    
+    HW_GPIO_INIT(ledPin, 1);  // Initialize as output
+    
+    while (1)
+    {
+        HW_GPIO_SET(ledPin, 1);
+        RTOS_DELAY_MS(blinkDelay);
+        HW_GPIO_SET(ledPin, 0);
+        RTOS_DELAY_MS(blinkDelay);
         
-        while (1) {
-            HW_GPIO_SET(ledPin, 1);
-            RTOS_DELAY_MS(blinkDelay);
-            HW_GPIO_SET(ledPin, 0);
-            RTOS_DELAY_MS(blinkDelay);
-            
-            DBG_PRINT("Blink cycle completed");
-        }
+        DBG_PRINT("Blink cycle completed");
     }
 }
 
-Task<1, 3> SensorTask {
+void sensor_task_run()
+{
     int sensorPin = 25;
     int threshold = 512;
-
-    void run() {
-        HW_ADC_INIT(sensorPin);
+    
+    HW_ADC_INIT(sensorPin);
+    
+    while (1)
+    {
+        int reading = HW_ADC_READ(sensorPin);
         
-        while (1) {
-            int reading = HW_ADC_READ(sensorPin);
-            
-            if (reading > threshold) {
-                DBG_PRINT("Sensor threshold exceeded");
-            }
-            
-            RTOS_DELAY_MS(1000);
+        if (reading > threshold)
+        {
+            DBG_PRINT("Sensor threshold exceeded");
         }
+        
+        RTOS_DELAY_MS(1000);
     }
 }
 
-void main() {
+void main()
+{
     DBG_PRINT("RT-Micro-C Task System Starting");
     
-    // Tasks are automatically created and scheduled
-    // No manual task creation needed
+    // Create tasks using the new StartTask syntax
+    int core1 = 0;
+    int priority1 = 2;
+    int stack_size1 = 1024;
+    int task_id1 = 1;
+    StartTask(stack_size1, core1, priority1, task_id1, blink_task_run);
     
-    while (1) {
+    int core2 = 1;
+    int priority2 = 3;
+    int stack_size2 = 1024;
+    int task_id2 = 2;
+    StartTask(stack_size2, core2, priority2, task_id2, sensor_task_run);
+    
+    while (1)
+    {
         RTOS_DELAY_MS(5000);
         DBG_PRINT("Main loop heartbeat");
     }

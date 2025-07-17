@@ -246,6 +246,16 @@ class SemanticAnalyzer(ASTVisitor):
                                      function_params=[Symbol('task_handle', SymbolType.PARAMETER, 'int')],
                                      function_return_type='void'),
             
+            # New task creation function
+            'StartTask': Symbol('StartTask', SymbolType.FUNCTION, 'void',
+                              function_params=[
+                                  Symbol('stack_size', SymbolType.PARAMETER, 'int'),
+                                  Symbol('core', SymbolType.PARAMETER, 'int'),
+                                  Symbol('priority', SymbolType.PARAMETER, 'int'),
+                                  Symbol('task_id', SymbolType.PARAMETER, 'int'),
+                                  Symbol('function_pointer', SymbolType.PARAMETER, 'void')
+                              ], function_return_type='void'),
+            
             # Hardware GPIO functions
             'HW_GPIO_INIT': Symbol('HW_GPIO_INIT', SymbolType.FUNCTION, 'void',
                                  function_params=[
@@ -479,59 +489,6 @@ class SemanticAnalyzer(ASTVisitor):
                              struct_fields=field_symbols)
         
         self.symbol_table.define(union_symbol)
-
-    def visit_task_decl(self, node: TaskDeclNode):
-        """Visit task declaration"""
-        task_name = node.name
-        
-        # Check if task already exists
-        if self.symbol_table.exists(task_name):
-            self.error(f"Task '{task_name}' already defined", node.line, node.filename)
-        
-        # Validate core and priority values
-        if node.core < 0 or node.core > 7:  # Assuming max 8 cores
-            self.error(f"Invalid core number {node.core}, must be 0-7", node.line, node.filename)
-        
-        if node.priority < 1 or node.priority > 10:  # Assuming priority range 1-10
-            self.error(f"Invalid priority {node.priority}, must be 1-10", node.line, node.filename)
-        
-        # Create new scope for task
-        self.symbol_table = SymbolTable(self.symbol_table)
-        self.current_function = f"{task_name}_context"
-        
-        try:
-            # Visit all task members
-            for member in node.members:
-                member.accept(self)
-            
-            # Temporarily rename the run function to avoid conflicts
-            original_name = node.run_function.name
-            node.run_function.name = f"{task_name}_run"
-            
-            # Visit the run function
-            node.run_function.accept(self)
-            
-            # Restore original name for verification
-            node.run_function.name = original_name
-            
-            # Verify run function signature
-            if (original_name != "run" or
-                not isinstance(node.run_function.return_type, PrimitiveTypeNode) or
-                node.run_function.return_type.type_name != "void" or
-                len(node.run_function.parameters) != 0):
-                self.error("Task must have exactly one 'void run()' method with no parameters", node.line, node.filename)
-        
-        finally:
-            # Exit task scope
-            self.symbol_table = self.symbol_table.parent
-            self.current_function = None
-        
-        # Register task as a special function symbol
-        task_symbol = Symbol(task_name, SymbolType.FUNCTION, "task",
-                           function_return_type="void",
-                           function_params=[])
-        
-        self.symbol_table.define(task_symbol)
 
     def visit_variable_decl(self, node: VariableDeclNode):
         """Visit variable declaration"""

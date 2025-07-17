@@ -17,7 +17,6 @@ class NodeType(Enum):
     UNION_DECL     = auto()
     VARIABLE_DECL  = auto()
     ARRAY_DECL     = auto()
-    TASK_DECL      = auto()
     MESSAGE_DECL   = auto()
     IMPORT_STMT    = auto()
     POINTER_DECL   = auto()  # Pointer declaration
@@ -132,21 +131,6 @@ class UnionDeclNode(ASTNode):
     
     def accept(self, visitor):
         return visitor.visit_union_decl(self)
-
-class TaskDeclNode(ASTNode):
-    """Task declaration node for RT-Micro-C"""
-    
-    def __init__(self, name: str, core: int, priority: int, members: List[ASTNode], 
-                 run_function: 'FunctionDeclNode', line: int = 0, filename: str = ""):
-        super().__init__(NodeType.TASK_DECL, line=line, filename=filename)
-        self.name = name
-        self.core = core
-        self.priority = priority
-        self.members = members  # Variable declarations and helper functions
-        self.run_function = run_function  # Required run() method
-    
-    def accept(self, visitor):
-        return visitor.visit_task_decl(self)
 
 class MessageDeclNode(ASTNode):
     """Message queue declaration node for RT-Micro-C"""
@@ -575,9 +559,6 @@ class ASTVisitor(ABC):
     def visit_union_decl(self, node: UnionDeclNode): pass
     
     @abstractmethod
-    def visit_task_decl(self, node: TaskDeclNode): pass
-    
-    @abstractmethod
     def visit_message_decl(self, node: MessageDeclNode): pass
     
     @abstractmethod
@@ -706,17 +687,6 @@ def ast_to_string(node: ASTNode, indent: int = 0) -> str:
         result = f"{indent_str}UnionDecl: {node.name}\n"
         for field in node.fields:
             result += f"{indent_str}  {field.name}: {ast_to_string(field.type, 0).strip()}\n"
-        return result
-    
-    elif isinstance(node, TaskDeclNode):
-        result = f"{indent_str}TaskDecl: {node.name}\n"
-        result += f"{indent_str}  Core: {node.core}\n"
-        result += f"{indent_str}  Priority: {node.priority}\n"
-        if node.members:
-            result += f"{indent_str}  Members:\n"
-            for member in node.members:
-                result += f"{indent_str}    {ast_to_string(member, 0).strip()}\n"
-        result += f"{indent_str}  RunFunction: {node.run_function.name}\n"
         return result
     
     elif isinstance(node, MessageDeclNode):

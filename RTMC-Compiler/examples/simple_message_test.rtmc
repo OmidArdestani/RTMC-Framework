@@ -3,30 +3,46 @@
 
 message<int> TestQueue;
 
-Task<0, 2> SenderTask {
-    void run() {
-        while (1) {
-            TestQueue.send(42);
-            DBG_PRINT("Sender: Sent message");
-            RTOS_DELAY_MS(1000);
-        }
+void sender_task_run()
+{
+    while (1)
+    {
+        TestQueue.send(42);
+        DBG_PRINT("Sender: Sent message");
+        RTOS_DELAY_MS(1000);
     }
 }
 
-Task<1, 2> ReceiverTask {
-    void run() {
-        while (1) {
-            int value = TestQueue.recv();
-            DBG_PRINT("Receiver: Got message");
-            RTOS_DELAY_MS(500);
-        }
+void receiver_task_run()
+{
+    while (1)
+    {
+        int value = TestQueue.recv();
+        DBG_PRINTF("Receiver: Got message {}", value);
+        RTOS_DELAY_MS(500);
     }
 }
 
-void main() {
+void main()
+{
     DBG_PRINT("Simple Message Test Starting");
     
-    while (1) {
+    // Create sender task
+    int core1 = 0;
+    int priority1 = 2;
+    int stack_size1 = 1024;
+    int task_id1 = 1;
+    StartTask(stack_size1, core1, priority1, task_id1, sender_task_run);
+    
+    // Create receiver task
+    int core2 = 1;
+    int priority2 = 2;
+    int stack_size2 = 1024;
+    int task_id2 = 2;
+    StartTask(stack_size2, core2, priority2, task_id2, receiver_task_run);
+    
+    while (1)
+    {
         RTOS_DELAY_MS(5000);
         DBG_PRINT("Main: heartbeat");
     }

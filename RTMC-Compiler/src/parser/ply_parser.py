@@ -106,7 +106,6 @@ class RTMCParser:
                       | variable_declaration
                       | struct_declaration
                       | union_declaration
-                      | task_declaration
                       | message_declaration
                       | import_declaration'''
         p[0] = p[1]
@@ -303,52 +302,6 @@ class RTMCParser:
                     flattened_fields.append(field)
             
             p[0] = UnionDeclNode(union_group_id, flattened_fields, line=line, filename=filename)
-    
-    # Task declaration
-    def p_task_declaration(self, p):
-        '''task_declaration : TASK LESS_THAN core_no COMMA priority GREATER_THAN IDENTIFIER LEFT_BRACE task_body_list RIGHT_BRACE'''
-        
-        # Task<core, priority> TaskName { ... }
-        
-        line = p.lineno(1)
-        filename = getattr(self, 'filename', '')
-        
-        members, run_function = self._extract_task_members(p[9])
-        p[0] = TaskDeclNode(p[7], p[3], p[5], members, run_function, line, filename)
-
-    def p_core_no(self, p):
-        '''core_no : INTEGER'''
-        p[0] = p[1]
-
-    def p_priority(self, p):
-        '''priority : INTEGER'''
-        p[0] = p[1]
-    
-    def p_task_body_list(self, p):
-        '''task_body_list : task_body_item
-                         | task_body_list task_body_item'''
-        if len(p) == 2:
-            p[0] = [p[1]]
-        else:
-            p[0] = p[1] + [p[2]]
-    
-    def p_task_body_item(self, p):
-        '''task_body_item : variable_declaration
-                         | function_declaration'''
-        p[0] = p[1]
-    
-    def _extract_task_members(self, body_list):
-        """Extract task members and run function from task body"""
-        members = []
-        run_function = None
-        
-        for item in body_list:
-            if isinstance(item, FunctionDeclNode) and item.name == 'run':
-                run_function = item
-            else:
-                members.append(item)
-        
-        return members, run_function
     
     # Message declaration
     def p_message_declaration(self, p):
@@ -685,7 +638,8 @@ class RTMCParser:
                              | message_send
                              | message_recv
                              | rtos_call
-                             | hw_call'''
+                             | hw_call
+                             | start_task_call'''
         
         line = p.lineno(1)
         filename = getattr(self, 'filename', '')
@@ -803,6 +757,16 @@ class RTMCParser:
                   | HW_SPI_TRANSFER LEFT_PAREN RIGHT_PAREN
                   | HW_I2C_WRITE LEFT_PAREN RIGHT_PAREN
                   | HW_I2C_READ LEFT_PAREN RIGHT_PAREN'''
+        
+        line = p.lineno(1)
+        if len(p) == 5:
+            p[0] = CallExprNode(IdentifierExprNode(p[1]), p[3], line=line)
+        else:
+            p[0] = CallExprNode(IdentifierExprNode(p[1]), [], line=line)
+    
+    def p_start_task_call(self, p):
+        '''start_task_call : START_TASK LEFT_PAREN argument_list RIGHT_PAREN
+                          | START_TASK LEFT_PAREN RIGHT_PAREN'''
         
         line = p.lineno(1)
         if len(p) == 5:

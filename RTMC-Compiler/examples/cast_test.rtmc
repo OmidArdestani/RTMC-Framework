@@ -1,0 +1,30 @@
+struct Point {
+    int x;
+    int y;
+};
+
+struct Rectangle {
+    int width;
+    int height;
+};
+
+void main()
+{
+    // Test basic casting
+    int numbers[4] = {10, 20, 30, 40};
+    
+    // Cast array to Point pointer
+    Point *point_ptr = (Point*)numbers;
+    DBG_PRINTF("Point from array: x = {0}, y = {1}", point_ptr[0].x, point_ptr[0].y);
+    
+    // Cast array to Rectangle pointer
+    Rectangle *rect_ptr = (Rectangle*)numbers;
+    DBG_PRINTF("Rectangle from array: width = {0}, height = {1}", rect_ptr[0].width, rect_ptr[0].height);
+    
+    // Test pointer to pointer casting
+    Point *point_array = (Point*)numbers;
+    Rectangle *rect_from_point = (Rectangle*)point_array;
+    DBG_PRINTF("Rectangle from Point: width = {0}, height = {1}", rect_from_point[0].width, rect_from_point[0].height);
+    
+    DBG_PRINT("Casting test completed successfully!");
+}
