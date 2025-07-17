@@ -117,10 +117,7 @@ class TaskVMContext:
     def _execute_instruction(self, instruction: Instruction):
         """Execute a single instruction in task context"""
         # Delegate most instructions to the main VM, but handle some locally
-        if instruction.opcode == Opcode.RET:
-            self.running = False
-            return
-        elif instruction.opcode == Opcode.RTOS_DELAY_MS:
+        if instruction.opcode == Opcode.RTOS_DELAY_MS:
             delay_ms = self._pop()
             print(f"\nTask {self.task.name}: Delaying {delay_ms}ms")
             time.sleep(delay_ms / 1000.0)
@@ -1158,13 +1155,13 @@ class VirtualMachine:
             if len(queue.queue) < queue.max_size:
                 queue.queue.append(payload)
                 
-                # Wake up any task waiting to receive
-                if queue.waiting_receivers:
-                    receiver_id = queue.waiting_receivers.pop(0)
-                    if receiver_id in self.tasks:
-                        self.tasks[receiver_id].state = TaskState.READY
-                        if self.debug:
-                            print(f"\nWoke up receiver task ID: {receiver_id}")
+                # # Wake up any task waiting to receive
+                # if queue.waiting_receivers:
+                #     receiver_id = queue.waiting_receivers.pop(0)
+                #     if receiver_id in self.tasks:
+                #         self.tasks[receiver_id].state = TaskState.READY
+                #         if self.debug:
+                #             print(f"\nWoke up receiver task ID: {receiver_id}")
                 
                 if self.debug:
                     print(f"\nSent message to queue ID: {message_id}, payload: {payload}")
@@ -1183,49 +1180,25 @@ class VirtualMachine:
         timeout_ms = self._pop()
         
         if message_id in self.message_queues:
-            queue = self.message_queues[message_id]
-            if queue.queue:
-                # Message available, return it
-                message = queue.queue.popleft()
-                self._push(message)
-                
-                # Wake up any task waiting to send
-                if queue.waiting_senders:
-                    sender_id = queue.waiting_senders.pop(0)
-                    if sender_id in self.tasks:
-                        self.tasks[sender_id].state = TaskState.READY
-                        if self.debug:
-                            print(f"\nWoke up sender task ID: {sender_id}")
-                
-                if self.debug:
-                    print(f"\nReceived message from queue ID: {message_id}, payload: {message}")
+            msg_queue = self.message_queues[message_id]
+            if timeout_ms > 9999:
+                msg_wait_end_time = time.time() + timeout_ms
             else:
-                # No message available
-                task_id = self.current_task_id
-                if task_id in self.tasks:
-                    if timeout_ms >= 999999:
-                        # Blocking receive - block indefinitely
-                        self.tasks[task_id].state = TaskState.BLOCKED
-                        queue.waiting_receivers.append(task_id)
-                        if self.debug:
-                            print(f"\nTask ID: {task_id} blocked indefinitely, waiting for message")
-                        self._yield_task()
-                    elif timeout_ms == 0:
-                        # Non-blocking receive - return immediately with 0
-                        self._push(0)
-                        if self.debug:
-                            print(f"\nNon-blocking receive from queue ID: {message_id}, no message available")
-                    else:
-                        # Timeout receive - block with timeout
-                        self.tasks[task_id].state = TaskState.BLOCKED
-                        queue.waiting_receivers.append(task_id)
-                        queue.waiting_timeouts[task_id] = time.time() + (timeout_ms / 1000.0)
-                        if self.debug:
-                            print(f"\nTask ID: {task_id} blocked with timeout {timeout_ms}ms, waiting for message")
-                        self._yield_task()
+                msg_wait_end_time = time.time() + (timeout_ms / 1000.0)
+
+            # Wait for message
+            while(1):
+                if msg_queue.queue:
+                    if len(msg_queue.queue) > 0:
+                        # Message available, return it
+                        message = msg_queue.queue.popleft()
+                        self._push(message)
+                        break
+                elif time.time() > msg_wait_end_time:
+                    self._push(-1)
+                    break
                 else:
-                    # In non-task context, push 0 as default value
-                    self._push(0)
+                    time.sleep(0.01)
         else:
             raise VMError(f"Invalid message queue ID: {message_id}")
 
