@@ -75,96 +75,62 @@ class MessageQueue:
         if self.waiting_timeouts is None:
             self.waiting_timeouts = {}
 
-class TaskVMContext:
-    """Separate VM context for executing tasks in threads"""
+class TaskContextSharedMaterial:
+    """Shared material for task context"""
     
-    def __init__(self, main_vm: 'VirtualMachine', task: Task):
-        self.main_vm = main_vm
-        self.task = task
-        self.pc = 0
-        self.stack = []
-        self.call_stack = []
+    def __init__(self):
+        self.tasks: Dict[int, Task] = {}  # Task ID -> Task object
+        self.semaphores: Dict[int, Semaphore] = {}  # Semaphore ID -> Semaphore object
+        self.message_queues: Dict[int, MessageQueue] = {}  # Queue ID -> MessageQueue object
+        self.hardware = HardwareSimulator()  # Simulated hardware peripherals
+        self.tasks ={}
+        self.trace = False  # Enable tracing for debugging
+        self.debug = False  # Enable debug mode
+        self.program: Optional[BytecodeProgram] = None  # Loaded bytecode program
+        self.hwd_simulator = None
+        self.task_counter = 0
+        self.semaphore_counter = 0
+        self.message_queue_counter = 0
         self.memory = {}  # Task-local memory
-        self.running = True
-        self.saved_params = []  # For parameter restoration on function return
-    
-    def execute_function(self, func_addr: int):
-        """Execute a function starting at the given address"""
-        self.pc = func_addr
-        
+
+    def _run_task_thread(self, task: Task):
+        """Run a task in its own thread"""
         try:
-            while self.running and self.pc < len(self.main_vm.program.instructions):
-                instruction = self.main_vm.program.instructions[self.pc]
-                
-                if self.main_vm.trace:
-                    print(f"\nTask {self.task.name}: PC={self.pc} {instruction}")
-                
-                self._execute_instruction(instruction)
-                
-                # Handle control flow
-                if instruction.opcode not in [Opcode.JUMP, Opcode.JUMPIF_TRUE, 
-                                            Opcode.JUMPIF_FALSE, Opcode.CALL, Opcode.RET]:
-                    self.pc += 1
-                
-                # Check if task should yield or delay
-                if instruction.opcode in [Opcode.RTOS_YIELD, Opcode.RTOS_DELAY_MS]:
-                    time.sleep(0.001)  # Small yield for cooperative threading
-                    
+            print(f"\nStarting task thread: {task.name} (ID: {task.id})")
+            task.state = TaskState.RUNNING
+            
+            # Create a separate VM context for this task
+            task_vm = TaskVMContext(task, self)
+            
+            # Execute the task's run function
+            task_vm.execute_function(task.func_addr)
+            
         except Exception as e:
-            print(f"\nTask {self.task.name} execution error: {e}")
-            raise
+            print(f"\nTask {task.name} (ID: {task.id}) encountered error: {e}")
+            if self.debug:
+                import traceback
+                traceback.print_exc()
+        finally:
+            task.state = TaskState.DELETED
+            print(f"\nTask {task.name} (ID: {task.id}) finished")
     
-    def _execute_instruction(self, instruction: Instruction):
-        """Execute a single instruction in task context"""
-        # Delegate most instructions to the main VM, but handle some locally
-        if instruction.opcode == Opcode.RTOS_DELAY_MS:
-            delay_ms = self._pop()
-            print(f"\nTask {self.task.name}: Delaying {delay_ms}ms")
-            time.sleep(delay_ms / 1000.0)
-            return
-        elif instruction.opcode == Opcode.DBG_PRINT:
-            string_id = self._pop()
-            if string_id < len(self.main_vm.program.strings):
-                print(f"\nTask {self.task.name}: DEBUG: {self.main_vm.program.strings[string_id]}")
-            return
+    def _start_task_thread(self, task: Task):
+        """Start a task as a Python thread"""
+        if task.thread is None or not task.thread.is_alive():
+            task.thread = threading.Thread(
+                target=self._run_task_thread,
+                args=(task,),
+                name=f"Task-{task.name}-{task.id}"
+            )
+            task.thread.daemon = True  # Don't block program exit
+            task.thread.start()
+            print(f"\nStarted task '{task.name}' (ID: {task.id}) as thread")
+            
+            return True
         
-        # For other instructions, use the main VM's handlers but with our context
-        handler = self.main_vm.handlers.get(instruction.opcode)
-        if handler:
-            # Temporarily switch VM context
-            old_stack = self.main_vm.stack
-            old_pc = self.main_vm.pc
-            old_memory = self.main_vm.memory
-            
-            self.main_vm.stack = self.stack
-            self.main_vm.pc = self.pc
-            self.main_vm.memory = self.memory
-            
-            try:
-                handler(instruction)
-                
-                # Update our context
-                self.stack = self.main_vm.stack
-                self.pc = self.main_vm.pc
-                self.memory = self.main_vm.memory
-                
-            finally:
-                # Restore main VM context
-                self.main_vm.stack = old_stack
-                self.main_vm.pc = old_pc
-                self.main_vm.memory = old_memory
-        else:
-            raise VMError(f"Unknown instruction: {instruction.opcode}")
-    
-    def _pop(self):
-        """Pop value from stack"""
-        if not self.stack:
-            raise VMError("Stack underflow")
-        return self.stack.pop()
-    
-    def _push(self, value):
-        """Push value to stack"""
-        self.stack.append(value)
+        print(f"\nTask '{task.name}' (ID: {task.id}) is already running")
+
+        return False
 
 class HardwareSimulator:
     """Simulates hardware peripherals"""
@@ -296,33 +262,18 @@ class HardwareSimulator:
         print(f"\nI2C read from 0x{addr:02X} reg 0x{reg:02X}: 0x{value:02X}")
         return value
 
-class VirtualMachine:
-    """RT-Micro-C Virtual Machine"""
+class TaskVMContext:
+    """Separate VM context for executing tasks in threads"""
     
-    def __init__(self, debug: bool = False, trace: bool = False):
-        self.debug = debug
-        self.trace = trace
-        
-        # Program state
-        self.program: Optional[BytecodeProgram] = None
-        self.pc = 0  # Program counter
-        self.stack: List[Any] = []
-        self.call_stack: List[int] = []
-        self.memory: Dict[int, Any] = {}
-        self.running = False
-        
-        # RTOS state
-        self.tasks: Dict[int, Task] = {}
-        self.semaphores: Dict[int, Semaphore] = {}
-        self.message_queues: Dict[int, MessageQueue] = {}
-        self.current_task_id = 0
-        self.task_counter = 0
-        self.semaphore_counter = 0
-        self.message_queue_counter = 0
-        self.scheduler_running = False
-        
-        # Hardware simulator
-        self.hardware = HardwareSimulator()
+    def __init__(self, task: Task, task_context_shared : TaskContextSharedMaterial):
+        self.task = task
+        self.pc = 0
+        self.stack = []
+        self.call_stack = []
+        self.running = True
+        self.saved_params = []  # For parameter restoration on function return
+
+        self.task_context_shared = task_context_shared
         
         # Instruction handlers
         self.handlers = {
@@ -412,198 +363,31 @@ class VirtualMachine:
             Opcode.COMMENT: self._handle_comment,
         }
     
-    def load_program(self, program: BytecodeProgram):
-        """Load a bytecode program"""
-        self.program = program
-        self.pc = 0
-        self.stack = []
-        self.call_stack = []
-        self.memory = {}
-        
-        # Create main task if main function exists
-        if 'main' in program.functions:
-            main_addr = program.functions['main']
-            self.create_main_task(main_addr)
-    
-    def create_main_task(self, main_addr: int):
-        """Create the main task"""
-        task = Task(
-            id=self.task_counter,
-            name="main",
-            func_addr=main_addr,
-            stack_size=1024,
-            priority=5,
-            core=0,
-            state=TaskState.READY,
-            pc=main_addr,
-            vm_instance=self
-        )
-        self.tasks[self.task_counter] = task
-        self.task_counter += 1
-    
-    def _run_task_thread(self, task: Task):
-        """Run a task in its own thread"""
-        try:
-            print(f"\nStarting task thread: {task.name} (ID: {task.id})")
-            task.state = TaskState.RUNNING
-            
-            # Create a separate VM context for this task
-            task_vm = TaskVMContext(self, task)
-            
-            # Execute the task's run function
-            task_vm.execute_function(task.func_addr)
-            
-        except Exception as e:
-            print(f"\nTask {task.name} (ID: {task.id}) encountered error: {e}")
-            if self.debug:
-                import traceback
-                traceback.print_exc()
-        finally:
-            task.state = TaskState.DELETED
-            print(f"\nTask {task.name} (ID: {task.id}) finished")
-    
-    def _start_task_thread(self, task: Task):
-        """Start a task as a Python thread"""
-        if task.thread is None or not task.thread.is_alive():
-            task.thread = threading.Thread(
-                target=self._run_task_thread,
-                args=(task,),
-                name=f"Task-{task.name}-{task.id}"
-            )
-            task.thread.daemon = True  # Don't block program exit
-            task.thread.start()
-            print(f"\nStarted task '{task.name}' (ID: {task.id}) as thread")
-            
-            return True
-        
-        print(f"\nTask '{task.name}' (ID: {task.id}) is already running")
-
-        return False
-
-    def run(self):
-        """Run the virtual machine with threaded tasks"""
-        self.running = True
-        
-        if not self.program:
-            raise VMError("No program loaded")
+    def execute_function(self, func_addr: int):
+        """Execute a function starting at the given address"""
+        self.pc = func_addr
         
         try:
-            # Execute global initialization code first
-            self._execute_global_initialization()
-            
-            print(f"\nInitialized {len(self.tasks)} tasks.")
-            # Start the main task thread
-            self._start_task_thread(self.tasks[0])
-            
-            # Wait for all tasks to complete or until interrupted
-            print("\nVM running, waiting for tasks to complete...")
-            while self.running:
-                # Check if any tasks are still running
-                active_tasks = [task for task in self.tasks.values() 
-                              if task.thread and task.thread.is_alive()]
+            while self.running and self.pc < len(self.task_context_shared.program.instructions):
+                instruction = self.task_context_shared.program.instructions[self.pc]
                 
-                if not active_tasks:
-                    print("All tasks completed")
-                    break
+                if self.task_context_shared.trace:
+                    print(f"\nTask {self.task.name}: PC={self.pc} {instruction}")
                 
-                # Wait a bit and check again
-                time.sleep(0.1)
+                self._execute_instruction(instruction)
                 
-                # Check for any task errors or completions
-                for task in list(self.tasks.values()):
-                    if task.thread and not task.thread.is_alive() and task.state != TaskState.DELETED:
-                        print(f"\nTask {task.name} (ID: {task.id}) finished")
-                        task.state = TaskState.DELETED
-        
-        except KeyboardInterrupt:
-            print("\\nExecution interrupted by user")
-            self.running = False
-            
-            # Wait for threads to finish gracefully
-            for task in self.tasks.values():
-                if task.thread and task.thread.is_alive():
-                    print(f"\nWaiting for task {task.name} to finish...")
-                    task.thread.join(timeout=1.0)
+                # Handle control flow
+                if instruction.opcode not in [Opcode.JUMP, Opcode.JUMPIF_TRUE, 
+                                            Opcode.JUMPIF_FALSE, Opcode.CALL, Opcode.RET]:
+                    self.pc += 1
+                
+                # Check if task should yield or delay
+                if instruction.opcode in [Opcode.RTOS_YIELD, Opcode.RTOS_DELAY_MS]:
+                    time.sleep(0.001)  # Small yield for cooperative threading
                     
         except Exception as e:
-            print(f"\nRuntime error: {e}")
-            if self.debug:
-                import traceback
-                traceback.print_exc()
-        finally:
-            self.running = False
-            print("VM execution finished")
-    
-    def _initialize_tasks_from_bytecode(self):
-        """Find and process RTOS_CREATE_TASK instructions to create tasks"""
-        # Simulate executing RTOS_CREATE_TASK instructions
-        temp_stack = []
-        
-        for i, instruction in enumerate(self.program.instructions):
-            if instruction.opcode == Opcode.LOAD_CONST:
-                # Add constant to temp stack
-                const_idx = instruction.operands[0]
-                if const_idx < len(self.program.constants):
-                    temp_stack.append(self.program.constants[const_idx])
-            elif instruction.opcode == Opcode.LOAD_VAR:
-                # Load variable value onto temp stack
-                var_addr = instruction.operands[0]
-                value = self.memory.get(var_addr, 0)
-                temp_stack.append(value)
-                
-            elif instruction.opcode == Opcode.RTOS_CREATE_TASK:
-                # Process task creation with the last 5 values on temp stack
-                if len(temp_stack) >= 5:
-                    core = temp_stack.pop()
-                    priority = temp_stack.pop()
-                    stack_size = temp_stack.pop()
-                    name_id = temp_stack.pop()
-                    func_name_id = temp_stack.pop()
-                    
-                    print(f"\nCreating task: func_name_id={func_name_id}, name_id={name_id}, stack_size={stack_size}, priority={priority}, core={core}")
-                    
-                    # Get task name and function name from string pool
-                    if isinstance(name_id, int) and name_id < len(self.program.strings):
-                        task_name = self.program.strings[name_id]
-                    else:
-                        task_name = f"Task{self.task_counter}"
-                    
-                    if isinstance(func_name_id, int) and func_name_id < len(self.program.strings):
-                        func_name = self.program.strings[func_name_id]
-                    elif isinstance(func_name_id, str):
-                        func_name = func_name_id
-                    else:
-                        func_name = None
-                    
-                    print(f"\nTask name: {task_name}, Function name: {func_name}")
-                    
-                    # Get function address
-                    if func_name and func_name in self.program.functions:
-                        func_addr = self.program.functions[func_name]
-                        
-                        # Create task
-                        task = Task(
-                            id=self.task_counter,
-                            name=task_name,
-                            func_addr=func_addr,
-                            stack_size=stack_size,
-                            priority=priority,
-                            core=core,
-                            state=TaskState.READY,
-                            pc=func_addr,
-                            vm_instance=self
-                        )
-                        
-                        self.tasks[self.task_counter] = task
-                        self.task_counter += 1
-                        
-                        print(f"\nCreated task '{task_name}' (ID: {task.id}) -> function '{func_name}' at address {func_addr}")
-                    else:
-                        print(f"\nWarning: Function '{func_name}' not found for task '{task_name}'")
-            
-            else:
-                # Reset temp stack for other instructions to avoid accumulation
-                temp_stack.clear()
+            print(f"\nTask {self.task.name} execution error: {e}")
+            raise
     
     def _execute_instruction(self, instruction: Instruction):
         """Execute a single instruction"""
@@ -613,16 +397,22 @@ class VirtualMachine:
         else:
             raise VMError(f"Unknown opcode: {instruction.opcode}")
     
-    def _trace_instruction(self, instruction: Instruction):
-        """Trace instruction execution"""
-        stack_info = f"Stack: {self.stack[-3:] if len(self.stack) > 3 else self.stack}"
-        print(f"\nPC:{self.pc:4d} {instruction} {stack_info}")
+    def _pop(self):
+        """Pop value from stack"""
+        if not self.stack:
+            raise VMError("Stack underflow")
+        return self.stack.pop()
+    
+    def _push(self, value):
+        """Push value to stack"""
+        self.stack.append(value)
+    
     
     def _check_timeouts(self):
         """Check for timed out message receives"""
         current_time = time.time()
         
-        for queue in self.message_queues.values():
+        for queue in self.task_context_shared.message_queues.values():
             timed_out_tasks = []
             
             # Check which tasks have timed out
@@ -638,7 +428,7 @@ class VirtualMachine:
                     del queue.waiting_timeouts[task_id]
                     
                     # Wake up the task and push 0 (timeout return value)
-                    self.tasks[task_id].state = TaskState.READY
+                    self.task_context_shared.tasks[task_id].state = TaskState.READY
                     
                     # Save current state and switch to timed out task temporarily
                     # to push the timeout return value
@@ -646,15 +436,15 @@ class VirtualMachine:
                     saved_stack = self.stack
                     
                     self.current_task_id = task_id
-                    self.stack = self.tasks[task_id].stack
+                    self.stack = self.task_context_shared.tasks[task_id].stack
                     self._push(0)  # Timeout return value
-                    self.tasks[task_id].stack = self.stack
+                    self.task_context_shared.tasks[task_id].stack = self.stack
                     
                     # Restore previous state
                     self.current_task_id = saved_task
                     self.stack = saved_stack
                     
-                    if self.debug:
+                    if self.task_context_shared.debug:
                         print(f"\nTask ID: {task_id} timed out waiting for message")
 
     def _yield_task(self):
@@ -726,9 +516,9 @@ class VirtualMachine:
         for i, param_value in enumerate(params):
             param_addr = param_base + i
             # Save old values to restore later
-            if param_addr in self.memory:
-                old_param_values[param_addr] = self.memory[param_addr]
-            self.memory[param_addr] = param_value
+            if param_addr in self.task_context_shared.memory:
+                old_param_values[param_addr] = self.task_context_shared.memory[param_addr]
+            self.task_context_shared.memory[param_addr] = param_value
         
         # Store old values for restoration on return
         if not hasattr(self, 'saved_params'):
@@ -746,12 +536,12 @@ class VirtualMachine:
                 old_values, param_base, param_count = self.saved_params.pop()
                 # Restore the old values
                 for addr, value in old_values.items():
-                    self.memory[addr] = value
+                    self.task_context_shared.memory[addr] = value
                 # Remove parameter values that didn't exist before
                 for i in range(param_count):
                     param_addr = param_base + i
-                    if param_addr not in old_values and param_addr in self.memory:
-                        del self.memory[param_addr]
+                    if param_addr not in old_values and param_addr in self.task_context_shared.memory:
+                        del self.task_context_shared.memory[param_addr]
             
             self.pc = self.call_stack.pop()
         else:
@@ -760,8 +550,8 @@ class VirtualMachine:
     def _handle_load_const(self, instruction: Instruction):
         """Handle LOAD_CONST instruction"""
         const_idx = instruction.operands[0]
-        if const_idx < len(self.program.constants):
-            self._push(self.program.constants[const_idx])
+        if const_idx < len(self.task_context_shared.program.constants):
+            self._push(self.task_context_shared.program.constants[const_idx])
         else:
             self._push(0)
     
@@ -774,26 +564,26 @@ class VirtualMachine:
         if hasattr(self, 'saved_params') and self.saved_params and address < 10:
             param_base = 10000
             param_addr = param_base + address
-            if param_addr in self.memory:
-                value = self.memory[param_addr]
+            if param_addr in self.task_context_shared.memory:
+                value = self.task_context_shared.memory[param_addr]
                 self._push(value)
                 return
         
         # Normal variable load
-        value = self.memory.get(address, 0)
+        value = self.task_context_shared.memory.get(address, 0)
         self._push(value)
     
     def _handle_store_var(self, instruction: Instruction):
         """Handle STORE_VAR instruction"""
         address = instruction.operands[0]
         value = self._pop()
-        self.memory[address] = value
+        self.task_context_shared.memory[address] = value
     
     def _handle_load_struct_member(self, instruction: Instruction):
         """Handle LOAD_STRUCT_MEMBER instruction"""
         base_addr = instruction.operands[0]
         offset = instruction.operands[1]
-        value = self.memory.get(base_addr + offset, 0)
+        value = self.task_context_shared.memory.get(base_addr + offset, 0)
         self._push(value)
     
     def _handle_store_struct_member(self, instruction: Instruction):
@@ -801,7 +591,7 @@ class VirtualMachine:
         base_addr = instruction.operands[0]
         offset = instruction.operands[1]
         value = self._pop()
-        self.memory[base_addr + offset] = value
+        self.task_context_shared.memory[base_addr + offset] = value
     
     def _handle_load_struct_member_bit(self, instruction: Instruction):
         """Handle LOAD_STRUCT_MEMBER_BIT instruction for bit-fields"""
@@ -811,7 +601,7 @@ class VirtualMachine:
         bit_width = instruction.operands[3]
         
         # Load the containing word
-        word_value = self.memory.get(base_addr + byte_offset, 0)
+        word_value = self.task_context_shared.memory.get(base_addr + byte_offset, 0)
         
         # Extract the bit-field value
         # Create a mask with 'bit_width' number of 1s
@@ -830,7 +620,7 @@ class VirtualMachine:
         new_value = self._pop()
         
         # Load the current word
-        word_value = self.memory.get(base_addr + byte_offset, 0)
+        word_value = self.task_context_shared.memory.get(base_addr + byte_offset, 0)
         
         # Create a mask to clear the bit-field
         mask = (1 << bit_width) - 1
@@ -840,7 +630,7 @@ class VirtualMachine:
         word_value = (word_value & clear_mask) | ((new_value & mask) << bit_offset)
         
         # Store the modified word back
-        self.memory[base_addr + byte_offset] = word_value
+        self.task_context_shared.memory[base_addr + byte_offset] = word_value
 
     def _handle_add(self, instruction: Instruction):
         """Handle ADD instruction"""
@@ -939,24 +729,24 @@ class VirtualMachine:
         """Handle ALLOC_VAR instruction"""
         size = instruction.operands[0]
         # Simplified allocation - just return next available address
-        address = len(self.memory)
+        address = len(self.task_context_shared.memory)
         for i in range(size):
-            self.memory[address + i] = 0
+            self.task_context_shared.memory[address + i] = 0
         self._push(address)
     
     def _handle_free_var(self, instruction: Instruction):
         """Handle FREE_VAR instruction"""
         address = instruction.operands[0]
         # Simplified - just mark as free (in real implementation, manage free list)
-        if address in self.memory:
-            del self.memory[address]
+        if address in self.task_context_shared.memory:
+            del self.task_context_shared.memory[address]
     
     def _handle_alloc_struct(self, instruction: Instruction):
         """Handle ALLOC_STRUCT instruction"""
         size = instruction.operands[0]
-        address = len(self.memory)
+        address = len(self.task_context_shared.memory)
         for i in range(size):
-            self.memory[address + i] = 0
+            self.task_context_shared.memory[address + i] = 0
         self._push(address)
     
     def _handle_alloc_array(self, instruction: Instruction):
@@ -964,9 +754,9 @@ class VirtualMachine:
         element_size = instruction.operands[0]
         count = instruction.operands[1]
         total_size = element_size * count
-        address = len(self.memory)
+        address = len(self.task_context_shared.memory)
         for i in range(total_size):
-            self.memory[address + i] = 0
+            self.task_context_shared.memory[address + i] = 0
         self._push(address)
     
     def _handle_load_array_elem(self, instruction: Instruction):
@@ -978,7 +768,7 @@ class VirtualMachine:
         
         # Calculate element address
         element_addr = base_addr + (index * element_size)
-        value = self.memory.get(element_addr, 0)
+        value = self.task_context_shared.memory.get(element_addr, 0)
         self._push(value)
     
     def _handle_store_array_elem(self, instruction: Instruction):
@@ -991,7 +781,7 @@ class VirtualMachine:
         
         # Calculate element address
         element_addr = base_addr + (index * element_size)
-        self.memory[element_addr] = value
+        self.task_context_shared.memory[element_addr] = value
     
     # RTOS instruction handlers
     
@@ -1009,7 +799,7 @@ class VirtualMachine:
         # Get function name and resolve to address
         # Get function name from function dict using func_addr
         func_name = None
-        for name, addr in self.program.functions.items():
+        for name, addr in self.task_context_shared.program.functions.items():
             if addr == func_addr:
                 func_name = name
                 break
@@ -1030,19 +820,19 @@ class VirtualMachine:
             vm_instance=self
         )
         
-        self.tasks[self.task_counter] = task
-        self.task_counter += 1
+        self.task_context_shared.tasks[self.task_context_shared.task_counter] = task
+        self.task_context_shared.task_counter += 1
         
         print(f"\nCreated task '{task_name}' (ID: {task.id}) -> function '{func_name}' at address {func_addr}")
 
-        self._start_task_thread(task)
+        self.task_context_shared._start_task_thread(task)
     
     def _handle_rtos_delete_task(self, instruction: Instruction):
         """Handle RTOS_DELETE_TASK instruction"""
         task_id = self._pop()
         
-        if task_id in self.tasks:
-            self.tasks[task_id].state = TaskState.DELETED
+        if task_id in self.task_context_shared.tasks:
+            self.task_context_shared.tasks[task_id].state = TaskState.DELETED
             print(f"\nDeleted task ID: {task_id}")
         else:
             print(f"\nTask ID {task_id} not found")
@@ -1050,21 +840,24 @@ class VirtualMachine:
     def _handle_rtos_delay_ms(self, instruction: Instruction):
         """Handle RTOS_DELAY_MS instruction"""
         ms = self._pop()
-        print(f"\nDelaying {ms}ms")
+
+        if self.task_context_shared.debug:
+            print(f"\nDelaying {ms}ms")
+            
         time.sleep(ms / 1000.0)
     
     def _handle_rtos_semaphore_create(self, instruction: Instruction):
         """Handle RTOS_SEMAPHORE_CREATE instruction"""
         semaphore = Semaphore(
-            id=self.semaphore_counter,
+            id=self.task_context_shared.semaphore_counter,
             count=1,
             max_count=1,
             waiting_tasks=[]
         )
         
-        self.semaphores[self.semaphore_counter] = semaphore
-        self._push(self.semaphore_counter)
-        self.semaphore_counter += 1
+        self.task_context_shared.semaphores[self.task_context_shared.semaphore_counter] = semaphore
+        self._push(self.task_context_shared.semaphore_counter)
+        self.task_context_shared.semaphore_counter += 1
         
         print(f"\nCreated semaphore ID: {semaphore.id}")
     
@@ -1073,8 +866,8 @@ class VirtualMachine:
         timeout = self._pop()
         handle = self._pop()
         
-        if handle in self.semaphores:
-            semaphore = self.semaphores[handle]
+        if handle in self.task_context_shared.semaphores:
+            semaphore = self.task_context_shared.semaphores[handle]
             if semaphore.count > 0:
                 semaphore.count -= 1
                 self._push(1)  # Success
@@ -1089,8 +882,8 @@ class VirtualMachine:
         """Handle RTOS_SEMAPHORE_GIVE instruction"""
         handle = self._pop()
         
-        if handle in self.semaphores:
-            semaphore = self.semaphores[handle]
+        if handle in self.task_context_shared.semaphores:
+            semaphore = self.task_context_shared.semaphores[handle]
             if semaphore.count < semaphore.max_count:
                 semaphore.count += 1
                 print(f"\nGave semaphore {handle}")
@@ -1108,8 +901,8 @@ class VirtualMachine:
         """Handle RTOS_SUSPEND_TASK instruction"""
         task_id = self._pop()
         
-        if task_id in self.tasks:
-            self.tasks[task_id].state = TaskState.SUSPENDED
+        if task_id in self.task_context_shared.tasks:
+            self.task_context_shared.tasks[task_id].state = TaskState.SUSPENDED
             print(f"\nSuspended task ID: {task_id}")
         else:
             print(f"\nTask ID {task_id} not found")
@@ -1118,9 +911,9 @@ class VirtualMachine:
         """Handle RTOS_RESUME_TASK instruction"""
         task_id = self._pop()
         
-        if task_id in self.tasks:
-            if self.tasks[task_id].state == TaskState.SUSPENDED:
-                self.tasks[task_id].state = TaskState.READY
+        if task_id in self.task_context_shared.tasks:
+            if self.task_context_shared.tasks[task_id].state == TaskState.SUSPENDED:
+                self.task_context_shared.tasks[task_id].state = TaskState.READY
                 print(f"\nResumed task ID: {task_id}")
             else:
                 print(f"\nTask ID {task_id} not suspended")
@@ -1141,8 +934,8 @@ class VirtualMachine:
             max_size=10  # Default queue size
         )
         
-        self.message_queues[message_id] = queue
-        if self.debug:
+        self.task_context_shared.message_queues[message_id] = queue
+        if self.task_context_shared.debug:
             print(f"\nDeclared message queue ID: {message_id}, Type: {message_type}")
     
     def _handle_msg_send(self, instruction: Instruction):
@@ -1150,24 +943,16 @@ class VirtualMachine:
         message_id = instruction.operands[0]
         payload = self._pop()  # Get the payload from stack
         
-        if message_id in self.message_queues:
-            queue = self.message_queues[message_id]
+        if message_id in self.task_context_shared.message_queues:
+            queue = self.task_context_shared.message_queues[message_id]
             if len(queue.queue) < queue.max_size:
                 queue.queue.append(payload)
                 
-                # # Wake up any task waiting to receive
-                # if queue.waiting_receivers:
-                #     receiver_id = queue.waiting_receivers.pop(0)
-                #     if receiver_id in self.tasks:
-                #         self.tasks[receiver_id].state = TaskState.READY
-                #         if self.debug:
-                #             print(f"\nWoke up receiver task ID: {receiver_id}")
-                
-                if self.debug:
+                if self.task_context_shared.debug:
                     print(f"\nSent message to queue ID: {message_id}, payload: {payload}")
             else:
                 # Queue is full, block sender (or drop message in this simple implementation)
-                if self.debug:
+                if self.task_context_shared.debug:
                     print(f"\nMessage queue ID: {message_id} is full, dropping message")
         else:
             raise VMError(f"Invalid message queue ID: {message_id}")
@@ -1179,8 +964,8 @@ class VirtualMachine:
         # Pop timeout value from stack (999999 means blocking, 0 means non-blocking, >0 means timeout in ms)
         timeout_ms = self._pop()
         
-        if message_id in self.message_queues:
-            msg_queue = self.message_queues[message_id]
+        if message_id in self.task_context_shared.message_queues:
+            msg_queue = self.task_context_shared.message_queues[message_id]
             if timeout_ms > 9999:
                 msg_wait_end_time = time.time() + timeout_ms
             else:
@@ -1203,23 +988,22 @@ class VirtualMachine:
             raise VMError(f"Invalid message queue ID: {message_id}")
 
     # Hardware instruction handlers
-    
     def _handle_hw_gpio_init(self, instruction: Instruction):
         """Handle HW_GPIO_INIT instruction"""
         mode = self._pop()
         pin = self._pop()
-        self.hardware.gpio_init(pin, mode)
+        self.task_context_shared.hardware.gpio_init(pin, mode)
     
     def _handle_hw_gpio_set(self, instruction: Instruction):
         """Handle HW_GPIO_SET instruction"""
         value = self._pop()
         pin = self._pop()
-        self.hardware.gpio_set(pin, value)
+        self.task_context_shared.hardware.gpio_set(pin, value)
     
     def _handle_hw_gpio_get(self, instruction: Instruction):
         """Handle HW_GPIO_GET instruction"""
         pin = self._pop()
-        value = self.hardware.gpio_get(pin)
+        value = self.task_context_shared.hardware.gpio_get(pin)
         self._push(value)
     
     def _handle_hw_timer_init(self, instruction: Instruction):
@@ -1227,33 +1011,33 @@ class VirtualMachine:
         freq = self._pop()
         mode = self._pop()
         timer_id = self._pop()
-        self.hardware.timer_init(timer_id, mode, freq)
+        self.task_context_shared.hardware.timer_init(timer_id, mode, freq)
     
     def _handle_hw_timer_start(self, instruction: Instruction):
         """Handle HW_TIMER_START instruction"""
         timer_id = self._pop()
-        self.hardware.timer_start(timer_id)
+        self.task_context_shared.hardware.timer_start(timer_id)
     
     def _handle_hw_timer_stop(self, instruction: Instruction):
         """Handle HW_TIMER_STOP instruction"""
         timer_id = self._pop()
-        self.hardware.timer_stop(timer_id)
+        self.task_context_shared.hardware.timer_stop(timer_id)
     
     def _handle_hw_timer_set_pwm_duty(self, instruction: Instruction):
         """Handle HW_TIMER_SET_PWM_DUTY instruction"""
         duty = self._pop()
         timer_id = self._pop()
-        self.hardware.timer_set_pwm_duty(timer_id, duty)
+        self.task_context_shared.hardware.timer_set_pwm_duty(timer_id, duty)
     
     def _handle_hw_adc_init(self, instruction: Instruction):
         """Handle HW_ADC_INIT instruction"""
         pin = self._pop()
-        self.hardware.adc_init(pin)
+        self.task_context_shared.hardware.adc_init(pin)
     
     def _handle_hw_adc_read(self, instruction: Instruction):
         """Handle HW_ADC_READ instruction"""
         pin = self._pop()
-        value = self.hardware.adc_read(pin)
+        value = self.task_context_shared.hardware.adc_read(pin)
         self._push(value)
     
     def _handle_hw_uart_write(self, instruction: Instruction):
@@ -1261,8 +1045,8 @@ class VirtualMachine:
         length = self._pop()
         buffer_addr = self._pop()
         # Simulate UART write
-        data = bytes([self.memory.get(buffer_addr + i, 0) for i in range(length)])
-        self.hardware.uart_write(data)
+        data = bytes([self.task_context_shared.memory.get(buffer_addr + i, 0) for i in range(length)])
+        self.task_context_shared.hardware.uart_write(data)
     
     def _handle_hw_spi_transfer(self, instruction: Instruction):
         """Handle HW_SPI_TRANSFER instruction"""
@@ -1270,30 +1054,30 @@ class VirtualMachine:
         rx_addr = self._pop()
         tx_addr = self._pop()
         # Simulate SPI transfer
-        tx_data = bytes([self.memory.get(tx_addr + i, 0) for i in range(length)])
-        rx_data = self.hardware.spi_transfer(tx_data)
+        tx_data = bytes([self.task_context_shared.memory.get(tx_addr + i, 0) for i in range(length)])
+        rx_data = self.task_context_shared.hardware.spi_transfer(tx_data)
         # Store received data
         for i, byte in enumerate(rx_data):
-            self.memory[rx_addr + i] = byte
+            self.task_context_shared.memory[rx_addr + i] = byte
     
     def _handle_hw_i2c_write(self, instruction: Instruction):
         """Handle HW_I2C_WRITE instruction"""
         data = self._pop()
         addr = self._pop()
-        self.hardware.i2c_write(addr, data)
+        self.task_context_shared.hardware.i2c_write(addr, data)
     
     def _handle_hw_i2c_read(self, instruction: Instruction):
         """Handle HW_I2C_READ instruction"""
         reg = self._pop()
         addr = self._pop()
-        value = self.hardware.i2c_read(addr, reg)
+        value = self.task_context_shared.hardware.i2c_read(addr, reg)
         self._push(value)
     
     def _handle_dbg_print(self, instruction: Instruction):
         """Handle DBG_PRINT instruction"""
         string_id = self._pop()
-        if string_id < len(self.program.strings):
-            print(f"\nDEBUG: {self.program.strings[string_id]}")
+        if string_id < len(self.task_context_shared.program.strings):
+            print(f"\nDEBUG: {self.task_context_shared.program.strings[string_id]}")
         else:
             print(f"\nDEBUG: <invalid string {string_id}>")
     
@@ -1313,8 +1097,8 @@ class VirtualMachine:
         #     # Format string is on stack
         #     format_string_id = self._pop()
         
-        if format_string_id < len(self.program.strings):
-            format_string = self.program.strings[format_string_id]
+        if format_string_id < len(self.task_context_shared.program.strings):
+            format_string = self.task_context_shared.program.strings[format_string_id]
             try:
                 # Simple formatting - replace {0}, {1}, etc. with arguments
                 output = format_string
@@ -1364,9 +1148,9 @@ class VirtualMachine:
         """Handle LOAD_DEREF instruction - dereferences pointer on top of stack"""
         pointer_value = self._pop()
         # The pointer value is the address to read from
-        if pointer_value not in self.memory:
+        if pointer_value not in self.task_context_shared.memory:
             raise VMError(f"Dereferencing null or invalid pointer: {pointer_value}")
-        value = self.memory[pointer_value]
+        value = self.task_context_shared.memory[pointer_value]
         self._push(value)
     
     def _handle_store_deref(self, instruction: Instruction):
@@ -1375,27 +1159,132 @@ class VirtualMachine:
         pointer_value = self._pop()  # Address to store at
         if pointer_value is None:
             raise VMError("Cannot dereference null pointer")
-        self.memory[pointer_value] = value
+        self.task_context_shared.memory[pointer_value] = value
 
-    def _execute_global_initialization(self):
-        """Execute global initialization code before starting tasks"""
-        if not self.program:
-            return
+    def _trace_instruction(self, instruction: Instruction):
+        """Trace instruction execution"""
+        stack_info = f"Stack: {self.stack[-3:] if len(self.stack) > 3 else self.stack}"
+        print(f"\nPC:{self.pc:4d} {instruction} {stack_info}")
+
+class VirtualMachine:
+    """RT-Micro-C Virtual Machine"""
+    
+    def __init__(self, debug: bool = False, trace: bool = False):
         
-        # Execute instructions from the beginning until we hit a function definition
-        pc = 0
-        while pc < len(self.program.instructions):
-            instruction = self.program.instructions[pc]
+        # Program state
+        self.program: Optional[BytecodeProgram] = None
+        self.running = False
+        
+        self.task_context_shared = TaskContextSharedMaterial()
+        # RTOS state
+        self.task_context_shared.tasks = {}
+        self.task_context_shared.semaphores = {}
+        self.task_context_shared.message_queues = {}
+        self.current_task_id = 0
+        self.task_context_shared.task_counter = 0
+        self.task_context_shared.semaphore_counter = 0
+        self.task_context_shared.message_queue_counter = 0
+        self.task_context_shared.debug = debug
+        self.task_context_shared.trace = trace
+        self.scheduler_running = False
+        
+        # Hardware simulator
+        self.task_context_shared.hardware = HardwareSimulator()
+        
+    
+    def load_program(self, program: BytecodeProgram):
+        """Load a bytecode program"""
+        self.task_context_shared.program = program
+        
+        # Create main task if main function exists
+        if 'main' in program.functions:
+            main_addr = program.functions['main']
+            self.create_main_task(main_addr)
+    
+    def create_main_task(self, main_addr: int):
+        """Create the main task"""
+        task = Task(
+            id=self.task_context_shared.task_counter,
+            name="main",
+            func_addr=main_addr,
+            stack_size=1024,
+            priority=5,
+            core=0,
+            state=TaskState.READY,
+            pc=main_addr,
+            vm_instance=self
+        )
+        self.task_context_shared.tasks[self.task_context_shared.task_counter] = task
+        self.task_context_shared.task_counter += 1
+
+    def program_initialization(self):
+        """Initialize the program state"""
+        if not self.task_context_shared.program:
+            raise VMError("No program loaded")
+        
+        # Initialize memory with constants and global variables
+        for i, instruction in enumerate(self.task_context_shared.program.instructions):
+            if instruction.opcode == Opcode.MSG_DECLARE:
+                # Initialize message queue
+                message_id = instruction.operands[0]
+                message_type = instruction.operands[1]
+                queue = MessageQueue(
+                    id=message_id,
+                    name=f"MessageQueue_{message_id}",
+                    message_type=message_type,
+                    queue=deque(),
+                    max_size=10  # Default queue size
+                )
+                self.task_context_shared.message_queues[message_id] = queue
+        
+        # Start the main task thread
+        self.task_context_shared._start_task_thread(self.task_context_shared.tasks[0])
+
+    def run(self):
+        """Run the virtual machine with threaded tasks"""
+        self.running = True
+        
+        if not self.task_context_shared.program:
+            raise VMError("No program loaded")
+        
+        try:
+            self.program_initialization()
+
+            # Wait for all tasks to complete or until interrupted
+            print("\nVM running, waiting for tasks to complete...")
+            while self.running:
+                # Check if any tasks are still running
+                active_tasks = [task for task in self.task_context_shared.tasks.values() 
+                              if task.thread and task.thread.is_alive()]
+                
+                if not active_tasks:
+                    print("All tasks completed")
+                    break
+                
+                # Wait a bit and check again
+                time.sleep(0.1)
+                
+                # Check for any task errors or completions
+                for task in list(self.task_context_shared.tasks.values()):
+                    if task.thread and not task.thread.is_alive() and task.state != TaskState.DELETED:
+                        print(f"\nTask {task.name} (ID: {task.id}) finished")
+                        task.state = TaskState.DELETED
+        
+        except KeyboardInterrupt:
+            print("\\nExecution interrupted by user")
+            self.running = False
             
-            # Stop if we hit a function definition or task creation
-            if instruction.opcode in [Opcode.RTOS_CREATE_TASK, Opcode.RET]:
-                break
-            
-            # Execute the instruction
-            self.pc = pc
-            self._execute_instruction(instruction)
-            
+            # Wait for threads to finish gracefully
+            for task in self.task_context_shared.tasks.values():
+                if task.thread and task.thread.is_alive():
+                    print(f"\nWaiting for task {task.name} to finish...")
+                    task.thread.join(timeout=1.0)
+                    
+        except Exception as e:
+            print(f"\nRuntime error: {e}")
             if self.debug:
-                print(f"\nGlobal init: PC={pc} {instruction.opcode.name} {instruction.operands}")
-            
-            pc += 1
+                import traceback
+                traceback.print_exc()
+        finally:
+            self.running = False
+            print("VM execution finished")
