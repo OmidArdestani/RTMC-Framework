@@ -600,6 +600,9 @@ class TaskVMContext:
         bit_offset = instruction.operands[2]
         bit_width = instruction.operands[3]
         
+        if base_addr == 0:
+            base_addr = self._pop()  # Pop base address if not provided
+
         # Load the containing word
         word_value = self.task_context_shared.memory.get(base_addr + byte_offset, 0)
         
@@ -843,7 +846,7 @@ class TaskVMContext:
 
         if self.task_context_shared.debug:
             print(f"\nDelaying {ms}ms")
-            
+
         time.sleep(ms / 1000.0)
     
     def _handle_rtos_semaphore_create(self, instruction: Instruction):
@@ -1093,9 +1096,9 @@ class TaskVMContext:
         args.reverse()  # Restore correct order
         
         # Get format string
-        # if format_string_id == 0:
-        #     # Format string is on stack
-        #     format_string_id = self._pop()
+        if format_string_id == 0:
+            # Format string is on stack
+            format_string_id = self._pop()
         
         if format_string_id < len(self.task_context_shared.program.strings):
             format_string = self.task_context_shared.program.strings[format_string_id]
@@ -1282,7 +1285,7 @@ class VirtualMachine:
                     
         except Exception as e:
             print(f"\nRuntime error: {e}")
-            if self.debug:
+            if self.task_context_shared.debug:
                 import traceback
                 traceback.print_exc()
         finally:

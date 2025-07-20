@@ -32,7 +32,20 @@
             "request": "launch",
             "program": "RTMC-Compiler/main.py",
             "args": [
-                "C:\\Users\\oarde\\OneDrive\\Projects\\Mini-C RTOS Language\\RTMC-Compiler\\examples\\Send-ADC-To-UART\\main.rtmc",
+                "RTMC-Compiler\\examples\\Specific-Test\\sb_main.rtmc",
+                "-v", "--run", "--release"
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "purpose": ["debug-in-terminal"]
+        },
+        {
+            "name": "RT-Micro-C: Compile and Debug Demo",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "RTMC-Compiler/main.py",
+            "args": [
+                "RTMC-Compiler\\examples\\Specific-Test\\sb_main.rtmc",
                 "-v", "--run"
             ],
             "console": "integratedTerminal",
