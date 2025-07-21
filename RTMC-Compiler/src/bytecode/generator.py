@@ -294,13 +294,31 @@ class BytecodeGenerator(ASTVisitor):
         
         # Initialize if needed
         if node.initializer:
-            node.initializer.accept(self)
-            self.emit(InstructionBuilder.store_var(address))
+            if self.current_function:
+                # Local variable - generate code and store immediately
+                node.initializer.accept(self)
+                self.emit(InstructionBuilder.store_var(address))
+            else:
+                # Global variable - get initial value and emit declaration
+                # For now, we'll handle simple constant initializers
+                if hasattr(node.initializer, 'value'):
+                    # Simple literal value
+                    const_idx = self.add_constant(node.initializer.value)
+                else:
+                    # Complex expression - evaluate at runtime for now
+                    # TODO: Implement constant expression evaluation
+                    const_idx = self.add_constant(0)
+                self.emit(InstructionBuilder.global_var_declare(address, const_idx, node.is_const))
         else:
             # Initialize to zero
             const_idx = self.add_constant(0)
-            self.emit(InstructionBuilder.load_const(const_idx))
-            self.emit(InstructionBuilder.store_var(address))
+            if self.current_function:
+                # Local variable
+                self.emit(InstructionBuilder.load_const(const_idx))
+                self.emit(InstructionBuilder.store_var(address))
+            else:
+                # Global variable - emit declaration
+                self.emit(InstructionBuilder.global_var_declare(address, const_idx, node.is_const))
     
     def visit_primitive_type(self, node: PrimitiveTypeNode):
         """Type nodes don't generate code"""

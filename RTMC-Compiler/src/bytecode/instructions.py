@@ -71,6 +71,9 @@ class Opcode(IntEnum):
     RTOS_SUSPEND_TASK = auto()
     RTOS_RESUME_TASK = auto()
     
+    # Global Variable Declaration
+    GLOBAL_VAR_DECLARE = auto()  # Declare and initialize a global variable
+    
     # Message Passing Instructions
     MSG_DECLARE = auto()  # Declare a message queue
     MSG_SEND = auto()     # Send message to queue
@@ -320,6 +323,10 @@ class InstructionBuilder:
         return Instruction(Opcode.RTOS_RESUME_TASK, [task_handle])
     
     @staticmethod
+    def global_var_declare(address: int, const_idx: int, is_const: bool) -> Instruction:
+        return Instruction(Opcode.GLOBAL_VAR_DECLARE, [address, const_idx, 1 if is_const else 0])
+    
+    @staticmethod
     def hw_gpio_init(pin: int, mode: int) -> Instruction:
         return Instruction(Opcode.HW_GPIO_INIT, [pin, mode])
     
@@ -445,6 +452,11 @@ INSTRUCTION_INFO = {
     Opcode.RTOS_YIELD: {"operands": 0, "description": "Yield task"},
     Opcode.RTOS_SUSPEND_TASK: {"operands": 1, "description": "Suspend task"},
     Opcode.RTOS_RESUME_TASK: {"operands": 1, "description": "Resume task"},
+    
+    Opcode.GLOBAL_VAR_DECLARE: {"operands": 3, "description": "Declare global variable"},
+    Opcode.MSG_DECLARE: {"operands": 2, "description": "Declare message queue"},
+    Opcode.MSG_SEND: {"operands": 1, "description": "Send message"},
+    Opcode.MSG_RECV: {"operands": 1, "description": "Receive message"},
     
     Opcode.HW_GPIO_INIT: {"operands": 2, "description": "Initialize GPIO"},
     Opcode.HW_GPIO_SET: {"operands": 2, "description": "Set GPIO value"},

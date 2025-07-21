@@ -334,6 +334,7 @@ class TaskVMContext:
             Opcode.RTOS_RESUME_TASK: self._handle_rtos_resume_task,
             
             # Message passing instructions  
+            Opcode.GLOBAL_VAR_DECLARE: self._handle_global_var_declare,
             Opcode.MSG_DECLARE: self._handle_msg_declare,
             Opcode.MSG_SEND: self._handle_msg_send,
             Opcode.MSG_RECV: self._handle_msg_recv,
@@ -923,6 +924,25 @@ class TaskVMContext:
         else:
             print(f"\nTask ID {task_id} not found")
     
+    
+    def _handle_global_var_declare(self, instruction: Instruction):
+        """Handle GLOBAL_VAR_DECLARE instruction - should only be called during initialization"""
+        address = instruction.operands[0]
+        const_idx = instruction.operands[1]
+        is_const = instruction.operands[2] == 1
+        
+        # Get the initial value from constants
+        if const_idx < len(self.task_context_shared.program.constants):
+            initial_value = self.task_context_shared.program.constants[const_idx]
+        else:
+            initial_value = 0
+        
+        # Initialize the global variable
+        self.task_context_shared.memory[address] = initial_value
+        
+        if self.task_context_shared.debug:
+            print(f"\nInitialized global variable at address {address} with value {initial_value} (const: {is_const})")
+    
     def _handle_msg_declare(self, instruction: Instruction):
         """Handle MSG_DECLARE instruction"""
         message_id = instruction.operands[0]
@@ -1227,7 +1247,25 @@ class VirtualMachine:
         
         # Initialize memory with constants and global variables
         for i, instruction in enumerate(self.task_context_shared.program.instructions):
-            if instruction.opcode == Opcode.MSG_DECLARE:
+            if instruction.opcode == Opcode.GLOBAL_VAR_DECLARE:
+                # Initialize global variable
+                address = instruction.operands[0]
+                const_idx = instruction.operands[1]
+                is_const = instruction.operands[2] == 1
+                
+                # Get the initial value from constants
+                if const_idx < len(self.task_context_shared.program.constants):
+                    initial_value = self.task_context_shared.program.constants[const_idx]
+                else:
+                    initial_value = 0
+                
+                # Initialize the global variable
+                self.task_context_shared.memory[address] = initial_value
+                
+                if self.task_context_shared.debug:
+                    print(f"\nInitialized global variable at address {address} with value {initial_value} (const: {is_const})")
+                    
+            elif instruction.opcode == Opcode.MSG_DECLARE:
                 # Initialize message queue
                 message_id = instruction.operands[0]
                 message_type = instruction.operands[1]
