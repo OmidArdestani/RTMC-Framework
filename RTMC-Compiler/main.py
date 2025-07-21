@@ -11,6 +11,7 @@ from typing import Set, Dict
 
 # Add src directory to path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.parser.ply_parser import RTMCParser
 from src.parser.ast_nodes import ProgramNode, ImportStmtNode
@@ -164,7 +165,11 @@ def main():
             print(f"Mode: {compile_mode.name}")
 
         if args.run:
-            from src.vm.virtual_machine import VirtualMachine
+            import importlib.util
+            spec = importlib.util.spec_from_file_location("virtual_machine", "RTMC-Interpreter/vm/virtual_machine.py")
+            vm_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(vm_module)
+            VirtualMachine = vm_module.VirtualMachine
             is_debug_mode = compile_mode == CompileMode.DEBUG
             vm = VirtualMachine(debug=is_debug_mode, trace=False)
             vm.load_program(bytecode_program)
