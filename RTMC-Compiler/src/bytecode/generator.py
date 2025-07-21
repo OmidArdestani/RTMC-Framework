@@ -46,7 +46,8 @@ class BytecodeGenerator(ASTVisitor):
         
         # Code generation state
         self.current_address = 0
-        self.variable_counter = 0
+        self.global_variable_counter = 0  # Separate counter for global variables
+        self.local_variable_counter = 0   # Counter for local variables in current function
         self.temp_counter = 0  # Counter for temporary variables
         self.labels: Dict[str, int] = {}
         self.label_counter = 0
@@ -55,6 +56,7 @@ class BytecodeGenerator(ASTVisitor):
         self.current_function = None
         self.local_variables: Dict[str, int] = {}
         self.parameter_count = 0
+        self.function_frame_size = 0  # Track current function's frame size
         
         # Control flow
         self.break_labels: List[str] = []
@@ -122,18 +124,21 @@ class BytecodeGenerator(ASTVisitor):
         return len(self.strings) - 1
     
     def allocate_variable(self, name: str) -> int:
-        """Allocate space for a variable"""
+        """Allocate space for a variable with proper address space separation"""
         if self.current_function:
-            # Local variable
-            address = self.variable_counter
+            # Local variable - use function-local address space starting from 20000
+            # The VM will handle call depth separation at runtime
+            base_local_address = 20000
+            address = base_local_address + self.local_variable_counter
             self.local_variables[name] = address
-            self.variable_counter += 1
+            self.local_variable_counter += 1
+            self.function_frame_size = max(self.function_frame_size, self.local_variable_counter)
             return address
         else:
-            # Global variable
-            address = self.variable_counter
+            # Global variable - use global address space (0-9999)
+            address = self.global_variable_counter
             self.symbol_table[name] = address
-            self.variable_counter += 1
+            self.global_variable_counter += 1
             return address
     
     def get_variable_address(self, name: str) -> int:
@@ -203,24 +208,41 @@ class BytecodeGenerator(ASTVisitor):
         old_locals = self.local_variables.copy()
         old_local_types = self.local_variable_types.copy()
         old_param_count = self.parameter_count
+        old_local_counter = self.local_variable_counter
+        old_frame_size = self.function_frame_size
         
         self.current_function = node.name
         self.local_variables = {}
         self.local_variable_types = {}
         self.parameter_count = len(node.parameters)
+        self.local_variable_counter = 0  # Reset local variable counter for this function
+        self.function_frame_size = 0
         
-        # Allocate space for parameters and track their types
+        # Parameters use the special parameter address space (10000 + param_index)
+        # This is handled by the VM's parameter passing mechanism
+        param_base_address = 10000  # Base address for parameters
         for i, param in enumerate(node.parameters):
-            self.local_variables[param.name] = i
+            param_address = param_base_address + i
+            self.local_variables[param.name] = param_address
             # Store parameter type information
             param_type = self._get_type_name(param.type)
             self.local_variable_types[param.name] = param_type
         
-        # Set variable counter to start after parameters
-        self.variable_counter = self.parameter_count
+        # Generate function prologue - allocate frame space
+        if self.mode == CompileMode.DEBUG:
+            self.emit(InstructionBuilder.comment(f"Function {node.name} prologue"))
         
         # Generate function body
         node.body.accept(self)
+        
+        # Generate function epilogue - cleanup and ensure return
+        if self.mode == CompileMode.DEBUG:
+            self.emit(InstructionBuilder.comment(f"Function {node.name} epilogue - frame size: {self.function_frame_size}"))
+        
+        # Free local variables if any were allocated
+        if self.function_frame_size > 0:
+            # Emit instruction to free the function frame
+            self.emit(InstructionBuilder.free_frame(self.function_frame_size))
         
         # Ensure function returns (if no explicit return)
         if self._get_type_name(node.return_type) == 'void':
@@ -231,6 +253,8 @@ class BytecodeGenerator(ASTVisitor):
         self.local_variables = old_locals
         self.local_variable_types = old_local_types
         self.parameter_count = old_param_count
+        self.local_variable_counter = old_local_counter
+        self.function_frame_size = old_frame_size
     
     def visit_struct_decl(self, node: StructDeclNode):
         """Generate code for struct declaration"""
@@ -1445,7 +1469,10 @@ class BytecodeGenerator(ASTVisitor):
         self.emit(InstructionBuilder.alloc_array(element_size, array_size))
 
         # Update memory size for the array
-        self.variable_counter += element_size * array_size
+        if self.current_function:
+            self.local_variable_counter += element_size * array_size
+        else:
+            self.global_variable_counter += element_size * array_size
         
         # Store array base address in symbol table
         array_address = self.allocate_variable(node.name)

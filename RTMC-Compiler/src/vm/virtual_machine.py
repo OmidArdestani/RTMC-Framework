@@ -272,6 +272,7 @@ class TaskVMContext:
         self.call_stack = []
         self.running = True
         self.saved_params = []  # For parameter restoration on function return
+        self.call_depth = 0  # Track nested function call depth
 
         self.task_context_shared = task_context_shared
         
@@ -316,6 +317,8 @@ class TaskVMContext:
             Opcode.ALLOC_VAR: self._handle_alloc_var,
             Opcode.FREE_VAR: self._handle_free_var,
             Opcode.ALLOC_STRUCT: self._handle_alloc_struct,
+            Opcode.ALLOC_FRAME: self._handle_alloc_frame,
+            Opcode.FREE_FRAME: self._handle_free_frame,
             
             # Array instructions
             Opcode.ALLOC_ARRAY: self._handle_alloc_array,
@@ -500,8 +503,11 @@ class TaskVMContext:
         func_address = instruction.operands[0]
         param_count = instruction.operands[1] if len(instruction.operands) > 1 else 0
         
+        # Increment call depth for nested function tracking
+        self.call_depth += 1
+        
         # Save current state
-        self.call_stack.append(self.pc + 1)
+        self.call_stack.append((self.pc + 1, self.call_depth))
         
         # Pop parameters from stack and store them in function's parameter slots
         # Parameters are popped in reverse order (last argument first)
@@ -524,7 +530,7 @@ class TaskVMContext:
         # Store old values for restoration on return
         if not hasattr(self, 'saved_params'):
             self.saved_params = []
-        self.saved_params.append((old_param_values, param_base, param_count))
+        self.saved_params.append((old_param_values, param_base, param_count, self.call_depth))
         
         # Jump to function
         self.pc = func_address
@@ -534,7 +540,7 @@ class TaskVMContext:
         if self.call_stack:
             # Restore saved parameter values
             if hasattr(self, 'saved_params') and self.saved_params:
-                old_values, param_base, param_count = self.saved_params.pop()
+                old_values, param_base, param_count, call_depth = self.saved_params.pop()
                 # Restore the old values
                 for addr, value in old_values.items():
                     self.task_context_shared.memory[addr] = value
@@ -544,7 +550,11 @@ class TaskVMContext:
                     if param_addr not in old_values and param_addr in self.task_context_shared.memory:
                         del self.task_context_shared.memory[param_addr]
             
-            self.pc = self.call_stack.pop()
+            # Decrement call depth
+            self.call_depth -= 1
+            
+            # Restore PC from call stack
+            self.pc, saved_depth = self.call_stack.pop()
         else:
             self.running = False
     
@@ -555,6 +565,22 @@ class TaskVMContext:
             self._push(self.task_context_shared.program.constants[const_idx])
         else:
             self._push(0)
+    
+    def _map_variable_address(self, compile_time_address: int) -> int:
+        """Map compile-time address to runtime address considering call depth"""
+        if compile_time_address < 10000:
+            # Global variable - use as-is
+            return compile_time_address
+        elif compile_time_address < 20000:
+            # Parameter - use as-is
+            return compile_time_address
+        else:
+            # Local variable - add call depth offset
+            base_local = 20000
+            offset = compile_time_address - base_local
+            # Each call depth gets 1000 addresses to avoid conflicts
+            runtime_address = base_local + (self.call_depth * 1000) + offset
+            return runtime_address
     
     def _handle_load_var(self, instruction: Instruction):
         """Handle LOAD_VAR instruction"""
@@ -570,15 +596,22 @@ class TaskVMContext:
                 self._push(value)
                 return
         
+        # Map to runtime address considering call depth
+        runtime_address = self._map_variable_address(address)
+        
         # Normal variable load
-        value = self.task_context_shared.memory.get(address, 0)
+        value = self.task_context_shared.memory.get(runtime_address, 0)
         self._push(value)
     
     def _handle_store_var(self, instruction: Instruction):
         """Handle STORE_VAR instruction"""
         address = instruction.operands[0]
         value = self._pop()
-        self.task_context_shared.memory[address] = value
+        
+        # Map to runtime address considering call depth
+        runtime_address = self._map_variable_address(address)
+        
+        self.task_context_shared.memory[runtime_address] = value
     
     def _handle_load_struct_member(self, instruction: Instruction):
         """Handle LOAD_STRUCT_MEMBER instruction"""
@@ -752,6 +785,39 @@ class TaskVMContext:
         for i in range(size):
             self.task_context_shared.memory[address + i] = 0
         self._push(address)
+    
+    def _handle_alloc_frame(self, instruction: Instruction):
+        """Handle ALLOC_FRAME instruction - allocate function frame"""
+        size = instruction.operands[0]
+        if self.task_context_shared.debug:
+            print(f"\nAllocating function frame of size {size}")
+        # Frame allocation is handled by the address space separation in the bytecode generator
+        # The actual memory allocation happens when variables are accessed
+        # This instruction is mainly for tracking/debugging purposes
+        pass
+    
+    def _handle_free_frame(self, instruction: Instruction):
+        """Handle FREE_FRAME instruction - free function frame"""
+        size = instruction.operands[0]
+        if self.task_context_shared.debug:
+            print(f"\nFreeing function frame of size {size} at call depth {self.call_depth}")
+        
+        # Find and clean up function-local variables for the current call depth
+        # Function local variables use addresses starting from 20000 + (call_depth * 1000)
+        base_local_address = 20000 + (self.call_depth * 1000)
+        max_local_address = base_local_address + size
+        
+        # Clean up local variables in the current call frame
+        addresses_to_remove = []
+        for addr in self.task_context_shared.memory:
+            if base_local_address <= addr < max_local_address:
+                addresses_to_remove.append(addr)
+        
+        for addr in addresses_to_remove:
+            del self.task_context_shared.memory[addr]
+        
+        if self.task_context_shared.debug and addresses_to_remove:
+            print(f"\nCleaned up {len(addresses_to_remove)} local variables at depth {self.call_depth}: {addresses_to_remove}")
     
     def _handle_alloc_array(self, instruction: Instruction):
         """Handle ALLOC_ARRAY instruction"""

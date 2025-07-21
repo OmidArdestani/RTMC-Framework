@@ -54,6 +54,8 @@ class Opcode(IntEnum):
     ALLOC_VAR = auto()
     FREE_VAR = auto()
     ALLOC_STRUCT = auto()
+    ALLOC_FRAME = auto()    # Allocate function frame
+    FREE_FRAME = auto()     # Free function frame
     
     # Array Instructions
     ALLOC_ARRAY = auto()        # Allocate array memory
@@ -275,6 +277,14 @@ class InstructionBuilder:
         return Instruction(Opcode.ALLOC_STRUCT, [size])
     
     @staticmethod
+    def alloc_frame(size: int) -> Instruction:
+        return Instruction(Opcode.ALLOC_FRAME, [size])
+    
+    @staticmethod
+    def free_frame(size: int) -> Instruction:
+        return Instruction(Opcode.FREE_FRAME, [size])
+    
+    @staticmethod
     def alloc_array(element_size: int, count: int) -> Instruction:
         return Instruction(Opcode.ALLOC_ARRAY, [element_size, count])
     
@@ -438,6 +448,8 @@ INSTRUCTION_INFO = {
     Opcode.ALLOC_VAR: {"operands": 1, "description": "Allocate variable"},
     Opcode.FREE_VAR: {"operands": 1, "description": "Free variable"},
     Opcode.ALLOC_STRUCT: {"operands": 1, "description": "Allocate struct"},
+    Opcode.ALLOC_FRAME: {"operands": 1, "description": "Allocate function frame"},
+    Opcode.FREE_FRAME: {"operands": 1, "description": "Free function frame"},
     
     Opcode.ALLOC_ARRAY: {"operands": 2, "description": "Allocate array"},
     Opcode.LOAD_ARRAY_ELEM: {"operands": 1, "description": "Load array element"},
