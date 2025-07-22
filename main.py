@@ -15,6 +15,7 @@ from RTMC_Compiler.src.semantic.analyzer import SemanticAnalyzer
 from RTMC_Compiler.src.optimizer.optimizer import Optimizer
 from RTMC_Compiler.src.bytecode.generator import BytecodeGenerator
 from RTMC_Compiler.src.bytecode.writer import BytecodeWriter
+from RTMC_Compiler.src.preprocessor.preprocessor import RTMCPreprocessor
 
 imported_filepaths = set()
 
@@ -39,9 +40,13 @@ def parse_with_imports(file_path: Path, imported_files: Set[Path] = None) -> Pro
     except FileNotFoundError:
         raise FileNotFoundError(f"Import file not found: {file_path}")
     
+    # Apply preprocessor to handle #define directives
+    preprocessor = RTMCPreprocessor()
+    processed_code = preprocessor.process(source_code)
+    
     # Parse using PLY
     parser = RTMCParser()
-    ast = parser.parse(source_code, str(abs_path))
+    ast = parser.parse(processed_code, str(abs_path))
     
     # Collect import statements and other statements separately
     imports = []

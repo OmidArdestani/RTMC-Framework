@@ -3,8 +3,8 @@
 
 message<int> SBTestMsg;
 
+#define USB4_BE_CMD_PROTOCOL_TYPE_SIDEBAND  14
 const int USB4_BE_CMD_PROTOCOL_TYPE_UNDEFINED = 1;
-const int USB4_BE_CMD_PROTOCOL_TYPE_SIDEBAND  = 14;
 const int USB4_BE_CMD_OPCODE_UNDEFINED        = 0;
 
 struct USB4BECommand

@@ -1,0 +1,59 @@
+#define BUFFER_SIZE 256
+#define MAX_RETRIES 3
+#define TIMEOUT_MS 1000
+#define LED_PIN 13
+#define BAUD_RATE 9600
+
+#define DELAY_SHORT 100
+#define DELAY_LONG 500
+
+// Example of using defines for mathematical constants
+#define PI 3.14159265359
+#define E 2.71828182846
+
+// String defines
+#define STARTUP_MSG "System initializing..."
+#define ERROR_MSG "Error occurred!"
+#define SUCCESS_MSG "Operation completed successfully"
+
+void hardware_init() {
+    // Use defines for hardware configuration
+    HW_GPIO_INIT(LED_PIN);
+    HW_TIMER_INIT(TIMEOUT_MS);
+}
+
+void communication_task() {
+    char buffer[BUFFER_SIZE];
+    int retry_count = 0;
+    
+    HW_UART_WRITE(STARTUP_MSG);
+    
+    while (retry_count < MAX_RETRIES) {
+        if (HW_UART_WRITE("Test message")) {
+            HW_UART_WRITE(SUCCESS_MSG);
+            break;
+        } else {
+            retry_count++;
+            HW_UART_WRITE(ERROR_MSG);
+            RTOS_DELAY_MS(DELAY_SHORT);
+        }
+    }
+}
+
+void calculate_circle() {
+    float radius = 5.0;
+    float area = PI * radius * radius;
+    float circumference = 2.0 * PI * radius;
+}
+
+int main() {
+    hardware_init();
+    
+    // Create task with timeout
+    RTOS_CREATE_TASK(communication_task);
+    RTOS_DELAY_MS(DELAY_LONG);
+    
+    calculate_circle();
+    
+    return 0;
+}
