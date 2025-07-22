@@ -1,0 +1,107 @@
+
+// import "read_adc.rtmc";
+// import "definitions.rtmc";
+// import "send_uart.rtmc";
+
+struct TestStruct1
+{
+    union {
+        struct{
+            int item1 : 16;
+            int item2 : 16;
+        };
+        int value1 = 0;
+        int value2 = 0;
+    };
+    int item2;
+};
+
+// struct TestStruct2
+// {
+//     // TestStruct1 structItem1;
+//     int item1;
+//     int item2;
+// };
+
+// void checkVariable(int *var)
+// {
+//     DBG_PRINTF("Checking variable: {0}", *var);
+//     if (*var < 20)
+//     {
+//         DBG_PRINT("Variable is less than 20");
+//     }
+//     else
+//     {
+//         DBG_PRINT("Variable is 20 or more");
+//     }
+// }
+
+void main() 
+{
+    // TestStruct2 testStruct2;
+    // testStruct2.item1 = 30;
+    // testStruct2.item2 = 30;
+    // testStruct2.structItem1.item2 = 30;
+
+    TestStruct1 testStruct1;
+
+    // testStruct1.item1 = 0xBBAD;
+    // testStruct1.item2 = 0x52FC;
+    // DBG_PRINTF("testStruct1.item1={0}, testStruct1.item2={1}", testStruct1.item1, testStruct1.item2);
+    
+    // testStruct1.value = 0xAABBCCDD;
+    // DBG_PRINTF("testStruct1.item1={0}, testStruct1.item2={1}", testStruct1.item1, testStruct1.item2);
+
+    // testStruct1.item3 = 1370;
+    // DBG_PRINTF("testStruct1.item3={0}", testStruct1.item3);
+
+    // TestStruct1* ptrTestStruct1 = &testStruct1;
+    // int* ptrItem1 = (int*)ptrTestStruct1;
+
+    // int a = 20;
+    // TestStruct2* testStruct2 = (TestStruct2*)ptrItem1;
+    // testStruct2->item1 = 40;
+    // if(testStruct2->item1 == 30)
+    // {
+    //     DBG_PRINTF("Condition passed. Value is {}", testStruct2->item1);
+    // }
+    // else
+    // {
+    //     DBG_PRINTF("Condition faild. Value is {}", testStruct2->item1);
+    // }
+
+
+    // int a = 10;  // Back to original value
+    // int *b = &a;
+    // int **c = &b;
+    // int d = **c;
+
+    // Test the new DBG_PRINTF functionality
+    // DBG_PRINTF("Value of a: {0}", a);
+    // DBG_PRINTF("Value of d (via double pointer): {0}", d);
+    // DBG_PRINTF("Address of a: {0}", b);
+    // DBG_PRINTF("Multiple values: a={0}, d={1}", a, d);
+    // DBG_PRINTF("Simple syntax: a={}, d={}", a, d);
+
+    // checkVariable(b);
+
+    // int a = 10;
+    // int b = 15;
+
+    // testStruct1.item1 = 30;
+
+    // testStruct1.item2 = 10;
+    // if(testStruct2.structItem1.item2 == testStruct1.item1 && testStruct2.item1 == 30)
+    // if(a == testStruct1.item2 && b < 20)
+    // {        
+    //     DBG_PRINT("Condition passed");
+    // }
+    // else
+    // {
+    //     DBG_PRINT("Condition failed");
+    // }
+
+
+    // RTOS_DELAY_MS(1000);
+    DBG_PRINT("Main task finished");
+}

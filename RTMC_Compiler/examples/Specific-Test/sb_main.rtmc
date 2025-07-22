@@ -1,0 +1,97 @@
+
+
+
+message<int> SBTestMsg;
+
+#define USB4_BE_CMD_PROTOCOL_TYPE_SIDEBAND  14
+const int USB4_BE_CMD_PROTOCOL_TYPE_UNDEFINED = 1;
+const int USB4_BE_CMD_OPCODE_UNDEFINED        = 0;
+
+struct USB4BECommand
+{
+    int ProtocolType :  4;
+    int Opcode       : 12;
+};
+
+struct USB4SBTransactionHead
+{
+    int DLE         : 8;
+    int CmdNotResp  : 1;
+    int Rsvd2       : 5;
+    int TrType      : 2;
+
+    int DataSymbl : 16;
+};
+
+void processSbCommand(int data)
+{
+    int packet_addr = data + 4; // 1 DWord offset for the command structure
+    USB4SBTransactionHead* sb_packet = (USB4SBTransactionHead*)packet_addr;
+
+    if(sb_packet->CmdNotResp == 1)
+    {
+        DBG_PRINTF("Processing SB command without response, Data Symbol: {}", sb_packet->DataSymbl);
+    }
+    else
+    {
+        DBG_PRINTF("Processing SB command with DataSymbl: {}", sb_packet->DataSymbl);
+        // Add specific processing logic for SB commands here
+    }
+}
+
+void processOtherCommand(int data)
+{
+    DBG_PRINTF("Processing other command with data: {}", data);
+    // Add specific processing logic for other commands here
+}
+
+void process_data(int data)
+{
+    USB4BECommand* be_cmd = (USB4BECommand*)data;
+    DBG_PRINTF("ProtocolType: {}, Opcode: {}", be_cmd->ProtocolType, be_cmd->Opcode);
+
+    if(be_cmd->ProtocolType == USB4_BE_CMD_PROTOCOL_TYPE_SIDEBAND)
+    {
+        processSbCommand(data);
+    }
+    else if(be_cmd->ProtocolType == USB4_BE_CMD_PROTOCOL_TYPE_UNDEFINED && be_cmd->Opcode == USB4_BE_CMD_OPCODE_UNDEFINED)
+    {
+        DBG_PRINTF("Received undefined command, ignoring.");
+    }
+    else
+    {
+        processOtherCommand(data);
+    }
+}
+
+void task1_run_function()
+{
+    while (1)
+    {
+        int data_addr = SBTestMsg.recv();
+
+        data_addr += 5;
+
+        process_data(data_addr);
+        RTOS_DELAY_MS(500);
+    }
+}
+
+
+void main()
+{
+    int core       = 1;
+    int priority   = 1;
+    int stack_size = 1024;
+    int task_id    = 1010;
+    StartTask(stack_size, core, priority, task_id, task1_run_function);
+
+    while(1)
+    {
+        char data[10] = {0xAE, 0xBB, 0xBE, 0xDD, 0xEE, 0xFA, 0x00, 0x01, 0x02, 0x03};
+        int addr     = (int)data;
+
+        SBTestMsg.send(addr);
+        RTOS_DELAY_MS(500);
+    }
+}

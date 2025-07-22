@@ -1,0 +1,51 @@
+// Comprehensive test for function memory isolation
+
+int global_counter = 0;
+
+void increment_global()
+{
+    global_counter = global_counter + 1;
+    DBG_PRINTF("increment_global: global_counter = {}", global_counter);
+}
+
+void function_with_locals()
+{
+    int local_var = 999;
+    int another_local = 888;
+    
+    DBG_PRINTF("function_with_locals: local_var = {}, another_local = {}", local_var, another_local);
+    DBG_PRINTF("function_with_locals: global_counter = {}", global_counter);
+    
+    increment_global();
+    
+    DBG_PRINTF("function_with_locals after increment: global_counter = {}", global_counter);
+    DBG_PRINTF("function_with_locals: local_var = {}, another_local = {}", local_var, another_local);
+}
+
+void another_function()
+{
+    int local_var = 777;  // Same name as in function_with_locals but different memory
+    int different_name = 666;
+    
+    DBG_PRINTF("another_function: local_var = {}, different_name = {}", local_var, different_name);
+    DBG_PRINTF("another_function: global_counter = {}", global_counter);
+    
+    increment_global();
+    
+    DBG_PRINTF("another_function after increment: global_counter = {}", global_counter);
+    DBG_PRINTF("another_function: local_var = {}, different_name = {}", local_var, different_name);
+}
+
+void main()
+{
+    DBG_PRINTF("Main start: global_counter = {}", global_counter);
+    
+    function_with_locals();
+    DBG_PRINTF("Main after function_with_locals: global_counter = {}", global_counter);
+    
+    another_function();
+    DBG_PRINTF("Main after another_function: global_counter = {}", global_counter);
+    
+    function_with_locals();  // Call again to verify variables are re-initialized
+    DBG_PRINTF("Main end: global_counter = {}", global_counter);
+}
