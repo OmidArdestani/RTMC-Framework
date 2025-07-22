@@ -5,7 +5,7 @@ Handles struct size calculation and field offset resolution.
 
 from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass
-from src.parser.ast_nodes import *
+from RTMC_Compiler.src.parser.ast_nodes import *
 
 @dataclass
 class FieldLayout:

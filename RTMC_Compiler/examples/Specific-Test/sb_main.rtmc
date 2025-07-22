@@ -3,8 +3,8 @@
 
 message<int> SBTestMsg;
 
-const int USB4_BE_CMD_PROTOCOL_TYPE_UNDEFINED = 0;
-const int USB4_BE_CMD_PROTOCOL_TYPE_SIDEBAND  = 0;
+const int USB4_BE_CMD_PROTOCOL_TYPE_UNDEFINED = 1;
+const int USB4_BE_CMD_PROTOCOL_TYPE_SIDEBAND  = 14;
 const int USB4_BE_CMD_OPCODE_UNDEFINED        = 0;
 
 struct USB4BECommand
@@ -34,7 +34,7 @@ void processSbCommand(int data)
     }
     else
     {
-        DBG_PRINTF("Processing SB command with Opcode: {}", sb_packet->DataSymbl);
+        DBG_PRINTF("Processing SB command with DataSymbl: {}", sb_packet->DataSymbl);
         // Add specific processing logic for SB commands here
     }
 }
@@ -48,10 +48,15 @@ void processOtherCommand(int data)
 void process_data(int data)
 {
     USB4BECommand* be_cmd = (USB4BECommand*)data;
+    DBG_PRINTF("ProtocolType: {}, Opcode: {}", be_cmd->ProtocolType, be_cmd->Opcode);
 
     if(be_cmd->ProtocolType == USB4_BE_CMD_PROTOCOL_TYPE_SIDEBAND)
     {
         processSbCommand(data);
+    }
+    else if(be_cmd->ProtocolType == USB4_BE_CMD_PROTOCOL_TYPE_UNDEFINED && be_cmd->Opcode == USB4_BE_CMD_OPCODE_UNDEFINED)
+    {
+        DBG_PRINTF("Received undefined command, ignoring.");
     }
     else
     {
@@ -64,6 +69,8 @@ void task1_run_function()
     while (1)
     {
         int data_addr = SBTestMsg.recv();
+
+        data_addr += 5;
 
         process_data(data_addr);
         RTOS_DELAY_MS(500);
@@ -81,7 +88,7 @@ void main()
 
     while(1)
     {
-        int data[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+        char data[10] = {0xAE, 0xBB, 0xBE, 0xDD, 0xEE, 0xFA, 0x00, 0x01, 0x02, 0x03};
         int addr     = (int)data;
 
         SBTestMsg.send(addr);

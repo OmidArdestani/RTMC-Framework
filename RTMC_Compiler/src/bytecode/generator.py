@@ -4,9 +4,9 @@ Converts AST to bytecode instructions.
 """
 
 from typing import Dict, List, Optional, Any, Tuple
-from src.parser.ast_nodes import *
-from src.bytecode.instructions import *
-from src.semantic.struct_layout import StructLayoutTable
+from RTMC_Compiler.src.parser.ast_nodes import *
+from RTMC_Compiler.src.bytecode.instructions import *
+from RTMC_Compiler.src.semantic.struct_layout import StructLayoutTable
 from dataclasses import dataclass
 from enum import Enum, auto
 

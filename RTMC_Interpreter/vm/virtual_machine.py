@@ -7,8 +7,8 @@ import time
 import threading
 from typing import List, Dict, Any, Optional, Callable
 from collections import deque
-from src.bytecode.generator import BytecodeProgram
-from src.bytecode.instructions import Instruction, Opcode
+from RTMC_Compiler.src.bytecode.generator import BytecodeProgram
+from RTMC_Compiler.src.bytecode.instructions import Instruction, Opcode
 from dataclasses import dataclass
 from enum import Enum, auto
 

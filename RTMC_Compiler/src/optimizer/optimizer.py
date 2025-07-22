@@ -3,7 +3,7 @@ Optimizer for RT-Micro-C Language
 Performs compile-time optimizations on the AST.
 """
 
-from src.parser.ast_nodes import *
+from RTMC_Compiler.src.parser.ast_nodes import *
 from typing import Dict, List, Optional, Any, Set
 
 class OptimizationError(Exception):

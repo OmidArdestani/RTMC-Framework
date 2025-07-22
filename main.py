@@ -9,16 +9,12 @@ import argparse
 from pathlib import Path
 from typing import Set, Dict
 
-# Add src directory to path
-sys.path.insert(0, str(Path(__file__).parent / "src"))
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from src.parser.ply_parser import RTMCParser
-from src.parser.ast_nodes import ProgramNode, ImportStmtNode
-from src.semantic.analyzer import SemanticAnalyzer
-from src.optimizer.optimizer import Optimizer
-from src.bytecode.generator import BytecodeGenerator
-from src.bytecode.writer import BytecodeWriter
+from RTMC_Compiler.src.parser.ply_parser import RTMCParser
+from RTMC_Compiler.src.parser.ast_nodes import ProgramNode, ImportStmtNode
+from RTMC_Compiler.src.semantic.analyzer import SemanticAnalyzer
+from RTMC_Compiler.src.optimizer.optimizer import Optimizer
+from RTMC_Compiler.src.bytecode.generator import BytecodeGenerator
+from RTMC_Compiler.src.bytecode.writer import BytecodeWriter
 
 imported_filepaths = set()
 
@@ -88,7 +84,7 @@ def main():
     args = parser.parse_args()
     
     # Determine compilation mode
-    from src.bytecode.generator import CompileMode
+    from RTMC_Compiler.src.bytecode.generator import CompileMode
     compile_mode = CompileMode.RELEASE if args.release else CompileMode.DEBUG
     
     # Read input file
@@ -114,7 +110,7 @@ def main():
             with open(input_path, 'r') as f:
                 source_code = f.read()
             # Use PLY lexer for token display
-            from src.lexer.ply_lexer import RTMCLexer
+            from RTMC_Compiler.src.lexer.ply_lexer import RTMCLexer
             lexer = RTMCLexer()
             tokens = lexer.tokenize(source_code, str(input_path))
             for token in tokens:
@@ -165,11 +161,7 @@ def main():
             print(f"Mode: {compile_mode.name}")
 
         if args.run:
-            import importlib.util
-            spec = importlib.util.spec_from_file_location("virtual_machine", "RTMC-Interpreter/vm/virtual_machine.py")
-            vm_module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(vm_module)
-            VirtualMachine = vm_module.VirtualMachine
+            from RTMC_Interpreter.vm.virtual_machine import VirtualMachine
             is_debug_mode = compile_mode == CompileMode.DEBUG
             vm = VirtualMachine(debug=is_debug_mode, trace=False)
             vm.load_program(bytecode_program)

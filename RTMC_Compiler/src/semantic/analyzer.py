@@ -14,7 +14,7 @@ KNOWN ISSUES:
 """
 
 from typing import Dict, List, Optional, Any, Set
-from src.parser.ast_nodes import *
+from RTMC_Compiler.src.parser.ast_nodes import *
 from dataclasses import dataclass
 from enum import Enum, auto
 

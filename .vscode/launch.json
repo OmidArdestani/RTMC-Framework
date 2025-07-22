@@ -5,9 +5,9 @@
             "name": "RT-Micro-C: Compile Demo",
             "type": "debugpy",
             "request": "launch",
-            "program": "RTMC-Compiler/main.py",
+            "program": "main.py",
             "args": [
-                "RTMC-Compiler\\examples\\Send-ADC-To-UART\\main.rtmc",
+                "RTMC_Compiler\\examples\\Send-ADC-To-UART\\main.rtmc",
                 "-v"
             ],
             "console": "integratedTerminal",
@@ -18,9 +18,9 @@
             "name": "RT-Micro-C: Run Demo",
             "type": "debugpy",
             "request": "launch",
-            "program": "RTMC-Compiler/vm_runner.py",
+            "program": "RTMC_Compiler/vm_runner.py",
             "args": [
-                "RTMC-Compiler\\examples\\Send-ADC-To-UART\\main.vmb"
+                "RTMC_Compiler\\examples\\Send-ADC-To-UART\\main.vmb"
             ],
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
@@ -30,9 +30,9 @@
             "name": "RT-Micro-C: Compile and Run Demo",
             "type": "debugpy",
             "request": "launch",
-            "program": "RTMC-Compiler/main.py",
+            "program": "main.py",
             "args": [
-                "RTMC-Compiler\\examples\\Specific-Test\\sb_main.rtmc",
+                "RTMC_Compiler\\examples\\Specific-Test\\sb_main.rtmc",
                 "-v", "--run", "--release"
             ],
             "console": "integratedTerminal",
@@ -43,9 +43,9 @@
             "name": "RT-Micro-C: Compile and Debug Demo",
             "type": "debugpy",
             "request": "launch",
-            "program": "RTMC-Compiler/main.py",
+            "program": "main.py",
             "args": [
-                "RTMC-Compiler\\examples\\Specific-Test\\sb_main.rtmc",
+                "RTMC_Compiler\\examples\\Specific-Test\\sb_main.rtmc",
                 "-v", "--run"
             ],
             "console": "integratedTerminal",

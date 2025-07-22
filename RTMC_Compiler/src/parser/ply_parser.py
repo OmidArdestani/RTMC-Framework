@@ -5,8 +5,8 @@ Converts tokens into an Abstract Syntax Tree (AST) using PLY.
 
 import ply.yacc as yacc
 from typing import List, Optional, Dict, Any
-from src.lexer.ply_lexer import RTMCLexer
-from src.parser.ast_nodes import *
+from RTMC_Compiler.src.lexer.ply_lexer import RTMCLexer
+from RTMC_Compiler.src.parser.ast_nodes import *
 
 class RTMCParser:
     """RT-Micro-C PLY parser"""
