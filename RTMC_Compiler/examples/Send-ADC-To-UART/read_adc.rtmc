@@ -9,28 +9,18 @@ void read_adc_task_run()
     
     // HW_ADC_INIT(sensorPin);
 
-    // while(1) {
-    //     DBG_PRINT("reading ADC");
-    //     int adcValue = HW_ADC_READ(sensorPin);
-    //     MsgADCValueQueue.send(adcValue);
-    //     RTOS_DELAY_MS(1000);
-    // }
-
-    DBG_PRINTF("ADC Task started on pin {0}", sensorPin);
-}
-
-void main()
-{
-    // Create ADC reading task
-    int core = 1;
-    int priority = 1;
-    int stack_size = 1024;
-    int task_id = 1;
-    StartTask(stack_size, core, priority, task_id, read_adc_task_run);
-    
+    int counter = 0;
     while(1)
     {
-        RTOS_DELAY_MS(5000);
-        DBG_PRINT("Main: heartbeat");
+        RTOS_DELAY_MS(500);
+        DBG_PRINT("adc: reading");
+
+        counter++;
+        if (counter == 10)
+        {
+            break;
+        }
     }
+    
+    DBG_PRINTF("ADC Task started on pin {0}", sensorPin);
 }

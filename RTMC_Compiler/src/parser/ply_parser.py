@@ -315,7 +315,7 @@ class RTMCParser:
         '''include_declaration : SHARP INCLUDE STRING'''
         
         line = p.lineno(1)
-        p[0] = IncludeStmtNode(p[2], line)
+        p[0] = IncludeStmtNode(p[3], line)
     
     # Type specifiers
     def p_type_specifier(self, p):
