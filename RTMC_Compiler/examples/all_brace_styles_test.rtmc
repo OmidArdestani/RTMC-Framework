@@ -1,7 +1,7 @@
 // Comprehensive test for all constructs supporting both brace styles
 // This file tests newlines after ')' for all relevant constructs
 
-import "definitions.rtmc";
+#include "definitions.rtmc";
 
 // Functions - both styles
 void immediateFunction() {

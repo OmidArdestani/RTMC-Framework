@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Set, Dict
 
 from RTMC_Compiler.src.parser.ply_parser import RTMCParser
-from RTMC_Compiler.src.parser.ast_nodes import ProgramNode, ImportStmtNode
+from RTMC_Compiler.src.parser.ast_nodes import ProgramNode, IncludeStmtNode
 from RTMC_Compiler.src.semantic.analyzer import SemanticAnalyzer
 from RTMC_Compiler.src.optimizer.optimizer import Optimizer
 from RTMC_Compiler.src.bytecode.generator import BytecodeGenerator
@@ -53,7 +53,7 @@ def parse_with_imports(file_path: Path, imported_files: Set[Path] = None) -> Pro
     other_statements = []
     
     for stmt in ast.declarations:
-        if isinstance(stmt, ImportStmtNode):
+        if isinstance(stmt, IncludeStmtNode):
             if stmt.filepath not in imported_filepaths:
                 imports.append(stmt)
                 imported_filepaths.add(stmt.filepath)

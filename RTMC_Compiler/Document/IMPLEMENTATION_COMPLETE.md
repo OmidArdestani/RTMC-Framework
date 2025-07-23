@@ -3,12 +3,12 @@
 ## Completed Features
 
 ### 1. Import System ✅
-- **Syntax**: `import "filename.rtmc";`
+- **Syntax**: `#include "filename.rtmc";`
 - **Implementation**: Added IMPORT token, ImportStmtNode AST node, recursive import handling
 - **Example**: 
   ```c
-  import "definitions.rtmc";
-  import "read_adc.rtmc";
+  #include "definitions.rtmc";
+  #include "read_adc.rtmc";
   ```
 
 ### 2. Message Timeout Support ✅
@@ -102,8 +102,8 @@ The following complete example demonstrates all implemented features:
 
 ```c
 // main.rtmc
-import "definitions.rtmc";
-import "utils.rtmc";
+#include "definitions.rtmc";
+#include "utils.rtmc";
 
 void processData()
 {

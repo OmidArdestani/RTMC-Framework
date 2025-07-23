@@ -1,20 +1,20 @@
 
-// import "read_adc.rtmc";
-// import "definitions.rtmc";
-// import "send_uart.rtmc";
+#include "read_adc.rtmc"
+// #include "definitions.rtmc";
+// #include "send_uart.rtmc";
 
-struct TestStruct1
-{
-    union {
-        struct{
-            int item1 : 16;
-            int item2 : 16;
-        };
-        int value1 = 0;
-        int value2 = 0;
-    };
-    int item2;
-};
+// struct TestStruct1
+// {
+//     union {
+//         struct{
+//             int item1 : 16;
+//             int item2 : 16;
+//         };
+//         int value1;
+//         int value2;
+//     };
+//     int item2;
+// };
 
 // struct TestStruct2
 // {
@@ -43,7 +43,7 @@ void main()
     // testStruct2.item2 = 30;
     // testStruct2.structItem1.item2 = 30;
 
-    TestStruct1 testStruct1;
+    // TestStruct1 testStruct1;
 
     // testStruct1.item1 = 0xBBAD;
     // testStruct1.item2 = 0x52FC;

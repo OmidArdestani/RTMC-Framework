@@ -1,5 +1,5 @@
 
-import "definitions.rtmc";
+#include "definitions.rtmc";
 
 Task<0, 1> SendUartTask 
 {

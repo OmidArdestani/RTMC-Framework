@@ -154,7 +154,7 @@ class RTMCLanguageProvider implements vscode.CompletionItemProvider, vscode.Hove
             'DBG_PRINT': 'Print debug message: `DBG_PRINT(message)`',
             'DBG_BREAKPOINT': 'Set debug breakpoint: `DBG_BREAKPOINT()`',
             'struct': 'Define a structure: `struct Name { ... };` - supports bitfields with colon syntax',
-            'import': 'Import another RTMC file: `import "filename.rtmc";`'
+            'import': 'Import another RTMC file: `#include "filename.rtmc";`'
         };
         
         if (info[word]) {

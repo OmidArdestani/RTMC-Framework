@@ -15,7 +15,7 @@
 
 **Updated Visitor Interface:**
 - Added `visit_array_decl()`, `visit_array_literal()`, `visit_array_access()`
-- Added missing `visit_import_stmt()` method
+- Added missing `visit_include_stmt()` method
 
 ### 2. Parser Enhancements
 

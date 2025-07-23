@@ -733,9 +733,9 @@ class TestImportParsing(unittest.TestCase):
     def test_import_statements(self):
         """Test import statement parsing"""
         test_cases = [
-            'import "definitions.rtmc";',
-            'import "common.rtmc";',
-            'import "hardware/gpio.rtmc";',
+            '#include "definitions.rtmc";',
+            '#include "common.rtmc";',
+            '#include "hardware/gpio.rtmc";',
         ]
         
         for import_stmt in test_cases:
@@ -748,9 +748,9 @@ class TestImportParsing(unittest.TestCase):
     def test_multiple_imports(self):
         """Test multiple import statements"""
         source = """
-        import "definitions.rtmc";
-        import "common.rtmc";
-        import "hardware.rtmc";
+        #include "definitions.rtmc";
+        #include "common.rtmc";
+        #include "hardware.rtmc";
         
         void main() {
             return;

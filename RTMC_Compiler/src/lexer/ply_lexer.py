@@ -38,6 +38,8 @@ class RTMCLexer:
         # Brackets
         'LEFT_PAREN', 'RIGHT_PAREN', 'LEFT_BRACE', 'RIGHT_BRACE',
         'LEFT_BRACKET', 'RIGHT_BRACKET',
+
+        'SHARP'
     ]
     
     # Reserved words (keywords)
@@ -53,7 +55,7 @@ class RTMCLexer:
         'union': 'UNION',
         'Task': 'TASK',
         'message': 'MESSAGE',
-        'import': 'IMPORT',
+        'include': 'INCLUDE',
         
         # Boolean literals
         'true': 'TRUE',
@@ -191,6 +193,10 @@ class RTMCLexer:
     
     def t_LOGICAL_OR(self, t):
         r'\|\|'
+        return t
+
+    def t_SHARP(self, t):
+        r'\#'
         return t
     
     def t_LEFT_SHIFT(self, t):

@@ -1455,7 +1455,7 @@ class BytecodeGenerator(ASTVisitor):
         # Stack order: [timeout_value] -> MSG_RECV will pop timeout and use it
         self.emit(Instruction(Opcode.MSG_RECV, [message_id]))
 
-    def visit_import_stmt(self, node: ImportStmtNode):
+    def visit_include_stmt(self, node: IncludeStmtNode):
         """Import statements are handled by the compiler, no bytecode needed"""
         pass
     

@@ -1,4 +1,4 @@
-import "definitions.rtmc";
+#include "definitions.rtmc";
 
 // Test both brace styles for tasks
 Task<0, 1> StyleOneTask {

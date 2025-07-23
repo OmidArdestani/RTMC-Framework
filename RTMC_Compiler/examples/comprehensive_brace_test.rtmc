@@ -1,4 +1,4 @@
-import "definitions.rtmc";
+#include "definitions.rtmc";
 
 // Test file to verify both brace styles work correctly
 

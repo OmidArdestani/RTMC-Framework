@@ -1,4 +1,4 @@
-import "examples/definitions.rtmc";
+#include "examples/definitions.rtmc";
 
 void testControlStructures()
 {

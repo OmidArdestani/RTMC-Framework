@@ -1,6 +1,6 @@
 // Test file to verify all implemented features
 
-import "definitions.rtmc";
+#include "definitions.rtmc";
 
 void testFunction() {
     int x = 5;

@@ -1,4 +1,4 @@
-import "timeout_lib.rtmc";
+#include "timeout_lib.rtmc";
 
 message<int> DataQueue;
 

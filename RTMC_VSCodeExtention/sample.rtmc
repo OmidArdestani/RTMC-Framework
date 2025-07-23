@@ -1,7 +1,7 @@
 // Sample RTMC file to demonstrate extension features
 // This file shows syntax highlighting, snippets, and language features
 
-import "definitions.rtmc";
+#include "definitions.rtmc";
 
 // Bitfield struct example
 struct ControlRegister {

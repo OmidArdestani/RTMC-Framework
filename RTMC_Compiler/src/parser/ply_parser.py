@@ -107,7 +107,7 @@ class RTMCParser:
                       | struct_declaration
                       | union_declaration
                       | message_declaration
-                      | import_declaration'''
+                      | include_declaration'''
         p[0] = p[1]
     
     # Function declaration
@@ -310,12 +310,12 @@ class RTMCParser:
         line = p.lineno(1)
         p[0] = MessageDeclNode(p[5], p[3], line)
     
-    # Import declaration
-    def p_import_declaration(self, p):
-        '''import_declaration : IMPORT STRING SEMICOLON'''
+    # Include declaration
+    def p_include_declaration(self, p):
+        '''include_declaration : SHARP INCLUDE STRING'''
         
         line = p.lineno(1)
-        p[0] = ImportStmtNode(p[2], line)
+        p[0] = IncludeStmtNode(p[2], line)
     
     # Type specifiers
     def p_type_specifier(self, p):

@@ -18,7 +18,7 @@ class NodeType(Enum):
     VARIABLE_DECL  = auto()
     ARRAY_DECL     = auto()
     MESSAGE_DECL   = auto()
-    IMPORT_STMT    = auto()
+    INCLUDE_STMT   = auto()
     POINTER_DECL   = auto()  # Pointer declaration
     
     # Statements
@@ -345,15 +345,15 @@ class ContinueStmtNode(StatementNode):
     def accept(self, visitor):
         return visitor.visit_continue_stmt(self)
 
-class ImportStmtNode(StatementNode):
-    """Import statement node"""
+class IncludeStmtNode(StatementNode):
+    """Include statement node"""
     
     def __init__(self, filepath: str, line: int = 0):
-        super().__init__(NodeType.IMPORT_STMT, line)
+        super().__init__(NodeType.INCLUDE_STMT, line)
         self.filepath = filepath
     
     def accept(self, visitor):
-        return visitor.visit_import_stmt(self)
+        return visitor.visit_inlcude_stmt(self)
 
 # Expression nodes
 
@@ -568,7 +568,7 @@ class ASTVisitor(ABC):
     def visit_array_decl(self, node: ArrayDeclNode): pass
     
     @abstractmethod
-    def visit_import_stmt(self, node: ImportStmtNode): pass
+    def visit_include_stmt(self, node: IncludeStmtNode): pass
     
     @abstractmethod
     def visit_primitive_type(self, node: PrimitiveTypeNode): pass

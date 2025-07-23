@@ -1,6 +1,6 @@
 // Create a comprehensive test that shows both features working
 
-import "timeout_lib.rtmc";
+#include "timeout_lib.rtmc";
 
 message<int> SensorData;
 

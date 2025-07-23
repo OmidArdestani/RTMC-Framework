@@ -1,4 +1,4 @@
-import "definitions.rtmc";
+#include "definitions.rtmc";
 
 void simple_task1_run()
 {

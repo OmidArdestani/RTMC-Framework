@@ -224,7 +224,7 @@ def test_example_compilation():
 def test_import_tokenization():
     """Test that import statements are tokenized correctly"""
     try:
-        source = 'import "test.rtmc";'
+        source = '#include "test.rtmc";'
         tokenizer = Tokenizer(source)
         tokens = tokenizer.tokenize()
         
@@ -268,7 +268,7 @@ def test_timeout_tokenization():
 def test_import_parsing():
     """Test that import statements are parsed correctly"""
     try:
-        source = 'import "test.rtmc";\nvoid main() {}'
+        source = '#include "test.rtmc";\nvoid main() {}'
         tokenizer = Tokenizer(source)
         tokens = tokenizer.tokenize()
         parser = Parser(tokens)

@@ -405,7 +405,7 @@ class ConstantFolder(ASTVisitor):
             optimized_timeout = node.timeout.accept(self)
         return MessageRecvNode(node.channel, optimized_timeout, node.line)
 
-    def visit_import_stmt(self, node: ImportStmtNode) -> ImportStmtNode:
+    def visit_include_stmt(self, node: IncludeStmtNode) -> IncludeStmtNode:
         """Import statements don't need optimization"""
         return node
 
@@ -579,7 +579,7 @@ class DeadCodeEliminator(ASTVisitor):
             optimized_timeout = node.timeout.accept(self)
         return MessageRecvNode(node.channel, optimized_timeout, node.line)
 
-    def visit_import_stmt(self, node: ImportStmtNode) -> ImportStmtNode:
+    def visit_include_stmt(self, node: IncludeStmtNode) -> IncludeStmtNode:
         """Import statements are always needed"""
         return node
     

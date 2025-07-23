@@ -1,4 +1,4 @@
-import "definitions.rtmc";
+#include "definitions.rtmc";
 
 void simpleTest()
 {

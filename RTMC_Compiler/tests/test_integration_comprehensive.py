@@ -393,9 +393,9 @@ class TestCompleteFeatureIntegration(unittest.TestCase):
         """Test import system (simulated without actual files)"""
         # This tests the parser's ability to handle import statements
         source = """
-        import "definitions.rtmc";
-        import "hardware/gpio.rtmc";
-        import "rtos/tasks.rtmc";
+        #include "definitions.rtmc";
+        #include "hardware/gpio.rtmc";
+        #include "rtos/tasks.rtmc";
         
         // Assume these are defined in imported files
         // const int SHARED_CONSTANT = 42;

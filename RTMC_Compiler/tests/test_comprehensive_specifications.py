@@ -233,7 +233,7 @@ class TestParser(unittest.TestCase):
     
     def test_import_statement_parsing(self):
         """Test import statement parsing (IMPLEMENTATION_COMPLETE)"""
-        source = 'import "definitions.rtmc";'
+        source = '#include "definitions.rtmc";'
         tokens = self.lexer.tokenize(source)
         ast = self.parser.parse(tokens)
         
@@ -762,7 +762,7 @@ class TestComplexFeatures(unittest.TestCase):
         
         try:
             main_source = """
-            import "temp_import.rtmc";
+            #include "temp_import.rtmc";
             
             void main() {
                 SharedStruct s;

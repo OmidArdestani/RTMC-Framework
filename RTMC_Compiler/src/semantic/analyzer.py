@@ -899,7 +899,7 @@ class SemanticAnalyzer(ASTVisitor):
         # Return the message type
         return symbol.data_type
 
-    def visit_import_stmt(self, node: ImportStmtNode):
+    def visit_include_stmt(self, node: IncludeStmtNode):
         """Visit import statement - handled by compiler, no semantic checking needed here"""
         # Import statements are processed by the compiler before semantic analysis
         # So we don't need to do anything here

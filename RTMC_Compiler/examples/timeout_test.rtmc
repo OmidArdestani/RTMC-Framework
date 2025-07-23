@@ -1,4 +1,4 @@
-import "common.rtmc";
+#include "common.rtmc";
 
 msgqueue TempQueue<int>(5);
 
