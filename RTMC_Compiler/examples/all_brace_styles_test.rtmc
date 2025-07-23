@@ -24,26 +24,21 @@ int newlineParamFunction(int a, int b)
 }
 
 // Tasks - both styles
-Task<0, 1> ImmediateTask {
-    int counter = 0;
-    
-    void run() {
-        counter++;
-        DBG_PRINT("Immediate task brace");
-        RTOS_DELAY_MS(1000);
-    }
+int counter = 0;
+
+void ImmediateTaskRun() {
+    counter++;
+    DBG_PRINT("Immediate task brace");
+    RTOS_DELAY_MS(1000);
 }
 
-Task<1, 2> NewlineTask
+int value = 42;
+
+void NewlineTaskRun()
 {
-    int value = 42;
-    
-    void run()
-    {
-        value += 10;
-        DBG_PRINT("Newline task brace");
-        RTOS_DELAY_MS(1500);
-    }
+    value += 10;
+    DBG_PRINT("Newline task brace");
+    RTOS_DELAY_MS(1500);
 }
 
 void testControlStructures()
@@ -104,6 +99,9 @@ void testControlStructures()
 
 void main()
 {
+    startTask(1024, 0, 1, 1, ImmediateTaskRun);
+    startTask(1024, 1, 2, 2, NewlineTaskRun);
+
     // Call functions with different styles
     immediateFunction();
     newlineFunction();

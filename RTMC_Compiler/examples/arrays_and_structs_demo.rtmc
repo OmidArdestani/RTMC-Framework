@@ -33,69 +33,67 @@ int numbers[5] = {1, 2, 3, 5, 8};           // Array with initializer
 float coordinates[3];                        // Array without initializer
 Point vertices[4] = {{0,0}, {1,0}, {1,1}, {0,1}};  // Struct array with initializer
 
-// Task using new features
-Task<0, 10> GraphicsTask {
-    // Task member arrays
-    Window windows[8];
-    Rectangle clipRegions[4];
-    Point mouseHistory[16];
+
+// Task member arrays
+Window windows[8];
+Rectangle clipRegions[4];
+Point mouseHistory[16];
+
+void GraphicsTaskRun() {
+    // Initialize first window
+    windows[0].bounds.topLeft.x = 10;
+    windows[0].bounds.topLeft.y = 10;
+    windows[0].bounds.bottomRight.x = 100;
+    windows[0].bounds.bottomRight.y = 80;
+    windows[0].zOrder = 1;
+    windows[0].isVisible = 1;
     
-    void run() {
-        // Initialize first window
-        windows[0].bounds.topLeft.x = 10;
-        windows[0].bounds.topLeft.y = 10;
-        windows[0].bounds.bottomRight.x = 100;
-        windows[0].bounds.bottomRight.y = 80;
-        windows[0].zOrder = 1;
-        windows[0].isVisible = 1;
-        
-        // Calculate window center
-        windows[0].center.x = (windows[0].bounds.topLeft.x + windows[0].bounds.bottomRight.x) / 2;
-        windows[0].center.y = (windows[0].bounds.topLeft.y + windows[0].bounds.bottomRight.y) / 2;
-        
-        // Initialize vertex array for drawing
-        for (int i = 0; i < 4; i = i + 1) {
-            vertices[i].x = coordinates[i] * 10;
-            vertices[i].y = numbers[i] * 5;
-        }
-        
-        // Process mouse history
-        int totalX = 0;
-        int totalY = 0;
-        for (int i = 0; i < 16; i = i + 1) {
-            totalX = totalX + mouseHistory[i].x;
-            totalY = totalY + mouseHistory[i].y;
-        }
-        
-        // Update clip regions based on windows
-        for (int i = 0; i < 4; i = i + 1) {
-            if (i < 8 && windows[i].isVisible) {
-                clipRegions[i] = windows[i].bounds;
-            }
-        }
+    // Calculate window center
+    windows[0].center.x = (windows[0].bounds.topLeft.x + windows[0].bounds.bottomRight.x) / 2;
+    windows[0].center.y = (windows[0].bounds.topLeft.y + windows[0].bounds.bottomRight.y) / 2;
+    
+    // Initialize vertex array for drawing
+    for (int i = 0; i < 4; i = i + 1) {
+        vertices[i].x = coordinates[i] * 10;
+        vertices[i].y = numbers[i] * 5;
     }
     
-    void drawPixel(int x, int y, int color) {
-        // Hardware drawing function
-        // This would interface with actual graphics hardware
+    // Process mouse history
+    int totalX = 0;
+    int totalY = 0;
+    for (int i = 0; i < 16; i = i + 1) {
+        totalX = totalX + mouseHistory[i].x;
+        totalY = totalY + mouseHistory[i].y;
     }
     
-    void drawRectangle(Rectangle rect) {
-        // Draw rectangle using nested struct access
-        int left = rect.topLeft.x;
-        int top = rect.topLeft.y;
-        int right = rect.bottomRight.x;
-        int bottom = rect.bottomRight.y;
-        
-        // Draw rectangle outline
-        for (int x = left; x <= right; x = x + 1) {
-            drawPixel(x, top, 1);      // Top edge
-            drawPixel(x, bottom, 1);   // Bottom edge
+    // Update clip regions based on windows
+    for (int i = 0; i < 4; i = i + 1) {
+        if (i < 8 && windows[i].isVisible) {
+            clipRegions[i] = windows[i].bounds;
         }
-        for (int y = top; y <= bottom; y = y + 1) {
-            drawPixel(left, y, 1);     // Left edge
-            drawPixel(right, y, 1);    // Right edge
-        }
+    }
+}
+
+void drawPixel(int x, int y, int color) {
+    // Hardware drawing function
+    // This would interface with actual graphics hardware
+}
+
+void drawRectangle(Rectangle rect) {
+    // Draw rectangle using nested struct access
+    int left = rect.topLeft.x;
+    int top = rect.topLeft.y;
+    int right = rect.bottomRight.x;
+    int bottom = rect.bottomRight.y;
+    
+    // Draw rectangle outline
+    for (int x = left; x <= right; x = x + 1) {
+        drawPixel(x, top, 1);      // Top edge
+        drawPixel(x, bottom, 1);   // Bottom edge
+    }
+    for (int y = top; y <= bottom; y = y + 1) {
+        drawPixel(left, y, 1);     // Left edge
+        drawPixel(right, y, 1);    // Right edge
     }
 }
 
@@ -136,31 +134,34 @@ message<Point> PointMessage;
 
 message<WindowMessage> WindowUpdateMessage;
 
-Task<1, 5> WindowManagerTask {
-    Window activeWindows[16];
-    int windowCount;
+Window activeWindows[16];
+int windowCount;
+
+void WindowManagerTaskRun() {
+    windowCount = 0;
     
-    void run() {
-        windowCount = 0;
+    while (1) {
+        // Receive window update messages
+        WindowMessage msg = WindowUpdateMessage.recv(timeout: 100);
         
-        while (1) {
-            // Receive window update messages
-            WindowMessage msg = WindowUpdateMessage.recv(timeout: 100);
-            
-            if (msg.operation == 0) {  // Create window
-                if (windowCount < 16) {
-                    activeWindows[windowCount] = msg.window;
-                    windowCount = windowCount + 1;
-                }
+        if (msg.operation == 0) {  // Create window
+            if (windowCount < 16) {
+                activeWindows[windowCount] = msg.window;
+                windowCount = windowCount + 1;
             }
-            
-            rtos_delay_ms(10);
         }
+        
+        rtos_delay_ms(10);
     }
 }
 
 // Main function showing feature integration
 void main() {
+
+    
+    StartTask(1024, 0, 10, 1, GraphicsTaskRun);
+    StartTask(1024, 1, 5 , 1, WindowManagerTaskRun);
+
     // Initialize coordinate system
     coordinates[0] = 0.0;
     coordinates[1] = 1.5;

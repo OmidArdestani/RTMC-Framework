@@ -70,23 +70,23 @@ Configure the extension in VS Code settings:
 
 ```c
 // RT-Micro-C Task Example
-Task<0, 2> BlinkTask {
-    int ledPin = 13;
-    int blinkDelay = 500;
+int ledPin = 13;
+int blinkDelay = 500;
 
-    void run() {
-        HW_GPIO_INIT(ledPin, 1);  // Initialize as output
-        
-        while (1) {
-            HW_GPIO_SET(ledPin, 1);
-            RTOS_DELAY_MS(blinkDelay);
-            HW_GPIO_SET(ledPin, 0);
-            RTOS_DELAY_MS(blinkDelay);
-        }
+void BlinkTaskRun() {
+    HW_GPIO_INIT(ledPin, 1);  // Initialize as output
+    
+    while (1) {
+        HW_GPIO_SET(ledPin, 1);
+        RTOS_DELAY_MS(blinkDelay);
+        HW_GPIO_SET(ledPin, 0);
+        RTOS_DELAY_MS(blinkDelay);
     }
 }
 
 void main() {
+    StartTask(1024, 0, 2, 1, BlinkTaskRun);
+
     DBG_PRINT("RTMC System Starting");
     
     while (1) {
@@ -106,12 +106,10 @@ void main() {
 
 ### Task System
 ```c
-Task<core, priority> TaskName {
-    // Task variables
-    void run() {
-        // Task implementation
-    }
+void run() {
+    // Task implementation
 }
+StartTask(stack_size, core, priority, task_id, run);
 ```
 
 ### Hardware Abstraction

@@ -21,78 +21,69 @@ struct SensorData {
 };
 
 // GPIO LED Blink Task
-Task<0, 2> BlinkTask {
-    int ledPin = 13;
-    int blinkDelay = 500;
+int ledPin = 13;
+int blinkDelay = 500;
+
+void BlinkTaskRun() {
+    HW_GPIO_INIT(ledPin, 1);  // Initialize as output
     
-    void run() {
-        HW_GPIO_INIT(ledPin, 1);  // Initialize as output
+    while (1) {
+        HW_GPIO_SET(ledPin, 1);   // Turn LED on
+        RTOS_DELAY_MS(blinkDelay);
+        HW_GPIO_SET(ledPin, 0);   // Turn LED off
+        RTOS_DELAY_MS(blinkDelay);
         
-        while (1) {
-            HW_GPIO_SET(ledPin, 1);   // Turn LED on
-            RTOS_DELAY_MS(blinkDelay);
-            HW_GPIO_SET(ledPin, 0);   // Turn LED off
-            RTOS_DELAY_MS(blinkDelay);
-            
-            DBG_PRINT("LED blink cycle completed");
-        }
+        DBG_PRINT("LED blink cycle completed");
     }
 }
 
-// ADC Sensor Reading Task
-Task<1, 3> SensorTask {
-    int sensorPin = 25;
-    int threshold = 512;
-    struct SensorData data;
+// ADC Sensor Reading Taskint sensorPin = 25;
+int threshold = 512;
+struct SensorData data;
+
+void SensorTaskRun() {
+    HW_ADC_INIT(sensorPin);
     
-    void run() {
-        HW_ADC_INIT(sensorPin);
+    // Initialize sensor data
+    data.temperature = 0;
+    data.humidity = 0;
+    data.pressure = 0;
+    data.control.enable = 1;
+    data.control.mode = 2;
+    data.control.speed = 8;
+    
+    while (1) {
+        int reading = HW_ADC_READ(sensorPin);
         
-        // Initialize sensor data
-        data.temperature = 0;
-        data.humidity = 0;
-        data.pressure = 0;
-        data.control.enable = 1;
-        data.control.mode = 2;
-        data.control.speed = 8;
-        
-        while (1) {
-            int reading = HW_ADC_READ(sensorPin);
+        if (reading > threshold) {
+            DBG_PRINT("Sensor threshold exceeded!");
+            data.temperature = reading * 100 / 4095;  // Convert to temperature
             
-            if (reading > threshold) {
-                DBG_PRINT("Sensor threshold exceeded!");
-                data.temperature = reading * 100 / 4095;  // Convert to temperature
-                
-                // Send data via UART
-                HW_UART_WRITE("Temperature: ");
-                HW_UART_WRITE(data.temperature);
-            }
-            
-            RTOS_DELAY_MS(1000);
+            // Send data via UART
+            HW_UART_WRITE("Temperature: ");
+            HW_UART_WRITE(data.temperature);
         }
+        
+        RTOS_DELAY_MS(1000);
     }
 }
 
-// Timer PWM Control Task
-Task<0, 1> PWMTask {
-    int timerID = 0;
-    int pwmFreq = 1000;  // 1kHz
-    int dutyCycle = 50;   // 50% duty cycle
+int timerID = 0;
+int pwmFreq = 1000;  // 1kHz
+int dutyCycle = 50;   // 50% duty cycle
+void PWMTaskRun() {
+    HW_TIMER_INIT(timerID, pwmFreq);
+    HW_TIMER_START(timerID);
     
-    void run() {
-        HW_TIMER_INIT(timerID, pwmFreq);
-        HW_TIMER_START(timerID);
+    while (1) {
+        for (int i = 0; i <= 100; i += 10) {
+            HW_TIMER_SET_PWM_DUTY(timerID, i);
+            RTOS_DELAY_MS(100);
+        }
         
-        while (1) {
-            for (int i = 0; i <= 100; i += 10) {
-                HW_TIMER_SET_PWM_DUTY(timerID, i);
-                RTOS_DELAY_MS(100);
-            }
-            
-            for (int i = 100; i >= 0; i -= 10) {
-                HW_TIMER_SET_PWM_DUTY(timerID, i);
-                RTOS_DELAY_MS(100);
-            }
+        for (int i = 100; i >= 0; i -= 10) {
+            HW_TIMER_SET_PWM_DUTY(timerID, i);
+            RTOS_DELAY_MS(100);
         }
     }
 }
@@ -101,40 +92,43 @@ Task<0, 1> PWMTask {
 int sharedResource = 0;
 int resourceSemaphore;
 
-Task<1, 4> ProducerTask {
-    void run() {
-        while (1) {
-            RTOS_SEMAPHORE_TAKE(resourceSemaphore, 1000);
-            
-            sharedResource++;
-            DBG_PRINT("Producer: Resource incremented to ");
-            DBG_PRINT(sharedResource);
-            
-            RTOS_SEMAPHORE_GIVE(resourceSemaphore);
-            RTOS_DELAY_MS(200);
-        }
+void ProducerTaskRun() {
+    while (1) {
+        RTOS_SEMAPHORE_TAKE(resourceSemaphore, 1000);
+        
+        sharedResource++;
+        DBG_PRINT("Producer: Resource incremented to ");
+        DBG_PRINT(sharedResource);
+        
+        RTOS_SEMAPHORE_GIVE(resourceSemaphore);
+        RTOS_DELAY_MS(200);
     }
 }
 
-Task<1, 4> ConsumerTask {
-    void run() {
-        while (1) {
-            RTOS_SEMAPHORE_TAKE(resourceSemaphore, 1000);
-            
-            if (sharedResource > 0) {
-                sharedResource--;
-                DBG_PRINT("Consumer: Resource decremented to ");
-                DBG_PRINT(sharedResource);
-            }
-            
-            RTOS_SEMAPHORE_GIVE(resourceSemaphore);
-            RTOS_DELAY_MS(300);
+void ConsumerTaskRun() {
+    while (1) {
+        RTOS_SEMAPHORE_TAKE(resourceSemaphore, 1000);
+        
+        if (sharedResource > 0) {
+            sharedResource--;
+            DBG_PRINT("Consumer: Resource decremented to ");
+            DBG_PRINT(sharedResource);
         }
+        
+        RTOS_SEMAPHORE_GIVE(resourceSemaphore);
+        RTOS_DELAY_MS(300);
     }
 }
 
 // Main function
 void main() {
+    
+    StartTask(1024, 0, 2, 5, BlinkTaskRun);
+    StartTask(1024, 1, 3, 4, SensorTaskRun);
+    StartTask(1024, 0, 1, 3, PWMTaskRun);
+    StartTask(1024, 1, 4, 2, ProducerTaskRun);
+    StartTask(1024, 1, 4, 1, ConsumerTaskRun);
+
     DBG_PRINT("RTMC System Starting...");
     
     // Create semaphore for shared resource

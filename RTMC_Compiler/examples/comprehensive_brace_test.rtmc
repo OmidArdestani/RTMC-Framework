@@ -22,49 +22,50 @@ void anotherNewlineFunction(int param)
 }
 
 // Tasks with different brace styles
-Task<0, 1> ImmediateBraceTask {
-    int counter = 0;
-    
-    void run() {
-        DBG_PRINT("Task with immediate brace");
-        counter++;
-        RTOS_DELAY_MS(1000);
-    }
+void ImmediateBraceTask() {
+    static int counter = 0;
+    DBG_PRINT("Task with immediate brace");
+    counter++;
+    RTOS_DELAY_MS(1000);
 }
 
-Task<1, 2> NewlineBraceTask
+void NewlineBraceTask()
 {
-    int value = 42;
-    
-    void run()
-    {
-        DBG_PRINT("Task with newline brace");
-        value *= 2;
-        RTOS_DELAY_MS(1500);
-    }
+    static int value = 42;
+    DBG_PRINT("Task with newline brace");
+    value *= 2;
+    RTOS_DELAY_MS(1500);
 }
 
-Task<0, 3> MixedTask {
-    void run()
-    {
-        DBG_PRINT("Mixed style task");
-        RTOS_DELAY_MS(2000);
-    }
-}
-
-Task<1, 4> AnotherNewlineTask
+void MixedTask()
 {
-    void run() {
-        DBG_PRINT("Another newline task");
-        RTOS_DELAY_MS(500);
-    }
+    DBG_PRINT("Mixed style task");
+    RTOS_DELAY_MS(2000);
+}
+
+void AnotherNewlineTask()
+{
+    DBG_PRINT("Another newline task");
+    RTOS_DELAY_MS(500);
 }
 
 void main()
 {
+    // Start tasks with their original core IDs and priorities
+    StartTask(1024, 0, 1, 1, ImmediateBraceTask);
+    StartTask(1024, 1, 1, 2, NewlineBraceTask);
+    StartTask(1024, 0, 1, 3, MixedTask);
+    StartTask(1024, 1, 1, 4, AnotherNewlineTask);
+
+    // Call test functions
     immediatebraceFunction();
     newlinebraceFunction();
     mixedStyleFunction(1, 2);
     anotherNewlineFunction(10);
     DBG_PRINT("All function calls completed");
+
+    while(1) {
+        RTOS_DELAY_MS(5000);
+        DBG_PRINT("Main loop heartbeat");
+    }
 }

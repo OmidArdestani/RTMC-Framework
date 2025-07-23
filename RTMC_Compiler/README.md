@@ -6,19 +6,21 @@ A real-time, embedded domain-specific language (DSL) for microcontroller applica
 
 ### ✨ **Native Task System**
 ```c
-Task<0, 2> BlinkTask {
-    int ledPin = 13;
+// Define the task function
+void BlinkTask() {
+    static int ledPin = 13;
     
-    void run() {
-        HW_GPIO_INIT(ledPin, 1);
-        while (1) {
-            HW_GPIO_SET(ledPin, 1);
-            RTOS_DELAY_MS(500);
-            HW_GPIO_SET(ledPin, 0);
-            RTOS_DELAY_MS(500);
-        }
+    HW_GPIO_INIT(ledPin, 1);
+    while (1) {
+        HW_GPIO_SET(ledPin, 1);
+        RTOS_DELAY_MS(500);
+        HW_GPIO_SET(ledPin, 0);
+        RTOS_DELAY_MS(500);
     }
 }
+
+// In main(), start the task:
+StartTask(1024, 0, 2, 1, BlinkTask);  // stack_size, core, priority, task_id, function
 ```
 
 ### 🔧 **Advanced Bit-Fields**
@@ -44,7 +46,11 @@ struct ControlRegister {
 - **Communication**: UART, SPI, I2C interfaces
 
 ### 🔄 **RTOS Integration**
-- Task creation with core and priority assignment
+- Task creation with flexible configuration:
+  - Stack size for memory management
+  - Core assignment for multi-core systems
+  - Priority levels for scheduling
+  - Unique task IDs for control
 - Semaphores, delays, task suspension/resumption
 - Real-time scheduling and resource management
 
@@ -61,11 +67,12 @@ void function() {
     }
 }
 
-Task<0, 1> MyTask {
-    void run() {
-        // task code
-    }
+void MyTask() {
+    // task code
 }
+
+// Start task in main:
+StartTask(1024, 0, 1, 1, MyTask);
 ```
 
 ```c
@@ -81,13 +88,13 @@ void function()
     }
 }
 
-Task<0, 1> MyTask
+void MyTask()
 {
-    void run()
-    {
-        // task code
-    }
+    // task code
 }
+
+// Start task in main:
+StartTask(1024, 0, 1, 1, MyTask);
 ```
 
 Both styles can be mixed within the same file, supporting team preferences and existing code styles.
@@ -133,7 +140,8 @@ void blink_task() {
 
 void main() {
     setup();
-    RTOS_CREATE_TASK(blink_task, "Blink", 1024, 5, 0);
+    // Start task with stack size, core, priority, ID, and function
+    StartTask(1024, 0, 5, 1, blink_task);
 }
 ```
 

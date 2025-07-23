@@ -7,7 +7,7 @@ This VS Code extension provides comprehensive language support for RT-Micro-C (R
 ## 🚀 Features
 
 ### 1. **Advanced Syntax Highlighting**
-- **Task Definitions**: Special highlighting for `Task<core, priority>` syntax
+- **Task Definitions**: Special highlighting for `StartTask(stack_size, core, priority, task_id, read_adc_task_run);` syntax
 - **RTOS Functions**: Purple/magenta highlighting for RTOS operations
 - **Hardware Functions**: Green variants for different hardware peripherals
   - GPIO functions (bright green)
@@ -108,18 +108,21 @@ The extension provides several configuration options:
 
 ### Task System
 ```c
-Task<0, 2> BlinkTask {
-    int ledPin = 13;
-    
-    void run() {
-        HW_GPIO_INIT(ledPin, 1);
-        while (1) {
-            HW_GPIO_SET(ledPin, 1);
-            RTOS_DELAY_MS(500);
-            HW_GPIO_SET(ledPin, 0);
-            RTOS_DELAY_MS(500);
-        }
+int ledPin = 13;
+
+void run() {
+    HW_GPIO_INIT(ledPin, 1);
+    while (1) {
+        HW_GPIO_SET(ledPin, 1);
+        RTOS_DELAY_MS(500);
+        HW_GPIO_SET(ledPin, 0);
+        RTOS_DELAY_MS(500);
     }
+}
+
+void main()
+{
+  StartTask(stack_size, core, priority, task_id, run);
 }
 ```
 
