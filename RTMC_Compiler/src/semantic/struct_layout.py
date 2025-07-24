@@ -136,12 +136,6 @@ class StructLayoutTable:
             field_layout = self._calculate_field_layout(field, current_offset, current_bit_offset)
             fields[field.name] = field_layout
             
-            # Check if this is a base struct (first field that's a struct type)
-            if i == 0 and isinstance(field.type, StructTypeNode):
-                base_struct = field.type.struct_name
-                field_layout.is_base_struct = True
-                field_layout.offset = 0  # Base struct always starts at offset 0
-            
             # Update offset for next field
             if field.bit_width and field.bit_width > 0:
                 # Bit-field

@@ -465,9 +465,20 @@ class SemanticAnalyzer(ASTVisitor):
         for field in node.fields:
             field_type = self.get_type_from_node(field.type)
             field_symbols[field.name] = Symbol(field.name, SymbolType.VARIABLE, field_type)
+
+        # Check if the struct has a base struct and inherit its fields
+        if node.base_struct:
+            base_struct_symbol = self.symbol_table.get(node.base_struct)
+            if not base_struct_symbol or base_struct_symbol.symbol_type != SymbolType.STRUCT:
+                self.error(f"Base struct '{node.base_struct}' not defined or not a struct", node.line, node.filename)
+            else:
+                # Merge base struct fields with current struct fields
+                for field_name, field_symbol in base_struct_symbol.struct_fields.items():
+                    if field_name in field_symbols:
+                        self.error(f"Field '{field_name}' in struct '{struct_name}' conflicts with base struct field", node.line, node.filename)
+                    field_symbols[field_name] = field_symbol
         
-        struct_symbol = Symbol(struct_name, SymbolType.STRUCT, f"struct {struct_name}",
-                             struct_fields=field_symbols)
+        struct_symbol = Symbol(struct_name, SymbolType.STRUCT, f"struct {struct_name}", struct_fields=field_symbols)
         
         self.symbol_table.define(struct_symbol)
 

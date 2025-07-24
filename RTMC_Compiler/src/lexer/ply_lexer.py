@@ -53,7 +53,6 @@ class RTMCLexer:
         'const': 'CONST',
         'struct': 'STRUCT',
         'union': 'UNION',
-        'Task': 'TASK',
         'message': 'MESSAGE',
         'include': 'INCLUDE',
         

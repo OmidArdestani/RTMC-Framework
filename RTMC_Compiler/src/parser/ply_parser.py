@@ -34,7 +34,7 @@ class RTMCParser:
     
     def __init__(self):
         self.lexer = RTMCLexer()
-        self.parser = yacc.yacc(module=self, debug=True, write_tables=True)
+        self.parser = yacc.yacc(module=self, debug=False, write_tables=False)
     
     def _create_type_node(self, type_str: str, line) -> TypeNode:
         """Convert a type string to a proper TypeNode"""
@@ -166,13 +166,16 @@ class RTMCParser:
     # Struct declaration
     def p_struct_declaration(self, p):
         '''struct_declaration : STRUCT IDENTIFIER LEFT_BRACE struct_member_list RIGHT_BRACE SEMICOLON
+                             | STRUCT IDENTIFIER COLON IDENTIFIER LEFT_BRACE struct_member_list RIGHT_BRACE SEMICOLON
                              | STRUCT LEFT_BRACE struct_member_list RIGHT_BRACE SEMICOLON'''
         
         line = p.lineno(1)
         filename = getattr(self, 'filename', '')
 
         if len(p) == 7:
-            p[0] = StructDeclNode(p[2], p[4], line=line, filename=filename)
+            p[0] = StructDeclNode(p[2], p[4], None, line=line, filename=filename)
+        elif len(p) == 9:
+            p[0] = StructDeclNode(p[2], p[6], p[4], line=line, filename=filename)
         else:
             # Anonymous struct - generate a unique struct name
             import uuid

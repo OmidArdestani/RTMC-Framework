@@ -108,11 +108,11 @@ class ParameterNode:
 class StructDeclNode(ASTNode):
     """Structure declaration node"""
     
-    def __init__(self, name: str, fields: List['FieldNode'], line: int = 0, column: int = 0, filename: str = ""):
+    def __init__(self, name: str, fields: List['FieldNode'], base_struct, line: int = 0, column: int = 0, filename: str = ""):
         super().__init__(NodeType.STRUCT_DECL, line, column, filename)
         self.name = name
         self.fields = fields
-        self.base_struct = None  # For C-style inheritance via first field
+        self.base_struct = base_struct
         self.total_size = 0      # Computed size during semantic analysis
         self.field_offsets = {}  # Dict mapping field_name -> offset
     

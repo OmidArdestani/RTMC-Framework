@@ -261,6 +261,22 @@ class BytecodeGenerator(ASTVisitor):
         # Set current position for debug info
         self.set_current_position(node.line, getattr(node, 'column', 0))
         
+
+        # Check if the struct has a base struct
+        if node.base_struct:
+            base_struct_name = node.base_struct
+            if base_struct_name in self.struct_layout_table.struct_decls:
+                # Concatenate base struct fields with current struct fields
+                base_layout = self.struct_layout_table.struct_decls[base_struct_name]
+
+                index = 0
+                for field in base_layout.fields:
+                    if field.name not in node.fields:
+                        node.fields.insert(index, field)
+                        index += 1
+            else:
+                raise CodeGenError(f"Base struct '{base_struct_name}' not found in struct layout table")
+        
         # Register struct with layout table
         self.struct_layout_table.register_struct(node)
         
