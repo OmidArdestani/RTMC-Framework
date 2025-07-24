@@ -836,9 +836,28 @@ class TaskVMContext:
         base_addr = self._pop()
         element_size = instruction.operands[0] if len(instruction.operands) > 0 else 4
         
-        # Calculate element address
-        element_addr = base_addr + (index * element_size)
-        value = self.task_context_shared.memory.get(element_addr, 0)
+        # Calculate element address considering 32-bit memory blocks
+        # If element_size is less than 4 bytes, multiple elements can fit in one 32-bit block
+        if element_size < 4:
+            # Calculate which 32-bit block this element belongs to
+            block_index = (index * element_size) // 4
+            block_offset = (index * element_size) % 4
+            block_addr = base_addr + block_index
+            
+            # Read the 32-bit block
+            block_value = self.task_context_shared.memory.get(block_addr, 0)
+            
+            # Extract the element's bits from the block
+            element_mask = (1 << (element_size * 8)) - 1
+            value = (block_value >> (block_offset * 8)) & element_mask
+        else:
+            # Element size is 4 bytes or more, each element occupies one or more 32-bit blocks
+            blocks_per_element = (element_size + 3) // 4  # Round up to nearest 4-byte boundary
+            element_addr = base_addr + (index * blocks_per_element)
+            
+            # For multi-block elements, load from the first block (simplified)
+            value = self.task_context_shared.memory.get(element_addr, 0)
+        
         self._push(value)
     
     def _handle_store_array_elem(self, instruction: Instruction):
@@ -849,9 +868,31 @@ class TaskVMContext:
         base_addr = self._pop()
         element_size = instruction.operands[0] if len(instruction.operands) > 0 else 4
         
-        # Calculate element address
-        element_addr = base_addr + (index * element_size)
-        self.task_context_shared.memory[element_addr] = value
+        # Calculate element address considering 32-bit memory blocks
+        # If element_size is less than 4 bytes, multiple elements can fit in one 32-bit block
+        if element_size < 4:
+            # Calculate which 32-bit block this element belongs to
+            block_index = (index * element_size) // 4
+            block_offset = (index * element_size) % 4
+            block_addr = base_addr + block_index
+            
+            # Read the current 32-bit block
+            current_block = self.task_context_shared.memory.get(block_addr, 0)
+            
+            # Create mask to clear the element's bits
+            element_mask = (1 << (element_size * 8)) - 1
+            clear_mask = ~(element_mask << (block_offset * 8))
+            
+            # Clear the element's bits and set the new value
+            new_block = (current_block & clear_mask) | ((value & element_mask) << (block_offset * 8))
+            self.task_context_shared.memory[block_addr] = new_block
+        else:
+            # Element size is 4 bytes or more, each element occupies one or more 32-bit blocks
+            blocks_per_element = (element_size + 3) // 4  # Round up to nearest 4-byte boundary
+            element_addr = base_addr + (index * blocks_per_element)
+            
+            # For multi-block elements, store in the first block (simplified)
+            self.task_context_shared.memory[element_addr] = value
     
     # RTOS instruction handlers
     
