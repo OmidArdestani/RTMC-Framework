@@ -580,9 +580,9 @@ class TestScopeAnalysis(unittest.TestCase):
             int global = 2;  // Shadows global variable
             {
                 int global = 3;  // Shadows function-level variable
-                DBG_PRINTF("Inner: {}", global);  // Should use innermost
+                printf("Inner: {}", global);  // Should use innermost
             }
-            DBG_PRINTF("Function: {}", global);  // Should use function-level
+            printf("Function: {}", global);  // Should use function-level
         }
         """
         errors, ast = self._analyze_code(source)

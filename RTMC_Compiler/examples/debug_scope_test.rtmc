@@ -6,7 +6,7 @@ void testScope()
     
     // First use - works
     if (x > 5) {
-        DBG_PRINT("x is greater than 5");
+        print("x is greater than 5");
     }
     
     // Second use - let's see if this works
@@ -25,5 +25,5 @@ void testScope()
 void main()
 {
     testScope();
-    DBG_PRINT("Test completed");
+    print("Test completed");
 }

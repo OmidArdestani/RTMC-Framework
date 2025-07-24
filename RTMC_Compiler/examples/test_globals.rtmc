@@ -6,11 +6,11 @@ int uninitialized_global;
 
 void main()
 {
-    DBG_PRINTF("GLOBAL_CONST: {}", GLOBAL_CONST);
-    DBG_PRINTF("global_var: {}", global_var);
-    DBG_PRINTF("uninitialized_global: {}", uninitialized_global);
+    printf("GLOBAL_CONST: {}", GLOBAL_CONST);
+    printf("global_var: {}", global_var);
+    printf("uninitialized_global: {}", uninitialized_global);
     
     // Modify global variable
     global_var = 200;
-    DBG_PRINTF("global_var after modification: {}", global_var);
+    printf("global_var after modification: {}", global_var);
 }

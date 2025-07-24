@@ -116,7 +116,7 @@ void main() {
     
     while (1) {
         RTOS_DELAY_MS(1000);
-        DBG_PRINT("Main running");
+        print("Main running");
     }
 }
 ```
@@ -129,16 +129,16 @@ void main() {
     int *ptr = &sensor_value;
     
     // Simple debug output
-    DBG_PRINT("System initialized");
+    print("System initialized");
     
     // Formatted debug output with variables
-    DBG_PRINTF("Sensor reading: {0}", sensor_value);
-    DBG_PRINTF("Temperature: {0}°C", temperature);
-    DBG_PRINTF("Pointer address: {0}", ptr);
-    DBG_PRINTF("Multiple values: sensor={0}, temp={1}", sensor_value, temperature);
+    printf("Sensor reading: {0}", sensor_value);
+    printf("Temperature: {0}°C", temperature);
+    printf("Pointer address: {0}", ptr);
+    printf("Multiple values: sensor={0}, temp={1}", sensor_value, temperature);
     
     // Simple placeholder syntax
-    DBG_PRINTF("Values: {}, {}", sensor_value, temperature);
+    printf("Values: {}, {}", sensor_value, temperature);
 }
 ```
 

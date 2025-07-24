@@ -87,11 +87,11 @@ void BlinkTaskRun() {
 void main() {
     StartTask(1024, 0, 2, 1, BlinkTaskRun);
 
-    DBG_PRINT("RTMC System Starting");
+    print("RTMC System Starting");
     
     while (1) {
         RTOS_DELAY_MS(5000);
-        DBG_PRINT("Main loop heartbeat");
+        print("Main loop heartbeat");
     }
 }
 ```

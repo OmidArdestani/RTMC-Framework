@@ -5,35 +5,35 @@ int global_var = 100;
 void level3_function()
 {
     int level3_local = 333;
-    DBG_PRINTF("Level 3: level3_local = {}, global_var = {}", level3_local, global_var);
+    printf("Level 3: level3_local = {}, global_var = {}", level3_local, global_var);
     global_var = global_var + 1;
-    DBG_PRINTF("Level 3: modified global_var = {}", global_var);
+    printf("Level 3: modified global_var = {}", global_var);
 }
 
 void level2_function()
 {
     int level2_local = 222;
-    DBG_PRINTF("Level 2 start: level2_local = {}, global_var = {}", level2_local, global_var);
+    printf("Level 2 start: level2_local = {}, global_var = {}", level2_local, global_var);
     
     level3_function();  // Call deeper function
     
-    DBG_PRINTF("Level 2 end: level2_local = {}, global_var = {}", level2_local, global_var);
+    printf("Level 2 end: level2_local = {}, global_var = {}", level2_local, global_var);
 }
 
 void level1_function()
 {
     int level1_local = 111;
-    DBG_PRINTF("Level 1 start: level1_local = {}, global_var = {}", level1_local, global_var);
+    printf("Level 1 start: level1_local = {}, global_var = {}", level1_local, global_var);
     
     level2_function();  // Call deeper function
     
-    DBG_PRINTF("Level 1 end: level1_local = {}, global_var = {}", level1_local, global_var);
+    printf("Level 1 end: level1_local = {}, global_var = {}", level1_local, global_var);
 }
 
 void test_simple_recursion(int depth)
 {
     int local_depth = depth;
-    DBG_PRINTF("Recursion depth: {}", local_depth);
+    printf("Recursion depth: {}", local_depth);
     
     if (depth > 0)
     {
@@ -41,20 +41,20 @@ void test_simple_recursion(int depth)
         test_simple_recursion(new_depth);
     }
     
-    DBG_PRINTF("Returning from depth: {}", local_depth);
+    printf("Returning from depth: {}", local_depth);
 }
 
 void main()
 {
-    DBG_PRINTF("Main start: global_var = {}", global_var);
+    printf("Main start: global_var = {}", global_var);
     
     // Test nested calls
     level1_function();
-    DBG_PRINTF("Main after nested calls: global_var = {}", global_var);
+    printf("Main after nested calls: global_var = {}", global_var);
     
     // Test simple recursion
-    DBG_PRINTF("Testing recursion:");
+    printf("Testing recursion:");
     test_simple_recursion(3);
     
-    DBG_PRINTF("Main end: global_var = {}", global_var);
+    printf("Main end: global_var = {}", global_var);
 }

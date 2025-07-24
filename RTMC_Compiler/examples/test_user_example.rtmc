@@ -15,9 +15,9 @@ void main()
     testStruct1.item1 = 0xBBAD;
     testStruct1.item2 = 0x52FC;
     
-    DBG_PRINTF("item1 = 0xBBAD: {} (decimal)", testStruct1.item1);
-    DBG_PRINTF("item2 = 0x52FC: {} (decimal)", testStruct1.item2);
-    DBG_PRINTF("union value: {} (decimal)", testStruct1.value);
+    printf("item1 = 0xBBAD: {} (decimal)", testStruct1.item1);
+    printf("item2 = 0x52FC: {} (decimal)", testStruct1.item2);
+    printf("union value: {} (decimal)", testStruct1.value);
     
-    DBG_PRINT("Hexadecimal assignment test completed successfully!");
+    print("Hexadecimal assignment test completed successfully!");
 }

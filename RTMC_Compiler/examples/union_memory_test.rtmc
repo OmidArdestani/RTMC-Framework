@@ -12,22 +12,22 @@ struct TestUnion {
 main() {
     struct TestUnion tu;
     
-    DBG_PRINT("=== Union Memory Overlap Test ===");
+    print("=== Union Memory Overlap Test ===");
     
     // Test 1: Set item1, check if value reflects the change
     tu.item1 = 0x1234;
     if (tu.value != 0) {
-        DBG_PRINT("PASS: Setting item1 affected value (overlap working)");
+        print("PASS: Setting item1 affected value (overlap working)");
     } else {
-        DBG_PRINT("FAIL: Setting item1 did not affect value");
+        print("FAIL: Setting item1 did not affect value");
     }
     
     // Test 2: Set item2, check if value reflects the change  
     tu.item2 = 0x5678;
     if (tu.value != 0x1234) {  // Should have changed from just item1
-        DBG_PRINT("PASS: Setting item2 affected value (overlap working)");
+        print("PASS: Setting item2 affected value (overlap working)");
     } else {
-        DBG_PRINT("FAIL: Setting item2 did not affect value");
+        print("FAIL: Setting item2 did not affect value");
     }
     
     // Test 3: Set value directly, check if items are affected
@@ -36,10 +36,10 @@ main() {
     tu.value = 0x12345678;
     
     if (tu.item1 != old_item1 || tu.item2 != old_item2) {
-        DBG_PRINT("PASS: Setting value affected items (overlap working)");
+        print("PASS: Setting value affected items (overlap working)");
     } else {
-        DBG_PRINT("FAIL: Setting value did not affect items");
+        print("FAIL: Setting value did not affect items");
     }
     
-    DBG_PRINT("=== Test Complete ===");
+    print("=== Test Complete ===");
 }

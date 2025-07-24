@@ -27,12 +27,12 @@ void main()
     testStruct2.normalField = 42;
     testStruct2.intField = 1234;
     
-    DBG_PRINTF("testStruct1.item1: {}", testStruct1.item1);
-    DBG_PRINTF("testStruct1.item2: {}", testStruct1.item2);
-    DBG_PRINTF("testStruct1.value: {}", testStruct1.value);
+    printf("testStruct1.item1: {}", testStruct1.item1);
+    printf("testStruct1.item2: {}", testStruct1.item2);
+    printf("testStruct1.value: {}", testStruct1.value);
     
-    DBG_PRINTF("testStruct2.normalField: {}", testStruct2.normalField);
-    DBG_PRINTF("testStruct2.intField: {}", testStruct2.intField);
+    printf("testStruct2.normalField: {}", testStruct2.normalField);
+    printf("testStruct2.intField: {}", testStruct2.intField);
     
-    DBG_PRINT("Union and nested struct syntax test completed!");
+    print("Union and nested struct syntax test completed!");
 }

@@ -10,8 +10,8 @@ struct MyStruct {
 void main()
 {
     int my_array[5] = {1, 2, 3, 4, 5};
-    DBG_PRINTF("Array elements: {0}, {1}, {2}, {3}, {4}", my_array[0], my_array[1], my_array[2], my_array[3], my_array[4]);
+    printf("Array elements: {0}, {1}, {2}, {3}, {4}", my_array[0], my_array[1], my_array[2], my_array[3], my_array[4]);
 
     MyStruct *array_ptr = (MyStruct*)my_array;
-    DBG_PRINTF("Struct elements: a = {0}, b = {1}, c = {2}, d = {3}, e = {4}", array_ptr->a, array_ptr->b, array_ptr->c, array_ptr->d, array_ptr->e);
+    printf("Struct elements: a = {0}, b = {1}, c = {2}, d = {3}, e = {4}", array_ptr->a, array_ptr->b, array_ptr->c, array_ptr->d, array_ptr->e);
 }

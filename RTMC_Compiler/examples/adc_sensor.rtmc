@@ -20,7 +20,7 @@ void sensor_task() {
         HW_TIMER_SET_PWM_DUTY(PWM_TIMER, pwm_duty);
         
         // Debug output
-        DBG_PRINT("Sensor value read");
+        print("Sensor value read");
         
         // Wait for next sample
         RTOS_DELAY_MS(SAMPLE_RATE);
@@ -41,6 +41,6 @@ void main() {
     // Main loop
     while (1) {
         RTOS_DELAY_MS(1000);
-        DBG_PRINT("System running");
+        print("System running");
     }
 }

@@ -18,7 +18,7 @@ void HighPriorityController() {
     while (1) {
         // High priority safety check
         if (globalSensors.temperature > emergencyThreshold) {
-            DBG_PRINT("EMERGENCY: Temperature critical!");
+            print("EMERGENCY: Temperature critical!");
             HW_GPIO_SET(25, 1);  // Emergency LED
         } else {
             HW_GPIO_SET(25, 0);  // Turn off emergency LED
@@ -47,7 +47,7 @@ void SensorReader() {
         globalSensors.pressure = 1013;    // Mock atmospheric pressure
         globalSensors.valid = 1;          // Mark as valid
         
-        DBG_PRINT("Sensor data updated");
+        print("Sensor data updated");
         RTOS_DELAY_MS(readInterval);
     }
 }
@@ -57,10 +57,10 @@ void DisplayTask() {
     
     while (1) {
         if (globalSensors.valid) {
-            DBG_PRINT("Temperature readings available");
-            DBG_PRINT("System status: OK");
+            print("Temperature readings available");
+            print("System status: OK");
         } else {
-            DBG_PRINT("Waiting for sensor data...");
+            print("Waiting for sensor data...");
         }
         
         RTOS_DELAY_MS(displayInterval);
@@ -77,18 +77,18 @@ void main() {
     // Initialize hardware
     HW_GPIO_INIT(25, 1);  // Emergency LED as output
     
-    DBG_PRINT("Advanced RT-Micro-C Task System Starting");
+    print("Advanced RT-Micro-C Task System Starting");
     
     // Start tasks with appropriate stack sizes, cores, priorities, and IDs
     StartTask(1024, 0, 1, 1, HighPriorityController);  // Higher stack for controller
     StartTask(2048, 1, 3, 2, SensorReader);            // Larger stack for sensor processing
     StartTask(1024, 0, 5, 3, DisplayTask);             // Standard stack for display
     
-    DBG_PRINT("All tasks started successfully");
+    print("All tasks started successfully");
     
     // Main system loop
     while (1) {
         RTOS_DELAY_MS(10000);
-        DBG_PRINT("System heartbeat - all tasks running");
+        print("System heartbeat - all tasks running");
     }
 }

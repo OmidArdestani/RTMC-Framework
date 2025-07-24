@@ -8,7 +8,7 @@ void sender_task_run()
     while (1)
     {
         TestQueue.send(42);
-        DBG_PRINT("Sender: Sent message");
+        print("Sender: Sent message");
         RTOS_DELAY_MS(1000);
     }
 }
@@ -18,14 +18,14 @@ void receiver_task_run()
     while (1)
     {
         int value = TestQueue.recv();
-        DBG_PRINTF("Receiver: Got message {}", value);
+        printf("Receiver: Got message {}", value);
         RTOS_DELAY_MS(500);
     }
 }
 
 void main()
 {
-    DBG_PRINT("Simple Message Test Starting");
+    print("Simple Message Test Starting");
     
     // Create sender task
     int core1 = 0;
@@ -44,6 +44,6 @@ void main()
     while (1)
     {
         RTOS_DELAY_MS(5000);
-        DBG_PRINT("Main: heartbeat");
+        print("Main: heartbeat");
     }
 }

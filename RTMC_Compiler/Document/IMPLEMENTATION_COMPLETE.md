@@ -124,7 +124,7 @@ void main()
     while (true)
     {
         RTOS_DELAY_MS(2000);
-        DBG_PRINT("System running");
+        print("System running");
         processData();
     }
 }

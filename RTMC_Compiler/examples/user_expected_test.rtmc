@@ -12,18 +12,18 @@ struct TestStruct1 {
 main() {
     struct TestStruct1 ts;
     
-    DBG_PRINT("=== User Expected Behavior Test ===");
+    print("=== User Expected Behavior Test ===");
     
     // Test the exact case mentioned by the user
     ts.value = 0xAABBCCDD;
-    DBG_PRINTF("After setting value=0xAABBCCDD:");
-    DBG_PRINTF("  item1={0} (expected: 0xCCDD = 52445)", ts.item1);
-    DBG_PRINTF("  item2={0} (expected: 0xAABB = 43707)", ts.item2);
+    printf("After setting value=0xAABBCCDD:");
+    printf("  item1={0} (expected: 0xCCDD = 52445)", ts.item1);
+    printf("  item2={0} (expected: 0xAABB = 43707)", ts.item2);
     
     // Verify the values match expected results
     if (ts.item1 == 52445 && ts.item2 == 43707) {
-        DBG_PRINT("SUCCESS: Union bitfield behavior is correct!");
+        print("SUCCESS: Union bitfield behavior is correct!");
     } else {
-        DBG_PRINT("FAIL: Union bitfield behavior is incorrect");
+        print("FAIL: Union bitfield behavior is incorrect");
     }
 }

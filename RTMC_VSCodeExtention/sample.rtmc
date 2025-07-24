@@ -33,7 +33,7 @@ void BlinkTaskRun() {
         HW_GPIO_SET(ledPin, 0);   // Turn LED off
         RTOS_DELAY_MS(blinkDelay);
         
-        DBG_PRINT("LED blink cycle completed");
+        print("LED blink cycle completed");
     }
 }
 
@@ -56,7 +56,7 @@ void SensorTaskRun() {
         int reading = HW_ADC_READ(sensorPin);
         
         if (reading > threshold) {
-            DBG_PRINT("Sensor threshold exceeded!");
+            print("Sensor threshold exceeded!");
             data.temperature = reading * 100 / 4095;  // Convert to temperature
             
             // Send data via UART
@@ -97,7 +97,7 @@ void ProducerTaskRun() {
         RTOS_SEMAPHORE_TAKE(resourceSemaphore, 1000);
         
         sharedResource++;
-        DBG_PRINT("Producer: Resource incremented to ");
+        print("Producer: Resource incremented to ");
         DBG_PRINT(sharedResource);
         
         RTOS_SEMAPHORE_GIVE(resourceSemaphore);
@@ -111,7 +111,7 @@ void ConsumerTaskRun() {
         
         if (sharedResource > 0) {
             sharedResource--;
-            DBG_PRINT("Consumer: Resource decremented to ");
+            print("Consumer: Resource decremented to ");
             DBG_PRINT(sharedResource);
         }
         
@@ -129,18 +129,18 @@ void main() {
     StartTask(1024, 1, 4, 2, ProducerTaskRun);
     StartTask(1024, 1, 4, 1, ConsumerTaskRun);
 
-    DBG_PRINT("RTMC System Starting...");
+    print("RTMC System Starting...");
     
     // Create semaphore for shared resource
     resourceSemaphore = RTOS_SEMAPHORE_CREATE();
     
     // Initialize hardware
-    DBG_PRINT("Hardware initialization complete");
+    print("Hardware initialization complete");
     
     // Main system loop
     while (1) {
         RTOS_DELAY_MS(5000);
-        DBG_PRINT("Main loop heartbeat - System running");
+        print("Main loop heartbeat - System running");
     }
 }
 
@@ -150,30 +150,30 @@ void demonstrateControlFlow() {
     
     // If-else demonstration
     if (counter < 10) {
-        DBG_PRINT("Counter is less than 10");
+        print("Counter is less than 10");
     } else {
-        DBG_PRINT("Counter is 10 or greater");
+        print("Counter is 10 or greater");
     }
     
     // While loop demonstration
     while (counter < 5) {
-        DBG_PRINT("While loop iteration: ");
+        print("While loop iteration: ");
         DBG_PRINT(counter);
         counter++;
     }
     
     // For loop demonstration
     for (int i = 0; i < 3; i++) {
-        DBG_PRINT("For loop iteration: ");
+        print("For loop iteration: ");
         DBG_PRINT(i);
     }
     
     // Switch-like behavior with if-else chain
     if (counter == 0) {
-        DBG_PRINT("Counter is zero");
+        print("Counter is zero");
     } else if (counter == 1) {
-        DBG_PRINT("Counter is one");
+        print("Counter is one");
     } else {
-        DBG_PRINT("Counter is something else");
+        print("Counter is something else");
     }
 }

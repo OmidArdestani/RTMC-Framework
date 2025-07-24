@@ -5,12 +5,12 @@
 
 // Functions - both styles
 void immediateFunction() {
-    DBG_PRINT("Immediate brace function");
+    print("Immediate brace function");
 }
 
 void newlineFunction()
 {
-    DBG_PRINT("Newline brace function");
+    print("Newline brace function");
 }
 
 // Function with parameters - both styles
@@ -28,7 +28,7 @@ int counter = 0;
 
 void ImmediateTaskRun() {
     counter++;
-    DBG_PRINT("Immediate task brace");
+    print("Immediate task brace");
     RTOS_DELAY_MS(1000);
 }
 
@@ -37,7 +37,7 @@ int value = 42;
 void NewlineTaskRun()
 {
     value += 10;
-    DBG_PRINT("Newline task brace");
+    print("Newline task brace");
     RTOS_DELAY_MS(1500);
 }
 
@@ -47,29 +47,29 @@ void testControlStructures()
     
     // If statement - immediate brace
     if (x > 5) {
-        DBG_PRINT("x is greater than 5");
+        print("x is greater than 5");
     }
     
     // If statement - newline brace
     if (x < 20)
     {
-        DBG_PRINT("x is less than 20");
+        print("x is less than 20");
     }
     
     // If-else - mixed styles
     if (x == 10) {
-        DBG_PRINT("x equals 10");
+        print("x equals 10");
     }
     else
     {
-        DBG_PRINT("x does not equal 10");
+        print("x does not equal 10");
     }
     
     // While loop - immediate brace (using separate variable to avoid semantic analyzer bug)
     int counter1 = 3;
     while (counter1 > 0) {
         counter1--;
-        DBG_PRINT("While loop immediate");
+        print("While loop immediate");
     }
     
     // While loop - newline brace (using separate variable to avoid semantic analyzer bug)
@@ -77,18 +77,18 @@ void testControlStructures()
     while (counter2 < 2)
     {
         counter2++;
-        DBG_PRINT("While loop newline");
+        print("While loop newline");
     }
     
     // For loop - immediate brace
     for (int i = 0; i < 3; i++) {
-        DBG_PRINT("For loop immediate");
+        print("For loop immediate");
     }
     
     // For loop - newline brace
     for (int j = 0; j < 2; j++)
     {
-        DBG_PRINT("For loop newline");
+        print("For loop newline");
     }
     
     // NOTE: Original code with multiple while loops using same variable 'x'
@@ -112,5 +112,5 @@ void main()
     // Test control structures
     testControlStructures();
     
-    DBG_PRINT("All brace style tests completed");
+    print("All brace style tests completed");
 }

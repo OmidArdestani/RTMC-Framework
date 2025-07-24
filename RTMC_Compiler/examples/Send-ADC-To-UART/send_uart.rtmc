@@ -6,7 +6,7 @@ void SendUartRun()
 {
     while(true) 
     {
-        DBG_PRINT("sending uart");
+        print("sending uart");
         float adc_value = MsgADCValueQueue.recv(100);
 
         HW_UART_WRITE(4, (int)adc_value);

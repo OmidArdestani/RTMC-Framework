@@ -4,12 +4,12 @@ void simpleTest()
 {
     int x = 10;
     if (x > 5) {
-        DBG_PRINT("x is greater than 5");
+        print("x is greater than 5");
     }
 }
 
 void main()
 {
     simpleTest();
-    DBG_PRINT("Simple test completed");
+    print("Simple test completed");
 }

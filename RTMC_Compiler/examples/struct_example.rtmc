@@ -28,7 +28,7 @@ void configure_sensor() {
     sensor.humidity = 60;
     sensor.pressure = 1013;
     
-    DBG_PRINT("Sensor configured");
+    print("Sensor configured");
 }
 
 void main() {
@@ -36,6 +36,6 @@ void main() {
     
     while (1) {
         RTOS_DELAY_MS(1000);
-        DBG_PRINT("System running");
+        print("System running");
     }
 }

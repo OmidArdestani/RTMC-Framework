@@ -540,7 +540,7 @@ class TestVirtualMachine(unittest.TestCase):
             int x = 5;
             int y = 3;
             int result = x + y;
-            DBG_PRINTF("Result: {}", result);
+            printf("Result: {}", result);
         }
         """
         output = self._compile_and_run(source)
@@ -550,9 +550,9 @@ class TestVirtualMachine(unittest.TestCase):
         """Test RTOS delay simulation"""
         source = """
         void main() {
-            DBG_PRINT("Before delay");
+            print("Before delay");
             RTOS_DELAY_MS(100);
-            DBG_PRINT("After delay");
+            print("After delay");
         }
         """
         output = self._compile_and_run(source)
@@ -565,7 +565,7 @@ class TestVirtualMachine(unittest.TestCase):
             HW_GPIO_INIT(25, 1);
             HW_GPIO_SET(25, 1);
             int value = HW_GPIO_GET(25);
-            DBG_PRINTF("GPIO value: {}", value);
+            printf("GPIO value: {}", value);
         }
         """
         output = self._compile_and_run(source)
@@ -582,7 +582,7 @@ class TestVirtualMachine(unittest.TestCase):
         
         void receiver() {
             int value = TestMsg.recv();
-            DBG_PRINTF("Received: {}", value);
+            printf("Received: {}", value);
         }
         
         void main() {
@@ -625,7 +625,7 @@ class TestComplexFeatures(unittest.TestCase):
 
         void process_data(int data) {
             USB4BECommand* be_cmd = (USB4BECommand*)data;
-            DBG_PRINTF("ProtocolType: {}, Opcode: {}", be_cmd->ProtocolType, be_cmd->Opcode);
+            printf("ProtocolType: {}, Opcode: {}", be_cmd->ProtocolType, be_cmd->Opcode);
         }
 
         void task1_run_function() {
@@ -678,7 +678,7 @@ class TestComplexFeatures(unittest.TestCase):
             lines[0].end.y = 40;
             
             int distance_x = lines[0].end.x - lines[0].start.x;
-            DBG_PRINTF("Distance X: {}", distance_x);
+            printf("Distance X: {}", distance_x);
         }
         """
         
@@ -704,12 +704,12 @@ class TestComplexFeatures(unittest.TestCase):
             
             // Access as bytes
             for (int i = 0; i < 4; i++) {
-                DBG_PRINTF("Byte {}: 0x{:02X}", i, data.bytes[i]);
+                printf("Byte {}: 0x{:02X}", i, data.bytes[i]);
             }
             
             // Access as float
             data.floatValue = 3.14;
-            DBG_PRINTF("Float value: {}", data.floatValue);
+            printf("Float value: {}", data.floatValue);
         }
         """
         
@@ -729,7 +729,7 @@ class TestComplexFeatures(unittest.TestCase):
             float value1 = MsgQueue.recv(100);  // 100ms timeout
             float value2 = MsgQueue.recv();     // No timeout (blocking)
             
-            DBG_PRINTF("Values: {}, {}", value1, value2);
+            printf("Values: {}, {}", value1, value2);
         }
         """
         
@@ -751,7 +751,7 @@ class TestComplexFeatures(unittest.TestCase):
         };
         
         void shared_function(int param) {
-            DBG_PRINTF("Shared function called with: {}", param);
+            printf("Shared function called with: {}", param);
         }
         """
         

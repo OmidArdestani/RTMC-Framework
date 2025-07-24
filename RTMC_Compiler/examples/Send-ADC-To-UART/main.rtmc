@@ -3,38 +3,61 @@
 // #include "definitions.rtmc";
 // #include "send_uart.rtmc";
 
-// struct TestStruct1
-// {
-//     union {
-//         struct{
-//             int item1 : 16;
-//             int item2 : 16;
-//         };
-//         int value1;
-//         int value2;
-//     };
-//     int item2;
-// };
+#define USB4_BE_CMD_OPCODE_UNDEFINED        0
+#define USB4_BE_CMD_PROTOCOL_TYPE_SIDEBAND  1
 
-// struct TestStruct2
-// {
-//     // TestStruct1 structItem1;
-//     int item1;
-//     int item2;
-// };
 
-// void checkVariable(int *var)
-// {
-//     DBG_PRINTF("Checking variable: {0}", *var);
-//     if (*var < 20)
-//     {
-//         DBG_PRINT("Variable is less than 20");
-//     }
-//     else
-//     {
-//         DBG_PRINT("Variable is 20 or more");
-//     }
-// }
+
+struct USB4BECommand
+{
+    int ProtocolType :  4;
+    int Opcode       : 12;
+};
+
+struct USB4SBBaseCmd : USB4BECommand
+{
+    int Rsvd1 : 16;
+};
+
+struct USB4ATSTX
+{
+    int CmdNotResp   : 1;
+    int ReturnBounce : 1;
+    int Recipient    : 1;
+    int Bounce       : 1;
+    int Responder    : 1;
+    int Rsvd         : 1;
+    int StartLT      : 2;
+};
+
+struct AT_CmdDataSymbols
+{
+    int REG          : 8;
+    int LEN          : 7;
+    int WnR          : 1;
+    char* COMMAND_DATA;
+};
+
+struct USB4TransactionFooter
+{
+    char LCRC = 0;
+    char HCRC = 0;
+
+    char EndDLE = 0xFE;
+    char ETX    = 0x40;
+};
+
+
+struct USB4ATTransaction
+{
+    char StartDLE = 0xFE;
+
+    USB4ATSTX ATTX;
+
+    AT_CmdDataSymbols ATDataSymbols;
+
+    USB4TransactionFooter TransactionFooter;
+};
 
 void main() 
 {
@@ -45,11 +68,20 @@ void main()
     StartTask(stack_size, core, priority, task_id, read_adc_task_run);
 
     int counter = 0;
+
+    char data[4] = {0x01, 0x02, 0x03, 0x04};
+
+    USB4SBBaseCmd* cmd = (USB4SBBaseCmd*) data;
+
+    printf("The cmd value: {0} {1} {2}", 
+               cmd->ProtocolType, 
+               cmd->Opcode, 
+               cmd->Rsvd1);
     
     while(1)
     {
         RTOS_DELAY_MS(500);
-        DBG_PRINT("Main: heartbeat");
+        print("Main: heartbeat");
 
         counter++;
         if (counter == 20)
@@ -58,5 +90,5 @@ void main()
         }
     }
     
-    DBG_PRINT("Main task finished");
+    print("Main task finished");
 }

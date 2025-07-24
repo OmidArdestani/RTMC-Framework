@@ -88,24 +88,24 @@ class TestCompleteFeatureIntegration(unittest.TestCase):
             USB4SBTransactionHead* sb_packet = (USB4SBTransactionHead*)packet_addr;
 
             if(sb_packet->CmdNotResp == 1) {
-                DBG_PRINTF("Processing SB command without response, Data Symbol: {}", sb_packet->DataSymbl);
+                printf("Processing SB command without response, Data Symbol: {}", sb_packet->DataSymbl);
             } else {
-                DBG_PRINTF("Processing SB command with DataSymbl: {}", sb_packet->DataSymbl);
+                printf("Processing SB command with DataSymbl: {}", sb_packet->DataSymbl);
             }
         }
 
         void processOtherCommand(int data) {
-            DBG_PRINTF("Processing other command with data: {}", data);
+            printf("Processing other command with data: {}", data);
         }
 
         void process_data(int data) {
             USB4BECommand* be_cmd = (USB4BECommand*)data;
-            DBG_PRINTF("ProtocolType: {}, Opcode: {}", be_cmd->ProtocolType, be_cmd->Opcode);
+            printf("ProtocolType: {}, Opcode: {}", be_cmd->ProtocolType, be_cmd->Opcode);
 
             if(be_cmd->ProtocolType == USB4_BE_CMD_PROTOCOL_TYPE_SIDEBAND) {
                 processSbCommand(data);
             } else if(be_cmd->ProtocolType == USB4_BE_CMD_PROTOCOL_TYPE_UNDEFINED && be_cmd->Opcode == USB4_BE_CMD_OPCODE_UNDEFINED) {
-                DBG_PRINTF("Received undefined command, ignoring.");
+                printf("Received undefined command, ignoring.");
             } else {
                 processOtherCommand(data);
             }
@@ -175,18 +175,18 @@ class TestCompleteFeatureIntegration(unittest.TestCase):
             // Array operations
             for (int i = 0; i < 5; i++) {
                 numbers[i] = i * 2;
-                DBG_PRINTF("numbers[{}] = {}", i, numbers[i]);
+                printf("numbers[{}] = {}", i, numbers[i]);
             }
             
             // Union operations
             DataUnion data;
             data.intValue = 0x12345678;
             for (int i = 0; i < 4; i++) {
-                DBG_PRINTF("Byte {}: 0x{:02X}", i, data.bytes[i]);
+                printf("Byte {}: 0x{:02X}", i, data.bytes[i]);
             }
             
             data.floatValue = 3.14159;
-            DBG_PRINTF("Float value: {}", data.floatValue);
+            printf("Float value: {}", data.floatValue);
         }
         """
         
@@ -224,11 +224,11 @@ class TestCompleteFeatureIntegration(unittest.TestCase):
             
             // Hex in comparisons and operations
             if (value1 == 0xFF) {
-                DBG_PRINTF("Hex comparison works: 0x{:X}", value1);
+                printf("Hex comparison works: 0x{:X}", value1);
             }
             
             int result = 0x1000 | 0x0100 | 0x0010 | 0x0001;
-            DBG_PRINTF("Bitwise result: 0x{:X}", result);
+            printf("Bitwise result: 0x{:X}", result);
         }
         """
         
@@ -254,11 +254,11 @@ class TestCompleteFeatureIntegration(unittest.TestCase):
             
             // Boolean conditions
             if (global_flag && local_flag) {
-                DBG_PRINT("Both flags true");
+                print("Both flags true");
             } else if (global_flag || local_flag) {
-                DBG_PRINT("At least one flag true");
+                print("At least one flag true");
             } else {
-                DBG_PRINT("Both flags false");
+                print("Both flags false");
             }
             
             // Boolean in loops
@@ -274,7 +274,7 @@ class TestCompleteFeatureIntegration(unittest.TestCase):
             // Complex boolean expressions
             bool complex = (counter > 5) && (global_flag || !local_flag);
             if (complex) {
-                DBG_PRINTF("Complex condition met at counter: {}", counter);
+                printf("Complex condition met at counter: {}", counter);
             }
         }
         """
@@ -302,14 +302,14 @@ class TestCompleteFeatureIntegration(unittest.TestCase):
                 // Try with timeout
                 int data = DataQueue.recv(50);
                 if (data >= 0) {
-                    DBG_PRINTF("Received data: {}", data);
+                    printf("Received data: {}", data);
                 } else {
-                    DBG_PRINT("Timeout occurred");
+                    print("Timeout occurred");
                 }
                 
                 // Blocking receive
                 float sensor_value = SensorQueue.recv();
-                DBG_PRINTF("Sensor: {}", sensor_value);
+                printf("Sensor: {}", sensor_value);
             }
         }
         
@@ -347,7 +347,7 @@ class TestCompleteFeatureIntegration(unittest.TestCase):
         
         void style1_function() {
             if (true) {
-                DBG_PRINT("Style 1 if");
+                print("Style 1 if");
             }
             while (false) {
                 break;
@@ -358,7 +358,7 @@ class TestCompleteFeatureIntegration(unittest.TestCase):
         {
             if (true)
             {
-                DBG_PRINT("Style 2 if");
+                print("Style 2 if");
             }
             while (false)
             {
@@ -371,9 +371,9 @@ class TestCompleteFeatureIntegration(unittest.TestCase):
             for (int i = 0; i < 5; i++) {
                 if (i % 2 == 0)
                 {
-                    DBG_PRINTF("Even: {}", i);
+                    printf("Even: {}", i);
                 } else {
-                    DBG_PRINTF("Odd: {}", i);
+                    printf("Odd: {}", i);
                 }
             }
         }
@@ -403,14 +403,14 @@ class TestCompleteFeatureIntegration(unittest.TestCase):
         
         const int SHARED_CONSTANT = 42;
         void shared_function(int param) {
-            DBG_PRINTF("Shared function: {}", param);
+            printf("Shared function: {}", param);
         }
         
         void main() {
             int value = SHARED_CONSTANT;
             shared_function(value);
             
-            DBG_PRINTF("Using imported definitions: {}", value);
+            printf("Using imported definitions: {}", value);
         }
         """
         
@@ -451,7 +451,7 @@ class TestCompleteFeatureIntegration(unittest.TestCase):
                 int adc_value = HW_ADC_READ(0);
                 float voltage = (float)adc_value * 3.3 / 4095.0;
                 
-                DBG_PRINTF("ADC: {}, Voltage: {:.2f}V", adc_value, voltage);
+                printf("ADC: {}, Voltage: {:.2f}V", adc_value, voltage);
                 RTOS_DELAY_MS(1000);
             }
         }
@@ -471,7 +471,7 @@ class TestCompleteFeatureIntegration(unittest.TestCase):
             while (true) {
                 bool button_pressed = ButtonQueue.recv(100);
                 if (button_pressed) {
-                    DBG_PRINT("Button was pressed!");
+                    print("Button was pressed!");
                 }
             }
         }
@@ -500,7 +500,7 @@ class TestCompleteFeatureIntegration(unittest.TestCase):
             
             // Access through pointer
             if (data_ptr->value > 0) {
-                DBG_PRINTF("Valid data: value={}, rate={}", 
+                printf("Valid data: value={}, rate={}", 
                           data_ptr->value, data_ptr->rate);
             }
         }
@@ -510,17 +510,17 @@ class TestCompleteFeatureIntegration(unittest.TestCase):
             
             // Set as integer
             pun.i = 0x12345678;
-            DBG_PRINTF("As int: 0x{:08X}", pun.i);
+            printf("As int: 0x{:08X}", pun.i);
             
             // Read as bytes
             for (int i = 0; i < 4; i++) {
-                DBG_PRINTF("Byte[{}]: 0x{:02X}", i, pun.bytes[i]);
+                printf("Byte[{}]: 0x{:02X}", i, pun.bytes[i]);
             }
             
             // Set as float
             pun.f = 3.14159;
-            DBG_PRINTF("As float: {}", pun.f);
-            DBG_PRINTF("Float as int: 0x{:08X}", pun.i);
+            printf("As float: {}", pun.f);
+            printf("Float as int: 0x{:08X}", pun.i);
         }
         
         void main() {
@@ -647,7 +647,7 @@ class TestPerformanceIntegration(unittest.TestCase):
             void function_{i}(int param1, int param2) {{
                 int local_var = param1 + param2 + CONST_{i % 100};
                 if (local_var > 0) {{
-                    DBG_PRINTF("Function {i}: {{}}", local_var);
+                    printf("Function {i}: {{}}", local_var);
                 }}
                 return;
             }}
@@ -699,7 +699,7 @@ class TestPerformanceIntegration(unittest.TestCase):
             nested.inner.inner.inner.inner.value = 42;
             
             int deep_value = nested.inner.inner.inner.inner.value;
-            DBG_PRINTF("Deep value: {}", deep_value);
+            printf("Deep value: {}", deep_value);
         }
         """
         
@@ -738,7 +738,7 @@ class TestPerformanceIntegration(unittest.TestCase):
             int array[10];
             array[((a + b) % 5) + ((c * d) % 3)] = result1 + result3;
             
-            DBG_PRINTF("Results: {}, {}, {}, {}", result1, result2, result3, result4);
+            printf("Results: {}, {}, {}, {}", result1, result2, result3, result4);
         }
         
         int abs(int x) { return x < 0 ? -x : x; }

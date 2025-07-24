@@ -2,24 +2,24 @@
 
 // Test both brace styles for tasks
 void StyleOneTaskRun() {
-    DBG_PRINT("Style one task running");
+    print("Style one task running");
     RTOS_DELAY_MS(1000);
 }
 
 void StyleTwoTaskRun() 
 {
-    DBG_PRINT("Style two task running");
+    print("Style two task running");
     RTOS_DELAY_MS(1500);
 }
 
 // Test both brace styles for functions
 void styleOneFunction() {
-    DBG_PRINT("Style one function");
+    print("Style one function");
 }
 
 void styleTwoFunction()
 {
-    DBG_PRINT("Style two function");
+    print("Style two function");
 }
 
 void main() 
@@ -30,5 +30,5 @@ void main()
     styleOneFunction();
     styleTwoFunction();
     
-    DBG_PRINT("Main task done");
+    print("Main task done");
 }

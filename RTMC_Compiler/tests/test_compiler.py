@@ -274,7 +274,7 @@ class TestVirtualMachine(unittest.TestCase):
         source = """
         void main() {
             int x = 42;
-            DBG_PRINT("Hello World");
+            print("Hello World");
         }
         """
         tokenizer = Tokenizer(source)

@@ -35,7 +35,7 @@ void main() {
     sensor.filter = 2;      // Set filter mode (0-7)
     sensor.unused = 0;      // Clear unused bits
     
-    DBG_PRINT("Bit-field configuration completed");
+    print("Bit-field configuration completed");
     
     // In a real embedded system, these packed structures would be
     // mapped to hardware registers for efficient control

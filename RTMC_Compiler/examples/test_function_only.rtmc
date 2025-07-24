@@ -6,22 +6,22 @@ void testControlStructures()
     
     // If statement - immediate brace
     if (x > 5) {
-        DBG_PRINT("x is greater than 5");
+        print("x is greater than 5");
     }
     
     // If statement - newline brace
     if (x < 20)
     {
-        DBG_PRINT("x is less than 20");
+        print("x is less than 20");
     }
     
     // If-else - mixed styles
     if (x == 10) {
-        DBG_PRINT("x equals 10");
+        print("x equals 10");
     }
     else
     {
-        DBG_PRINT("x does not equal 10");
+        print("x does not equal 10");
     }
     
     // While loop - immediate brace
@@ -41,5 +41,5 @@ void testControlStructures()
 void main()
 {
     testControlStructures();
-    DBG_PRINT("Test completed");
+    print("Test completed");
 }

@@ -146,7 +146,7 @@ def test_virtual_machine():
     source = """
     void main() {
         int x = 42;
-        DBG_PRINT("Hello from RT-Micro-C!");
+        print("Hello from RT-Micro-C!");
         HW_GPIO_INIT(25, 1);
         HW_GPIO_SET(25, 1);
     }

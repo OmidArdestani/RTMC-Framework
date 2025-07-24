@@ -27,6 +27,6 @@ void main() {
     // Main loop
     while (1) {
         RTOS_DELAY_MS(1000);
-        DBG_PRINT("Main task running");
+        print("Main task running");
     }
 }

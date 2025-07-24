@@ -12,20 +12,20 @@ struct UnionTest {
 main() {
     struct UnionTest ut;
     
-    DBG_PRINT("=== Union Bitfield Test ===");
+    print("=== Union Bitfield Test ===");
     
     // Test 1: Set value with both upper and lower bits
     ut.value = 0x12345678;
-    DBG_PRINTF("After setting value=0x12345678:");
-    DBG_PRINTF("  item1={0} (hex: 0x{0:X}), item2={1} (hex: 0x{1:X})", ut.item1, ut.item2);
-    DBG_PRINTF("  Expected: item1=0x5678, item2=0x1234");
+    printf("After setting value=0x12345678:");
+    printf("  item1={0} (hex: 0x{0:X}), item2={1} (hex: 0x{1:X})", ut.item1, ut.item2);
+    printf("  Expected: item1=0x5678, item2=0x1234");
     
     // Test 2: Set individual bitfields and check value
     ut.item1 = 0xAABB;
     ut.item2 = 0xCCDD;
-    DBG_PRINTF("After setting item1=0xAABB, item2=0xCCDD:");
-    DBG_PRINTF("  value={0} (hex: 0x{0:X})", ut.value);
-    DBG_PRINTF("  Expected: value=0xCCDDAABB");
+    printf("After setting item1=0xAABB, item2=0xCCDD:");
+    printf("  value={0} (hex: 0x{0:X})", ut.value);
+    printf("  Expected: value=0xCCDDAABB");
     
-    DBG_PRINT("=== Test Complete ===");
+    print("=== Test Complete ===");
 }

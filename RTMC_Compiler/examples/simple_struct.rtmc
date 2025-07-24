@@ -11,6 +11,6 @@ void main() {
     p.x = 10;
     p.y = 20;
     
-    DBG_PRINT("Simple struct example");
+    print("Simple struct example");
     RTOS_DELAY_MS(1000);
 }

@@ -12,24 +12,24 @@ struct TestBitfield {
 main() {
     struct TestBitfield tb;
     
-    DBG_PRINT("=== Detailed Union Bitfield Test ===");
+    print("=== Detailed Union Bitfield Test ===");
     
     // Test 1: Set individual bitfields
     tb.item1 = 0x1234;
     tb.item2 = 0x5678;
-    DBG_PRINTF("After setting item1=0x1234, item2=0x5678:");
-    DBG_PRINTF("  item1={0} (0x{0:X}), item2={1} (0x{1:X})", tb.item1, tb.item2);
-    DBG_PRINTF("  value={0} (0x{0:X})", tb.value);
+    printf("After setting item1=0x1234, item2=0x5678:");
+    printf("  item1={0} (0x{0:X}), item2={1} (0x{1:X})", tb.item1, tb.item2);
+    printf("  value={0} (0x{0:X})", tb.value);
     
     // Test 2: Set value and check bitfields
     tb.value = 0x12345678;
-    DBG_PRINTF("After setting value=0x12345678:");
-    DBG_PRINTF("  item1={0} (0x{0:X}), item2={1} (0x{1:X})", tb.item1, tb.item2);
-    DBG_PRINTF("  value={0} (0x{0:X})", tb.value);
+    printf("After setting value=0x12345678:");
+    printf("  item1={0} (0x{0:X}), item2={1} (0x{1:X})", tb.item1, tb.item2);
+    printf("  value={0} (0x{0:X})", tb.value);
     
     // Expected:
     // item1 should be 0x5678 (lower 16 bits)
     // item2 should be 0x1234 (upper 16 bits)
     
-    DBG_PRINT("=== Test Complete ===");
+    print("=== Test Complete ===");
 }

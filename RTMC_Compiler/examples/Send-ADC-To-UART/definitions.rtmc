@@ -1,3 +1,5 @@
 
 
 message<float> MsgADCValueQueue;
+
+char SendBuffer[1024];

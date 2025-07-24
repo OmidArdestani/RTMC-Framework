@@ -36,9 +36,9 @@ void main() {
     int flags = 0xFF00;
     int address = 0x8000;
     
-    DBG_PRINTF("hexValue: {}", hexValue);     // Output: 57005
-    DBG_PRINTF("flags: {}", flags);           // Output: 65280
-    DBG_PRINTF("address: {}", address);       // Output: 32768
+    printf("hexValue: {}", hexValue);     // Output: 57005
+    printf("flags: {}", flags);           // Output: 65280
+    printf("address: {}", address);       // Output: 32768
 }
 ```
 
@@ -81,7 +81,7 @@ void mixedValues() {
     int octal = 052;         // Note: Octal not yet supported
     
     if (decimal == hex) {    // This will be true
-        DBG_PRINT("Values are equal!");
+        print("Values are equal!");
     }
 }
 ```

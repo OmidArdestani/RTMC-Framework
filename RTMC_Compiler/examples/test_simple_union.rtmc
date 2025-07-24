@@ -10,8 +10,8 @@ void main()
 {
     SimpleUnion test;
     test.item1 = 0x12345678;
-    DBG_PRINTF("After setting item1=0x12345678: item1={}, item2={}", test.item1, test.item2);
+    printf("After setting item1=0x12345678: item1={}, item2={}", test.item1, test.item2);
     
     test.item2 = 0xAABBCCDD;
-    DBG_PRINTF("After setting item2=0xAABBCCDD: item1={}, item2={}", test.item1, test.item2);
+    printf("After setting item2=0xAABBCCDD: item1={}, item2={}", test.item1, test.item2);
 }

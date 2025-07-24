@@ -120,7 +120,7 @@ union TypePun {
 void main() {
     TypePun data;
     data.floatVal = 3.14;
-    DBG_PRINTF("Float as int: {}", data.intVal);
+    printf("Float as int: {}", data.intVal);
 }
 ```
 

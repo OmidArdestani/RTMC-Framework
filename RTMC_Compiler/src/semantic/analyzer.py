@@ -322,12 +322,12 @@ class SemanticAnalyzer(ASTVisitor):
                                 ], function_return_type='int'),
             
             # Debug functions
-            'DBG_PRINT': Symbol('DBG_PRINT', SymbolType.FUNCTION, 'void',
+            'PRINT': Symbol('print', SymbolType.FUNCTION, 'void',
                               function_params=[Symbol('string', SymbolType.PARAMETER, 'string')],
                               function_return_type='void'),
             'DBG_BREAKPOINT': Symbol('DBG_BREAKPOINT', SymbolType.FUNCTION, 'void',
                                    function_params=[], function_return_type='void'),
-            'DBG_PRINTF': Symbol('DBG_PRINTF', SymbolType.FUNCTION, 'void',
+            'PRINTF': Symbol('printf', SymbolType.FUNCTION, 'void',
                                function_params=[Symbol('format', SymbolType.PARAMETER, 'string')],
                                function_return_type='void'),
         }
@@ -712,8 +712,8 @@ class SemanticAnalyzer(ASTVisitor):
             expected_params = len(func_symbol.function_params) if func_symbol.function_params else 0
             actual_args = len(node.arguments)
             
-            # DBG_PRINTF is variadic - requires at least the format string
-            if func_name == 'DBG_PRINTF':
+            # printf is variadic - requires at least the format string
+            if func_name == 'printf':
                 if actual_args < 1:
                     self.error(f"Function '{func_name}' requires at least 1 argument (format string)", node.line)
             else:
@@ -722,8 +722,8 @@ class SemanticAnalyzer(ASTVisitor):
             
             # Check argument types
             if func_symbol.function_params:
-                if func_name == 'DBG_PRINTF':
-                    # For DBG_PRINTF, only check the first argument (format string)
+                if func_name == 'printf':
+                    # For printf, only check the first argument (format string)
                     if len(node.arguments) > 0:
                         arg_type = node.arguments[0].accept(self)
                         if not TypeChecker.can_convert(arg_type, func_symbol.function_params[0].data_type):

@@ -12,7 +12,7 @@ void task1() {
         
         // Critical section
         shared_counter = shared_counter + 1;
-        DBG_PRINT("Task 1 incremented counter");
+        print("Task 1 incremented counter");
         
         // Release semaphore
         RTOS_SEMAPHORE_GIVE(semaphore_handle);
@@ -30,7 +30,7 @@ void task2() {
         
         // Critical section
         shared_counter = shared_counter + 2;
-        DBG_PRINT("Task 2 incremented counter");
+        print("Task 2 incremented counter");
         
         // Release semaphore
         RTOS_SEMAPHORE_GIVE(semaphore_handle);
@@ -51,6 +51,6 @@ void main() {
     // Main loop
     while (1) {
         RTOS_DELAY_MS(1000);
-        DBG_PRINT("Main loop");
+        print("Main loop");
     }
 }

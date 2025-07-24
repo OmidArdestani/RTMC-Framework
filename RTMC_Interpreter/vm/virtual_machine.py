@@ -358,8 +358,8 @@ class TaskVMContext:
             Opcode.HW_I2C_READ: self._handle_hw_i2c_read,
             
             # Debug instructions
-            Opcode.DBG_PRINT: self._handle_dbg_print,
-            Opcode.DBG_PRINTF: self._handle_dbg_printf,
+            Opcode.PRINT: self._handle_dbg_print,
+            Opcode.PRINTF: self._handle_dbg_printf,
             Opcode.DBG_BREAKPOINT: self._handle_dbg_breakpoint,
             
             Opcode.HALT: self._handle_halt,

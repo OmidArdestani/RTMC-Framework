@@ -15,7 +15,7 @@ void blink_task_run()
         HW_GPIO_SET(ledPin, 0);
         RTOS_DELAY_MS(blinkDelay);
         
-        DBG_PRINT("Blink cycle completed");
+        print("Blink cycle completed");
     }
 }
 
@@ -32,7 +32,7 @@ void sensor_task_run()
         
         if (reading > threshold)
         {
-            DBG_PRINT("Sensor threshold exceeded");
+            print("Sensor threshold exceeded");
         }
         
         RTOS_DELAY_MS(1000);
@@ -41,7 +41,7 @@ void sensor_task_run()
 
 void main()
 {
-    DBG_PRINT("RT-Micro-C Task System Starting");
+    print("RT-Micro-C Task System Starting");
     
     // Create tasks using the new StartTask syntax
     int core1 = 0;
@@ -59,6 +59,6 @@ void main()
     while (1)
     {
         RTOS_DELAY_MS(5000);
-        DBG_PRINT("Main loop heartbeat");
+        print("Main loop heartbeat");
     }
 }

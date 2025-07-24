@@ -13,28 +13,28 @@ void main() {
     int **double_ptr = &ptr;
     
     // Basic DBG_PRINT (old way)
-    DBG_PRINT("=== Debug Printf Demo ===");
+    print("=== Debug Printf Demo ===");
     
     // New DBG_PRINTF with variable substitution
-    DBG_PRINTF("Integer value: {0}", count);
-    DBG_PRINTF("Float value: {0}", pi);
-    DBG_PRINTF("Character: {0}", letter);
+    printf("Integer value: {0}", count);
+    printf("Float value: {0}", pi);
+    printf("Character: {0}", letter);
     
     // Pointer demonstrations
-    DBG_PRINTF("Original value: {0}", value);
-    DBG_PRINTF("Pointer address: {0}", ptr);
-    DBG_PRINTF("Dereferenced pointer: {0}", *ptr);
-    DBG_PRINTF("Double pointer value: {0}", **double_ptr);
+    printf("Original value: {0}", value);
+    printf("Pointer address: {0}", ptr);
+    printf("Dereferenced pointer: {0}", *ptr);
+    printf("Double pointer value: {0}", **double_ptr);
     
     // Multiple variables
-    DBG_PRINTF("Count={0}, Pi={1}", count, pi);
-    DBG_PRINTF("All values: count={0}, pi={1}, letter={2}", count, pi, letter);
+    printf("Count={0}, Pi={1}", count, pi);
+    printf("All values: count={0}, pi={1}, letter={2}", count, pi, letter);
     
     // Simple placeholder syntax (filled in order)
-    DBG_PRINTF("Simple: {}, {}, {}", count, pi, letter);
+    printf("Simple: {}, {}, {}", count, pi, letter);
     
     // Mixed syntax
-    DBG_PRINTF("Mixed: first={0}, second={}, third={2}", count, pi, letter);
+    printf("Mixed: first={0}, second={}, third={2}", count, pi, letter);
     
-    DBG_PRINT("Demo completed successfully!");
+    print("Demo completed successfully!");
 }

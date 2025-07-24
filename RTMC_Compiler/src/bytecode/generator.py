@@ -279,7 +279,7 @@ class BytecodeGenerator(ASTVisitor):
         
         # Register struct with layout table
         self.struct_layout_table.register_struct(node)
-        
+
         # Calculate layout
         layout = self.struct_layout_table.calculate_layout(node.name)
         
@@ -909,7 +909,7 @@ class BytecodeGenerator(ASTVisitor):
             if func_name == 'StartTask':
                 self.generate_start_task_call(node.arguments)
             # Check if it's a built-in function
-            elif func_name.startswith('RTOS_') or func_name.startswith('HW_') or func_name.startswith('DBG_'):
+            elif func_name.startswith('RTOS_') or func_name.startswith('HW_') or func_name.startswith('DBG_') or func_name == 'print' or func_name == 'printf':
                 self.generate_builtin_call(func_name, node.arguments)
             else:
                 # Regular function call
@@ -1003,8 +1003,8 @@ class BytecodeGenerator(ASTVisitor):
             self.emit(InstructionBuilder.hw_i2c_read(0, 0))
         
         # Debug functions
-        elif func_name == 'DBG_PRINT':
-            # For DBG_PRINT, the string argument should be processed specially
+        elif func_name == 'print':
+            # For print, the string argument should be processed specially
             if len(arguments) >= 1:
                 # Generate the string argument and get its ID
                 self.emit(InstructionBuilder.dbg_print(0))  # String ID will be handled by VM from stack
@@ -1012,8 +1012,8 @@ class BytecodeGenerator(ASTVisitor):
                 self.emit(InstructionBuilder.dbg_print(0))
         elif func_name == 'DBG_BREAKPOINT':
             self.emit(InstructionBuilder.dbg_breakpoint())
-        elif func_name == 'DBG_PRINTF':
-            # For DBG_PRINTF, process format string and arguments
+        elif func_name == 'printf':
+            # For printf, process format string and arguments
             if len(arguments) >= 1:
                 # The format string is the first argument
                 # Arguments for formatting are the rest

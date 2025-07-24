@@ -7,28 +7,28 @@ void function1()
 {
     int local1 = 10;
     int local2 = 20;
-    DBG_PRINTF("Function1 - local1: {}, local2: {}", local1, local2);
-    DBG_PRINTF("Function1 - global_var: {}, GLOBAL_CONST: {}", global_var, GLOBAL_CONST);
+    printf("Function1 - local1: {}, local2: {}", local1, local2);
+    printf("Function1 - global_var: {}, GLOBAL_CONST: {}", global_var, GLOBAL_CONST);
 }
 
 void function2()
 {
     int local1 = 30;  // Should get different address than function1's local1
     int local2 = 40;  // Should get different address than function1's local2
-    DBG_PRINTF("Function2 - local1: {}, local2: {}", local1, local2);
-    DBG_PRINTF("Function2 - global_var: {}, GLOBAL_CONST: {}", global_var, GLOBAL_CONST);
+    printf("Function2 - local1: {}, local2: {}", local1, local2);
+    printf("Function2 - global_var: {}, GLOBAL_CONST: {}", global_var, GLOBAL_CONST);
 }
 
 void main()
 {
-    DBG_PRINTF("Main - GLOBAL_CONST: {}, global_var: {}", GLOBAL_CONST, global_var);
+    printf("Main - GLOBAL_CONST: {}, global_var: {}", GLOBAL_CONST, global_var);
     
     function1();
     function2();
     
     // Modify global variable
     global_var = 200;
-    DBG_PRINTF("Main - global_var after modification: {}", global_var);
+    printf("Main - global_var after modification: {}", global_var);
     
     function1();  // Should see modified global value
     function2();  // Should see modified global value

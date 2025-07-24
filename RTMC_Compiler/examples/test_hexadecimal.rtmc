@@ -25,20 +25,20 @@ void main()
     int hexValue5 = 0XFF;        // 255 in decimal
     int hexValue6 = 0XABCD;      // 43981 in decimal
     
-    DBG_PRINTF("testStruct1.item1 (0xBBAD): {}", testStruct1.item1);
-    DBG_PRINTF("testStruct1.item2 (0x52FC): {}", testStruct1.item2);
-    DBG_PRINTF("testStruct1.value: {}", testStruct1.value);
+    printf("testStruct1.item1 (0xBBAD): {}", testStruct1.item1);
+    printf("testStruct1.item2 (0x52FC): {}", testStruct1.item2);
+    printf("testStruct1.value: {}", testStruct1.value);
     
-    DBG_PRINTF("hexValue1 (0xFF): {}", hexValue1);
-    DBG_PRINTF("hexValue2 (0x00A0): {}", hexValue2);
-    DBG_PRINTF("hexValue3 (0x7FFFFFFF): {}", hexValue3);
-    DBG_PRINTF("hexValue4 (0x0): {}", hexValue4);
-    DBG_PRINTF("hexValue5 (0XFF): {}", hexValue5);
-    DBG_PRINTF("hexValue6 (0XABCD): {}", hexValue6);
+    printf("hexValue1 (0xFF): {}", hexValue1);
+    printf("hexValue2 (0x00A0): {}", hexValue2);
+    printf("hexValue3 (0x7FFFFFFF): {}", hexValue3);
+    printf("hexValue4 (0x0): {}", hexValue4);
+    printf("hexValue5 (0XFF): {}", hexValue5);
+    printf("hexValue6 (0XABCD): {}", hexValue6);
     
     // Test decimal values still work
     int decimalValue = 42;
-    DBG_PRINTF("decimalValue (42): {}", decimalValue);
+    printf("decimalValue (42): {}", decimalValue);
     
-    DBG_PRINT("Hexadecimal literal test completed!");
+    print("Hexadecimal literal test completed!");
 }

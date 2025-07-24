@@ -13,7 +13,7 @@ void read_adc_task_run()
     while(1)
     {
         RTOS_DELAY_MS(500);
-        DBG_PRINT("adc: reading");
+        print("adc: reading");
 
         counter++;
         if (counter == 10)
@@ -22,5 +22,5 @@ void read_adc_task_run()
         }
     }
     
-    DBG_PRINTF("ADC Task started on pin {0}", sensorPin);
+    printf("ADC Task started on pin {0}", sensorPin);
 }

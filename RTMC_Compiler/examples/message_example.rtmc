@@ -34,7 +34,7 @@ void sensor_task_run()
         
         readingId = readingId + 1;
         
-        DBG_PRINT("Sensor: Sent reading");
+        print("Sensor: Sent reading");
         RTOS_DELAY_MS(2000);  // Read every 2 seconds
     }
 }
@@ -48,14 +48,14 @@ void processor_task_run()
         // Wait for sensor data
         struct SensorData data = SensorReadings.recv();
         
-        DBG_PRINT("Processor: Received sensor data");
+        print("Processor: Received sensor data");
         
         // Process the data
         if (data.temperature > temperatureThreshold)
         {
             // Send alert signal to control task
             ControlSignal.send(1);  // Alert signal
-            DBG_PRINT("Processor: Temperature alert sent");
+            print("Processor: Temperature alert sent");
         }
         else
         {
@@ -83,21 +83,21 @@ void control_task_run()
             // Alert condition
             HW_GPIO_SET(alertPin, 1);   // Turn on alert LED
             HW_GPIO_SET(fanPin, 1);     // Turn on fan
-            DBG_PRINT("Control: Alert mode activated");
+            print("Control: Alert mode activated");
         }
         else
         {
             // Normal condition
             HW_GPIO_SET(alertPin, 0);   // Turn off alert LED
             HW_GPIO_SET(fanPin, 0);     // Turn off fan
-            DBG_PRINT("Control: Normal mode");
+            print("Control: Normal mode");
         }
     }
 }
 
 void main()
 {
-    DBG_PRINT("RT-Micro-C Message Passing System Starting");
+    print("RT-Micro-C Message Passing System Starting");
     
     // Create sensor task
     int core1 = 0;
@@ -123,6 +123,6 @@ void main()
     while (1)
     {
         RTOS_DELAY_MS(10000);
-        DBG_PRINT("Main: System heartbeat");
+        print("Main: System heartbeat");
     }
 }
