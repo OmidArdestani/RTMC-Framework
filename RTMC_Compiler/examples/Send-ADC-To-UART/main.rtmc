@@ -73,10 +73,10 @@ void main()
 
     USB4SBBaseCmd* cmd = (USB4SBBaseCmd*) data;
 
-    printf("The cmd value: {0} {1} {2}", 
+    printf("The cmd value: {0} {1} sizeof cmd: {2}", 
                cmd->ProtocolType, 
-               cmd->Opcode, 
-               cmd->Rsvd1);
+               cmd->Opcode,
+               sizeof(USB4SBBaseCmd));
     
     while(1)
     {

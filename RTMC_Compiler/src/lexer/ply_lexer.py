@@ -72,7 +72,10 @@ class RTMCLexer:
         'break': 'BREAK',
         'continue': 'CONTINUE',
         'return': 'RETURN',
-        
+
+        # measurement functions
+        'sizeof': 'SIZEOF',
+
         # RTOS functions
         'RTOS_CREATE_TASK': 'RTOS_CREATE_TASK',
         'RTOS_DELETE_TASK': 'RTOS_DELETE_TASK',

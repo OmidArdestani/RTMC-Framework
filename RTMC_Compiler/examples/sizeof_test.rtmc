@@ -1,0 +1,55 @@
+// Test file for sizeof functionality
+struct Point {
+    int x;
+    int y;
+};
+
+struct Rect {
+    struct Point topLeft;
+    struct Point bottomRight;
+};
+
+int main() {
+    // Test sizeof on primitive types
+    int a = sizeof(int);        // Should be 4
+    int b = sizeof(char);       // Should be 1
+    int c = sizeof(float);      // Should be 4
+    
+    // Test sizeof on variables
+    int x;
+    int d = sizeof(x);          // Should be 4
+    
+    char ch;
+    int e = sizeof(ch);         // Should be 1
+    
+    // Test sizeof on arrays
+    int arr[10];
+    int f = sizeof(arr);        // Should be 40 (4 * 10)
+    
+    // Test sizeof on structs
+    int g = sizeof(Point);      // Should be 8 (4 + 4)
+    int h = sizeof(Rect);       // Should be 16 (8 + 8)
+    
+    // Test sizeof on struct variables
+    struct Point p;
+    int i = sizeof(p);          // Should be 8
+    
+    // Test sizeof on pointers
+    int* ptr;
+    int j = sizeof(ptr);        // Should be 8 (pointer size)
+    int k = sizeof(int*);       // Should be 8
+    
+    printf("sizeof(int) = %d\n", a);
+    printf("sizeof(char) = %d\n", b);
+    printf("sizeof(float) = %d\n", c);
+    printf("sizeof(x) = %d\n", d);
+    printf("sizeof(ch) = %d\n", e);
+    printf("sizeof(arr) = %d\n", f);
+    printf("sizeof(Point) = %d\n", g);
+    printf("sizeof(Rect) = %d\n", h);
+    printf("sizeof(p) = %d\n", i);
+    printf("sizeof(ptr) = %d\n", j);
+    printf("sizeof(int*) = %d\n", k);
+    
+    return 0;
+}

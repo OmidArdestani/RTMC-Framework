@@ -1674,3 +1674,12 @@ class BytecodeGenerator(ASTVisitor):
         # For now, casting is mostly a no-op at runtime
         # In a full implementation, we might emit type conversion instructions
         # The semantic analyzer handles the type checking
+    
+    def visit_sizeof_expr(self, node: SizeOfExprNode):
+        """Visit sizeof expression node"""
+        # Set current position for debug info
+        self.set_current_position(node.line, getattr(node, 'column', 0))
+        
+        # By the time we get here, the optimizer should have replaced sizeof
+        # with a constant value. If we still see a sizeof, emit an error placeholder
+        self.emit(Instruction(Opcode.LOAD_CONST, [-1]))  # Error indicator

@@ -4,6 +4,7 @@ Performs compile-time optimizations on the AST.
 """
 
 from RTMC_Compiler.src.parser.ast_nodes import *
+from RTMC_Compiler.src.semantic.struct_layout import StructLayoutTable
 from typing import Dict, List, Optional, Any, Set
 
 class OptimizationError(Exception):
@@ -36,10 +37,68 @@ class ConstantFolder(ASTVisitor):
         """Optimize cast expression"""
         optimized_operand = node.operand.accept(self)
         return CastExprNode(node.target_type, optimized_operand, node.line)
+    
+    def visit_sizeof_expr(self, node: SizeOfExprNode) -> LiteralExprNode:
+        """Optimize sizeof expression - replace with constant value"""
+        try:
+            size = self._calculate_sizeof(node.target)
+            return LiteralExprNode(size, "int", node.line)
+        except Exception:
+            # If we can't calculate size, return a placeholder
+            return LiteralExprNode(-1, "int", node.line)  # Error placeholder
+    
+    def _calculate_sizeof(self, target) -> int:
+        """Calculate the size of a type or expression"""
+        if isinstance(target, PrimitiveTypeNode):
+            return self._get_primitive_size(target.type_name)
+        elif isinstance(target, StructTypeNode):
+            return self.struct_layout_table.get_struct_size(target.struct_name)
+        elif isinstance(target, UnionTypeNode):
+            return self.struct_layout_table.get_struct_size(target.union_name)
+        elif isinstance(target, ArrayTypeNode):
+            element_size = self._calculate_sizeof(target.element_type)
+            return element_size * (target.size or 1)
+        elif isinstance(target, PointerTypeNode):
+            return 8  # 64-bit pointers
+        elif isinstance(target, IdentifierExprNode):
+            # Look up variable type in symbol table
+            var_type = self.symbol_table.get(target.name, {}).get('type', 'int')
+            return self._get_type_size(var_type)
+        else:
+            # For expressions, try to deduce their type
+            return 4  # Default to int size
+    
+    def _get_primitive_size(self, type_name: str) -> int:
+        """Get size of primitive types"""
+        sizes = {
+            'char': 1,
+            'int': 4,
+            'float': 4,
+            'void': 0,
+            'bool': 1
+        }
+        return sizes.get(type_name, 4)
+    
+    def _get_type_size(self, type_str: str) -> int:
+        """Get size from type string (e.g., 'int', 'struct Point', 'int*')"""
+        if type_str in ['char', 'int', 'float', 'void', 'bool']:
+            return self._get_primitive_size(type_str)
+        elif type_str.startswith('struct '):
+            struct_name = type_str[7:]  # Remove 'struct '
+            return self.struct_layout_table.get_struct_size(struct_name)
+        elif type_str.endswith('*'):
+            return 8  # Pointer size
+        elif type_str.endswith('[]'):
+            # Array type - would need more context for exact size
+            return 4  # Default element size
+        else:
+            return 4  # Default size
     """Constant folding optimizer"""
     
-    def __init__(self):
+    def __init__(self, struct_layout_table: Optional[StructLayoutTable] = None, symbol_table: Optional[Dict] = None):
         self.constants: Dict[str, Any] = {}
+        self.struct_layout_table = struct_layout_table or StructLayoutTable()
+        self.symbol_table = symbol_table or {}  # For variable type lookup
     
     def visit_program(self, node: ProgramNode) -> ProgramNode:
         """Optimize program"""
@@ -58,14 +117,42 @@ class ConstantFolder(ASTVisitor):
         
         return FunctionDeclNode(node.name, node.return_type, node.parameters, 
                               optimized_body, node.line)
-    
-    def visit_struct_decl(self, node: StructDeclNode) -> StructDeclNode:
-        """Optimize struct declaration"""
-        return node  # Struct declarations don't need optimization
 
-    def visit_union_decl(self, node: UnionDeclNode) -> UnionDeclNode:
+
+    def visit_struct_decl(self, node: StructDeclNode)-> StructDeclNode:
+        """Optimize struct declaration"""
+
+        # Check if the struct has a base struct
+        if node.base_struct:
+            base_struct_name = node.base_struct
+            if base_struct_name in self.struct_layout_table.struct_decls:
+                # Concatenate base struct fields with current struct fields
+                base_layout = self.struct_layout_table.struct_decls[base_struct_name]
+
+                index = 0
+                for field in base_layout.fields:
+                    if field.name not in node.fields:
+                        node.fields.insert(index, field)
+                        index += 1
+        
+        # Register struct with layout table
+        self.struct_layout_table.register_struct(node)
+
+        # Calculate layout
+        layout = self.struct_layout_table.calculate_layout(node.name)
+        
+        return node  # Struct declarations don't need optimization
+    
+    def visit_union_decl(self, node: UnionDeclNode)-> StructDeclNode:
         """Optimize union declaration"""
-        return node  # Union declarations don't need optimization
+        
+        # Register union with layout table (treat similar to struct but with overlapping fields)
+        self.struct_layout_table.register_struct(node)
+        
+        # Calculate layout
+        layout = self.struct_layout_table.calculate_layout(node.name)
+        
+        return node  # Struct declarations don't need optimization
 
     def visit_variable_decl(self, node: VariableDeclNode) -> VariableDeclNode:
         """Optimize variable declaration"""
@@ -78,8 +165,29 @@ class ConstantFolder(ASTVisitor):
             if isinstance(optimized_initializer, LiteralExprNode) and node.is_const:
                 self.constants[node.name] = optimized_initializer.value
         
+        # Track variable type for sizeof calculations
+        type_str = self._get_type_string_from_node(node.type)
+        self.symbol_table[node.name] = {'type': type_str}
+        
         return VariableDeclNode(node.name, node.type, optimized_initializer, 
                               node.is_const, node.line)
+    
+    def _get_type_string_from_node(self, type_node: TypeNode) -> str:
+        """Convert a type node to a type string"""
+        if isinstance(type_node, PrimitiveTypeNode):
+            return type_node.type_name
+        elif isinstance(type_node, StructTypeNode):
+            return f"struct {type_node.struct_name}"
+        elif isinstance(type_node, UnionTypeNode):
+            return f"union {type_node.union_name}"
+        elif isinstance(type_node, ArrayTypeNode):
+            element_type = self._get_type_string_from_node(type_node.element_type)
+            return f"{element_type}[]"
+        elif isinstance(type_node, PointerTypeNode):
+            base_type = self._get_type_string_from_node(type_node.base_type)
+            return f"{base_type}{'*' * type_node.pointer_level}"
+        else:
+            return "int"  # Default type
     
     def visit_primitive_type(self, node: PrimitiveTypeNode) -> PrimitiveTypeNode:
         """Type nodes don't need optimization"""
@@ -423,6 +531,10 @@ class DeadCodeEliminator(ASTVisitor):
         return node
 
     def visit_cast_expr(self, node: CastExprNode) -> CastExprNode:
+        return node
+    
+    def visit_sizeof_expr(self, node: SizeOfExprNode) -> SizeOfExprNode:
+        """Sizeof expressions are always reachable (they're compile-time constants)"""
         return node
     """Dead code elimination optimizer"""
     

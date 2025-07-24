@@ -1,0 +1,18 @@
+// Simple sizeof test without printf
+struct Point {
+    int x;
+    int y;
+};
+
+void main() {
+    int a = sizeof(int);        
+    int b = sizeof(char);       
+    int c = sizeof(Point);      
+    
+    // Test variable sizeof
+    int x;
+    int d = sizeof(x);
+    
+    struct Point p;
+    int e = sizeof(p);
+}

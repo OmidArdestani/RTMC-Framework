@@ -570,15 +570,21 @@ class RTMCParser:
                            | MULTIPLY unary_expression
                            | INCREMENT unary_expression
                            | DECREMENT unary_expression
-                           | LEFT_PAREN type_specifier RIGHT_PAREN unary_expression'''
+                           | LEFT_PAREN type_specifier RIGHT_PAREN unary_expression
+                           | SIZEOF LEFT_PAREN unary_expression RIGHT_PAREN
+                           | SIZEOF LEFT_PAREN type_specifier RIGHT_PAREN'''
         
         line = p.lineno(1)
         
         if len(p) == 2:
             p[0] = p[1]
         elif len(p) == 5:
-            # Type cast: (type)expression
-            p[0] = CastExprNode(p[2], p[4], line=line)
+            if p[1] == 'sizeof':
+                # sizeof(expression) or sizeof(type)
+                p[0] = SizeOfExprNode(p[3], line=line)
+            else:
+                # Type cast: (type)expression
+                p[0] = CastExprNode(p[2], p[4], line=line)
         else:
             if p[1] == '&':
                 p[0] = AddressOfNode(p[2], line=line)

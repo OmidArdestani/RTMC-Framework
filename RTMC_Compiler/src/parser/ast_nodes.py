@@ -47,6 +47,7 @@ class NodeType(Enum):
     ADDRESS_OF      = auto()  # Address-of operator &
     DEREFERENCE     = auto()  # Dereference operator *
     CAST_EXPR       = auto()  # Cast expression
+    SIZEOF_EXPR     = auto()  # Sizeof expression
     
     # Types
     PRIMITIVE_TYPE = auto()
@@ -525,6 +526,16 @@ class CastExprNode(ExpressionNode):
     def accept(self, visitor):
         return visitor.visit_cast_expr(self)
 
+class SizeOfExprNode(ExpressionNode):
+    """Sizeof expression node"""
+    
+    def __init__(self, target, line: int = 0, column: int = 0):
+        super().__init__(NodeType.SIZEOF_EXPR, line, column)
+        self.target = target  # Can be a TypeNode, IdentifierExprNode, or other expression
+    
+    def accept(self, visitor):
+        return visitor.visit_sizeof_expr(self)
+
 class PointerDeclNode(VariableDeclNode):
     """Pointer declaration node"""
     
@@ -596,6 +607,9 @@ class ASTVisitor(ABC):
     
     @abstractmethod
     def visit_cast_expr(self, node: CastExprNode): pass
+    
+    @abstractmethod
+    def visit_sizeof_expr(self, node: SizeOfExprNode): pass
     
     @abstractmethod
     def visit_block_stmt(self, node: BlockStmtNode): pass
@@ -729,6 +743,9 @@ def ast_to_string(node: ASTNode, indent: int = 0) -> str:
     
     elif isinstance(node, DereferenceNode):
         return f"{indent_str}Dereference:\n{ast_to_string(node.operand, indent + 1)}"
+    
+    elif isinstance(node, SizeOfExprNode):
+        return f"{indent_str}SizeOf:\n{ast_to_string(node.target, indent + 1)}"
     
     elif isinstance(node, BlockStmtNode):
         result = f"{indent_str}Block:\n"

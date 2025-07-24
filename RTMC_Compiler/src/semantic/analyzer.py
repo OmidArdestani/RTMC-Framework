@@ -1067,3 +1067,8 @@ class SemanticAnalyzer(ASTVisitor):
         # In the future, we could add warnings for potentially dangerous casts
         
         return target_type
+    
+    def visit_sizeof_expr(self, node: SizeOfExprNode):
+        """Visit sizeof expression"""
+        # sizeof always returns int
+        return "int"
