@@ -617,8 +617,11 @@ class BytecodeGenerator(ASTVisitor):
 
     def visit_assignment_expr(self, node: AssignmentExprNode):
         """Generate code for assignment expression"""
-        # Generate value
-        node.value.accept(self)
+
+        # Accept the value if target is not an array access before accept target
+        if not isinstance(node.target, ArrayAccessNode):
+            # Generate value
+            node.value.accept(self)
         
         # Handle different assignment operators
         if node.operator != '=':
@@ -655,6 +658,8 @@ class BytecodeGenerator(ASTVisitor):
         elif isinstance(node.target, MemberExprNode):
             # Handle struct member assignment (including bit-fields)
             self._generate_member_store(node.target)
+        elif isinstance(node.target, ArrayAccessNode):
+            self._generate_array_store(node.target, node.value)
         else:
             raise CodeGenError("Complex assignment targets not supported yet")
     
@@ -1213,8 +1218,53 @@ class BytecodeGenerator(ASTVisitor):
             return element_size * (type_node.size or 1)
         elif isinstance(type_node, PointerTypeNode):
             return 8  # 64-bit pointer size
+        elif isinstance(type_node, str):
+            # Handle string type as a special case
+            # Handle string representations of array types like 'char[20]' or 'int[5]'
+            if '[' in type_node and ']' in type_node:
+                # Parse array type string like 'char[20]'
+                element_type_str = type_node.split('[')[0]
+                size_str = type_node.split('[')[1].split(']')[0]
+                size = int(size_str) if size_str.isdigit() else 1
+                
+                # Create element type node
+                element_type = PrimitiveTypeNode(element_type_str)
+                element_size = self.get_type_size(element_type)
+                return element_size 
+            else:
+                # Simple string type - treat as char array
+                return self.get_type_size(PrimitiveTypeNode('char')) * (len(type_node) + 1)
         else:
             raise CodeGenError("Pointer types not supported in this context")
+
+    def _generate_array_store(self, node: ArrayAccessNode, value: ExpressionNode):
+        """Generate code to store to an array element"""
+        array_address = self.get_variable_address(node.array.name)
+        index_value = self.add_constant(node.index.value)
+        
+        if self.current_function:
+            node_type = self.local_variable_types[node.array.name]
+        else:
+            node_type = self.variable_types[node.array.name]
+
+        element_size = self.get_type_size(node_type)
+        self.store_array_element(array_address, index_value, value, element_size)
+
+    def store_array_element(self, array_address: int, index_value: int, value: ExpressionNode, element_size: int):
+        """Store a value into an array element"""
+
+        # Load array base address for initialization
+        self.emit(InstructionBuilder.load_var(array_address))
+        
+        # Load index
+        self.emit(InstructionBuilder.load_const(index_value))
+
+        # Generate element value
+        value.accept(self)
+
+        # Store element: array[i] = value
+        # Stack now contains [base_addr, index, value]
+        self.emit(InstructionBuilder.store_array_elem(element_size))
 
     def _generate_member_load(self, node: MemberExprNode):
         """Generate code to load from a member expression"""
@@ -1299,6 +1349,68 @@ class BytecodeGenerator(ASTVisitor):
             base_address = self.get_variable_address(base_var)
             field_offset = self._calculate_nested_offset(node)
             self.emit(InstructionBuilder.store_struct_member(base_address, field_offset))
+        elif isinstance(node.object, ArrayAccessNode):
+            # Array case: array[index].member = value
+            # At this point, the value to store is already on the stack
+            
+            if isinstance(node.object.array, IdentifierExprNode):
+                array_name = node.object.array.name
+                array_address = self.get_variable_address(array_name)
+                
+                # Allocate a temporary variable to store the value
+                temp_var_addr = self.allocate_variable(f"__temp_store_{self.temp_counter}")
+                self.temp_counter += 1
+                
+                # Store the value temporarily
+                self.emit(InstructionBuilder.store_var(temp_var_addr))
+                
+                # Load array base address
+                self.emit(InstructionBuilder.load_var(array_address))
+                
+                # Generate index
+                node.object.index.accept(self)
+                
+                # Get element type and size for array access
+                array_type = self.local_variable_types.get(array_name) or self.variable_types.get(array_name)
+                element_size = 4  # Default size
+                
+                if array_type and '[' in array_type:
+                    element_type_name = array_type.split('[')[0]
+                    # If it's a struct type, get the struct size
+                    if element_type_name in self.struct_layouts:
+                        try:
+                            element_size = self.struct_layout_table.get_struct_size(element_type_name)
+                        except (ValueError, KeyError):
+                            element_size = 20  # Default struct size
+                    elif element_type_name == 'char':
+                        element_size = 1
+                    elif element_type_name in ['int', 'float']:
+                        element_size = 4
+                
+                # Calculate array element address: base + index * element_size
+                # Multiply index by element size
+                size_const = self.add_constant(element_size)
+                self.emit(InstructionBuilder.load_const(size_const))
+                self.emit(InstructionBuilder.mul())
+                
+                # Add to base address to get element address
+                self.emit(InstructionBuilder.add())
+                
+                # Now add the field offset within the struct
+                struct_name = self._get_struct_name_for_member(node)
+                field_offset = self._get_simple_field_offset(struct_name, node.property)
+                if field_offset > 0:
+                    offset_const = self.add_constant(field_offset)
+                    self.emit(InstructionBuilder.load_const(offset_const))
+                    self.emit(InstructionBuilder.add())
+                
+                # Load the value back onto the stack
+                self.emit(InstructionBuilder.load_var(temp_var_addr))
+                
+                # Store through the computed address
+                self.emit(InstructionBuilder.store_deref())
+            else:
+                raise CodeGenError("Complex array access in member assignment not yet supported")
         elif isinstance(node.object, DereferenceNode):
             # Pointer case: ptr->member = value
             # At this point, the value to store is already on the stack
@@ -1474,7 +1586,7 @@ class BytecodeGenerator(ASTVisitor):
     def visit_include_stmt(self, node: IncludeStmtNode):
         """Import statements are handled by the compiler, no bytecode needed"""
         pass
-    
+
     def visit_array_decl(self, node: ArrayDeclNode):
         """Visit array declaration node"""
         # Get the actual size value from the expression
