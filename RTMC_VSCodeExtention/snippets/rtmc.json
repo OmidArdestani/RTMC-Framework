@@ -163,6 +163,13 @@
     ],
     "description": "Write to UART"
   },
+  "UART Read": {
+    "prefix": "uart-read",
+    "body": [
+      "HW_UART_READ(${1:length}, ${2:buffer}, ${3:timeout});"
+    ],
+    "description": "Read from UART"
+  },
   "RTOS Delay": {
     "prefix": "delay",
     "body": [

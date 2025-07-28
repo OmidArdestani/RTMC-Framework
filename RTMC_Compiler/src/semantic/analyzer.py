@@ -301,8 +301,14 @@ class SemanticAnalyzer(ASTVisitor):
             # Hardware Communication functions
             'HW_UART_WRITE': Symbol('HW_UART_WRITE', SymbolType.FUNCTION, 'void',
                                   function_params=[
-                                      Symbol('buffer', SymbolType.PARAMETER, 'char'),
+                                      Symbol('buffer', SymbolType.PARAMETER, 'char[]'),
                                       Symbol('length', SymbolType.PARAMETER, 'int')
+                                  ], function_return_type='void'),
+            'HW_UART_READ': Symbol('HW_UART_READ', SymbolType.FUNCTION, 'void',
+                                  function_params=[
+                                      Symbol('buffer', SymbolType.PARAMETER, 'char[]'),
+                                      Symbol('length', SymbolType.PARAMETER, 'int'),
+                                      Symbol('timeout_ms', SymbolType.PARAMETER, 'int')
                                   ], function_return_type='void'),
             'HW_SPI_TRANSFER': Symbol('HW_SPI_TRANSFER', SymbolType.FUNCTION, 'void',
                                     function_params=[

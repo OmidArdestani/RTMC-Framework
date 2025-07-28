@@ -1000,6 +1000,8 @@ class BytecodeGenerator(ASTVisitor):
         # Hardware Communication functions
         elif func_name == 'HW_UART_WRITE':
             self.emit(InstructionBuilder.hw_uart_write(0, 0))
+        elif func_name == 'HW_UART_READ':
+            self.emit(InstructionBuilder.hw_uart_read(0, 0, 0))
         elif func_name == 'HW_SPI_TRANSFER':
             self.emit(InstructionBuilder.hw_spi_transfer(0, 0, 0))
         elif func_name == 'HW_I2C_WRITE':
