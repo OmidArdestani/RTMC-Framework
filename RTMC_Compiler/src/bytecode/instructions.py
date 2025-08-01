@@ -98,6 +98,7 @@ class Opcode(IntEnum):
     
     # Hardware Access - Communication
     HW_UART_WRITE = auto()
+    HW_UART_READ = auto()
     HW_SPI_TRANSFER = auto()
     HW_I2C_WRITE = auto()
     HW_I2C_READ = auto()
@@ -377,6 +378,10 @@ class InstructionBuilder:
         return Instruction(Opcode.HW_UART_WRITE, [buffer_addr, length])
     
     @staticmethod
+    def hw_uart_read(buffer_addr: int, length: int, timeout : int) -> Instruction:
+        return Instruction(Opcode.HW_UART_READ, [buffer_addr, length, timeout])
+    
+    @staticmethod
     def hw_spi_transfer(tx_addr: int, rx_addr: int, length: int) -> Instruction:
         return Instruction(Opcode.HW_SPI_TRANSFER, [tx_addr, rx_addr, length])
     
@@ -483,6 +488,7 @@ INSTRUCTION_INFO = {
     Opcode.HW_ADC_READ: {"operands": 1, "description": "Read ADC value"},
     
     Opcode.HW_UART_WRITE: {"operands": 2, "description": "Write UART data"},
+    Opcode.HW_UART_READ: {"operands": 2, "description": "Read UART data"},
     Opcode.HW_SPI_TRANSFER: {"operands": 3, "description": "SPI transfer"},
     Opcode.HW_I2C_WRITE: {"operands": 2, "description": "Write I2C data"},
     Opcode.HW_I2C_READ: {"operands": 2, "description": "Read I2C data"},

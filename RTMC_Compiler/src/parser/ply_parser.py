@@ -750,6 +750,7 @@ class RTMCParser:
                   | HW_ADC_INIT LEFT_PAREN argument_list RIGHT_PAREN
                   | HW_ADC_READ LEFT_PAREN argument_list RIGHT_PAREN
                   | HW_UART_WRITE LEFT_PAREN argument_list RIGHT_PAREN
+                  | HW_UART_READ LEFT_PAREN argument_list RIGHT_PAREN
                   | HW_SPI_TRANSFER LEFT_PAREN argument_list RIGHT_PAREN
                   | HW_I2C_WRITE LEFT_PAREN argument_list RIGHT_PAREN
                   | HW_I2C_READ LEFT_PAREN argument_list RIGHT_PAREN

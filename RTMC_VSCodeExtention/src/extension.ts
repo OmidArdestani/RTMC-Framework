@@ -96,7 +96,7 @@ class RTMCLanguageProvider implements vscode.CompletionItemProvider, vscode.Hove
             'HW_GPIO_INIT', 'HW_GPIO_SET', 'HW_GPIO_GET',
             'HW_TIMER_INIT', 'HW_TIMER_START', 'HW_TIMER_STOP', 'HW_TIMER_SET_PWM_DUTY',
             'HW_ADC_INIT', 'HW_ADC_READ',
-            'HW_UART_WRITE', 'HW_SPI_TRANSFER', 'HW_I2C_WRITE', 'HW_I2C_READ'
+            'HW_UART_WRITE', 'HW_UART_READ', 'HW_SPI_TRANSFER', 'HW_I2C_WRITE', 'HW_I2C_READ'
         ];
         
         hwFunctions.forEach(func => {
@@ -163,6 +163,7 @@ class RTMCLanguageProvider implements vscode.CompletionItemProvider, vscode.Hove
             'HW_TIMER_INIT': 'Initialize timer: `HW_TIMER_INIT(timer_id, frequency)`',
             'HW_TIMER_SET_PWM_DUTY': 'Set PWM duty cycle: `HW_TIMER_SET_PWM_DUTY(timer_id, duty_cycle)`',
             'HW_UART_WRITE': 'Write to UART: `HW_UART_WRITE(message)`',
+            'HW_UART_READ': 'Read from UART: `HW_UART_READ(length, buffer, timeout) - length: number of bytes to read, buffer: memory address to store data, timeout: max wait time in ms - returns number of bytes read',
             'DBG_PRINT': 'Print debug message: `DBG_PRINT(message)`',
             'DBG_BREAKPOINT': 'Set debug breakpoint: `DBG_BREAKPOINT()`',
             'struct': 'Define a structure: `struct Name { ... };` - supports bitfields with colon syntax',

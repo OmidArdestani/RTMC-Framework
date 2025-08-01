@@ -139,10 +139,10 @@ class HardwareSimulator:
         self.gpio_pins: Dict[int, Dict[str, Any]] = {}
         self.timers: Dict[int, Dict[str, Any]] = {}
         self.adc_channels: Dict[int, int] = {}
-        self.uart_buffer: List[bytes] = []
+        self.uart_buffer: bytearray = bytearray()
         self.i2c_devices: Dict[int, Dict[int, int]] = {}
-        self.spi_buffer: List[bytes] = []
-    
+        self.spi_buffer: bytearray = bytearray()
+
     def gpio_init(self, pin: int, mode: int):
         """Initialize GPIO pin"""
         self.gpio_pins[pin] = {
@@ -230,11 +230,27 @@ class HardwareSimulator:
         print(f"\nADC{pin} read: {value}")
         return value
     
-    def uart_write(self, data: bytes):
+    def uart_write(self, data: bytearray):
         """Write data to UART"""
-        self.uart_buffer.append(data)
+        self.uart_buffer.extend(data)
         print(f"\nUART TX: {data.hex()}")
-    
+
+    def uart_read(self, length: int, timout_ms : int) -> bytes:
+        """Read data from UART"""
+        start_time = time.time()
+        end_time = start_time + (timout_ms / 1000.0)  # Convert ms to seconds
+
+        # Wait until enough data is available or timeout
+        while len(self.uart_buffer) < length:
+            if time.time() > end_time:
+                return bytes()
+            time.sleep(0.01)
+
+        read_buff = self.uart_buffer[-length:]
+        print(f"\nUART RX: {read_buff.hex()}")
+
+        return read_buff
+
     def spi_transfer(self, tx_data: bytes) -> bytes:
         """SPI transfer"""
         self.spi_buffer.append(tx_data)
@@ -353,6 +369,7 @@ class TaskVMContext:
             Opcode.HW_ADC_INIT: self._handle_hw_adc_init,
             Opcode.HW_ADC_READ: self._handle_hw_adc_read,
             Opcode.HW_UART_WRITE: self._handle_hw_uart_write,
+            Opcode.HW_UART_READ: self._handle_hw_uart_read,
             Opcode.HW_SPI_TRANSFER: self._handle_hw_spi_transfer,
             Opcode.HW_I2C_WRITE: self._handle_hw_i2c_write,
             Opcode.HW_I2C_READ: self._handle_hw_i2c_read,
@@ -1175,9 +1192,49 @@ class TaskVMContext:
         length = self._pop()
         buffer_addr = self._pop()
         # Simulate UART write
-        data = bytes([self.task_context_shared.memory.get(buffer_addr + i, 0) for i in range(length)])
+        # Extract bytes from 32-bit memory fields
+        data = bytearray()
+        for i in range(length):
+            # Calculate which 32-bit memory field this byte belongs to
+            field_index = i // 4
+            byte_offset = i % 4
+            
+            # Get the 32-bit memory field
+            memory_field = self.task_context_shared.memory.get(buffer_addr + field_index, 0)
+            
+            # Extract the specific byte from the 32-bit field
+            byte_value = (memory_field >> (byte_offset * 8)) & 0xFF
+            data.append(byte_value)
+        
         self.task_context_shared.hardware.uart_write(data)
     
+    def _handle_hw_uart_read(self, instruction: Instruction):
+        """Handle HW_UART_READ instruction"""
+        timeout = self._pop()
+        length = self._pop()
+        buffer_addr = self._pop()
+        # Simulate UART read
+        bytes = self.task_context_shared.hardware.uart_read(length, timeout)
+
+        # Store bytes in 32-bit memory fields (4 bytes per field)
+        for i in range(len(bytes)):
+            # Calculate which 32-bit memory field this byte belongs to
+            field_index = i // 4
+            byte_offset = i % 4
+            field_addr = buffer_addr + field_index
+            
+            # Get current 32-bit field value (or 0 if not initialized)
+            current_field = self.task_context_shared.memory.get(field_addr, 0)
+            
+            # Clear the byte at the specific offset and set the new byte value
+            byte_mask = 0xFF << (byte_offset * 8)
+            current_field = (current_field & ~byte_mask) | (bytes[i] << (byte_offset * 8))
+            
+            # Store the updated field back to memory
+            self.task_context_shared.memory[field_addr] = current_field
+
+        self._push(len(bytes))  # Push number of bytes read
+
     def _handle_hw_spi_transfer(self, instruction: Instruction):
         """Handle HW_SPI_TRANSFER instruction"""
         length = self._pop()
