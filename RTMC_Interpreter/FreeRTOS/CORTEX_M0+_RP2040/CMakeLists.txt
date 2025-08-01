@@ -28,3 +28,4 @@ PROJECT(examples)
 
 add_subdirectory(OnEitherCore)
 add_subdirectory(Standard)
+add_subdirectory(RTMCInterpreter)
