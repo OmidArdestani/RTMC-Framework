@@ -101,7 +101,56 @@ The interpreter supports all RT-Micro-C bytecode instructions:
 
 ## Usage
 
-### Basic Usage
+### UART-Based Program Loading (Recommended)
+
+The interpreter now supports dynamic program loading through UART commands:
+
+```c
+#include "rtmc_interpreter.h"
+
+int main() {
+    // The main application handles UART commands automatically
+    // See rtmc_interpreter_example_main.c for complete implementation
+    
+    stdio_init_all();
+    uart_init_custom();        // Initialize UART interface
+    app_init();               // Initialize application state
+    
+    // Create command processing and monitoring tasks
+    xTaskCreate(command_task, "CommandTask", 2048, NULL, 2, NULL);
+    xTaskCreate(monitor_task, "MonitorTask", 1024, NULL, 1, NULL);
+    
+    // Start FreeRTOS scheduler
+    vTaskStartScheduler();
+    return 0;
+}
+```
+
+#### UART Commands
+
+- `LOAD <size>` - Load bytecode program of specified size
+- `RUN` - Start executing the loaded program  
+- `STOP` - Stop the currently running program
+- `STATUS` - Get current VM status and information
+- `RESET` - Reset the VM and clear loaded program
+- `HELP` - Show available commands
+
+#### Python Control Utility
+
+Use the included `rtmc_sender.py` script for easy program uploading:
+
+```bash
+# Interactive mode
+python rtmc_sender.py COM3 interactive
+
+# Direct commands
+python rtmc_sender.py COM3 load blink.vmb
+python rtmc_sender.py COM3 run
+python rtmc_sender.py COM3 status
+python rtmc_sender.py COM3 stop
+```
+
+### Basic Usage (Legacy)
 
 ```c
 #include "rtmc_interpreter.h"
@@ -272,10 +321,51 @@ This C implementation maintains compatibility with the Python virtual machine:
 
 - `rtmc_interpreter.h` - Main header with all type definitions and function prototypes
 - `rtmc_interpreter.c` - Complete implementation of the interpreter
-- `example_main.c` - Example usage demonstrating LED blinking
+- `rtmc_binary_loader.h/c` - Binary program loader with CRC32 verification
+- `rtmc_interpreter_example_main.c` - UART-based control system with dynamic program loading
+- `rtmc_sender.py` - Python utility for sending programs and controlling execution
 - `FreeRTOSConfig.h` - FreeRTOS configuration optimized for the interpreter
 - `CMakeLists.txt` - Build configuration for CMake
 - `README.md` - This documentation file
+- `USAGE_GUIDE.md` - Comprehensive guide for UART control system
+
+## Workflow
+
+1. **Develop RT-Micro-C Program:**
+   ```c
+   // blink.rtmc
+   task blink_task() {
+       gpio_init(25, OUTPUT);
+       while(1) {
+           gpio_set(25, 1);
+           delay_ms(500);
+           gpio_set(25, 0);
+           delay_ms(500);
+       }
+   }
+   
+   int main() {
+       create_task(blink_task, 1024, 5, 0);
+       return 0;
+   }
+   ```
+
+2. **Compile to Bytecode:**
+   ```bash
+   cd RTMC_Compiler
+   python main.py blink.rtmc -o blink.vmb
+   ```
+
+3. **Upload and Execute:**
+   ```bash
+   python rtmc_sender.py COM3 load blink.vmb
+   python rtmc_sender.py COM3 run
+   ```
+
+4. **Monitor and Control:**
+   - Watch LED blink on GPIO 25
+   - Use STATUS commands to monitor execution
+   - Use STOP/START for execution control
 
 ## License
 

@@ -13,12 +13,7 @@ set(CMAKE_CXX_STANDARD 17)
 pico_sdk_init()
 
 # Create the RTMC Interpreter library
-add_library(rtmc_interpreter_example
-    rtmc_interpreter.c
-    rtmc_interpreter.h
-    rtmc_binary_loader.c
-    rtmc_binary_loader.h
-)
+add_library(rtmc_interpreter_example INTERFACE)
 
 target_include_directories(rtmc_interpreter_example PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}
@@ -27,7 +22,7 @@ target_include_directories(rtmc_interpreter_example PUBLIC
 target_link_libraries(rtmc_interpreter_example
     pico_stdlib
     FreeRTOS-Kernel
-    FreeRTOS-Kernel-Heap4
+    FreeRTOS-Kernel-Heap1
     hardware_gpio
     hardware_timer
     hardware_adc
@@ -41,6 +36,7 @@ target_link_libraries(rtmc_interpreter_example
 add_executable(rtmc_interpreter_example
     rtmc_interpreter.c
     rtmc_binary_loader.c
+    rtmc_interpreter_example_main.c
 )
 
 target_compile_definitions(rtmc_interpreter_example PRIVATE
