@@ -716,7 +716,7 @@ class RTMCParser:
     def p_rtos_call(self, p):
         '''rtos_call : RTOS_CREATE_TASK LEFT_PAREN argument_list RIGHT_PAREN
                     | RTOS_DELETE_TASK LEFT_PAREN argument_list RIGHT_PAREN
-                    | RTOS_DELAY_MS LEFT_PAREN argument_list RIGHT_PAREN
+                    | DELAY_MS LEFT_PAREN argument_list RIGHT_PAREN
                     | RTOS_SEMAPHORE_CREATE LEFT_PAREN argument_list RIGHT_PAREN
                     | RTOS_SEMAPHORE_TAKE LEFT_PAREN argument_list RIGHT_PAREN
                     | RTOS_SEMAPHORE_GIVE LEFT_PAREN argument_list RIGHT_PAREN
@@ -725,7 +725,7 @@ class RTMCParser:
                     | RTOS_RESUME_TASK LEFT_PAREN argument_list RIGHT_PAREN
                     | RTOS_CREATE_TASK LEFT_PAREN RIGHT_PAREN
                     | RTOS_DELETE_TASK LEFT_PAREN RIGHT_PAREN
-                    | RTOS_DELAY_MS LEFT_PAREN RIGHT_PAREN
+                    | DELAY_MS LEFT_PAREN RIGHT_PAREN
                     | RTOS_SEMAPHORE_CREATE LEFT_PAREN RIGHT_PAREN
                     | RTOS_SEMAPHORE_TAKE LEFT_PAREN RIGHT_PAREN
                     | RTOS_SEMAPHORE_GIVE LEFT_PAREN RIGHT_PAREN

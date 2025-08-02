@@ -26,7 +26,7 @@ void ImmediateBraceTask() {
     static int counter = 0;
     print("Task with immediate brace");
     counter++;
-    RTOS_DELAY_MS(1000);
+    delay_ms(1000);
 }
 
 void NewlineBraceTask()
@@ -34,19 +34,19 @@ void NewlineBraceTask()
     static int value = 42;
     print("Task with newline brace");
     value *= 2;
-    RTOS_DELAY_MS(1500);
+    delay_ms(1500);
 }
 
 void MixedTask()
 {
     print("Mixed style task");
-    RTOS_DELAY_MS(2000);
+    delay_ms(2000);
 }
 
 void AnotherNewlineTask()
 {
     print("Another newline task");
-    RTOS_DELAY_MS(500);
+    delay_ms(500);
 }
 
 void main()
@@ -65,7 +65,7 @@ void main()
     print("All function calls completed");
 
     while(1) {
-        RTOS_DELAY_MS(5000);
+        delay_ms(5000);
         print("Main loop heartbeat");
     }
 }

@@ -35,7 +35,7 @@ void communication_task() {
         } else {
             retry_count++;
             HW_UART_WRITE(ERROR_MSG);
-            RTOS_DELAY_MS(DELAY_SHORT);
+            delay_ms(DELAY_SHORT);
         }
     }
 }
@@ -51,7 +51,7 @@ int main() {
     
     // Create task with timeout
     RTOS_CREATE_TASK(communication_task);
-    RTOS_DELAY_MS(DELAY_LONG);
+    delay_ms(DELAY_LONG);
     
     calculate_circle();
     

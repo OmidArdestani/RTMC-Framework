@@ -29,9 +29,9 @@ void BlinkTaskRun() {
     
     while (1) {
         HW_GPIO_SET(ledPin, 1);   // Turn LED on
-        RTOS_DELAY_MS(blinkDelay);
+        delay_ms(blinkDelay);
         HW_GPIO_SET(ledPin, 0);   // Turn LED off
-        RTOS_DELAY_MS(blinkDelay);
+        delay_ms(blinkDelay);
         
         print("LED blink cycle completed");
     }
@@ -64,7 +64,7 @@ void SensorTaskRun() {
             HW_UART_WRITE(data.temperature);
         }
         
-        RTOS_DELAY_MS(1000);
+        delay_ms(1000);
     }
 }
 
@@ -78,12 +78,12 @@ void PWMTaskRun() {
     while (1) {
         for (int i = 0; i <= 100; i += 10) {
             HW_TIMER_SET_PWM_DUTY(timerID, i);
-            RTOS_DELAY_MS(100);
+            delay_ms(100);
         }
         
         for (int i = 100; i >= 0; i -= 10) {
             HW_TIMER_SET_PWM_DUTY(timerID, i);
-            RTOS_DELAY_MS(100);
+            delay_ms(100);
         }
     }
 }
@@ -101,7 +101,7 @@ void ProducerTaskRun() {
         DBG_PRINT(sharedResource);
         
         RTOS_SEMAPHORE_GIVE(resourceSemaphore);
-        RTOS_DELAY_MS(200);
+        delay_ms(200);
     }
 }
 
@@ -116,7 +116,7 @@ void ConsumerTaskRun() {
         }
         
         RTOS_SEMAPHORE_GIVE(resourceSemaphore);
-        RTOS_DELAY_MS(300);
+        delay_ms(300);
     }
 }
 
@@ -139,7 +139,7 @@ void main() {
     
     // Main system loop
     while (1) {
-        RTOS_DELAY_MS(5000);
+        delay_ms(5000);
         print("Main loop heartbeat - System running");
     }
 }

@@ -48,7 +48,6 @@ class RTMCLexer:
         'int': 'INT',
         'float': 'FLOAT_TYPE',
         'char': 'CHAR_TYPE',
-        'string': 'STRING_TYPE',
         'bool': 'BOOL_TYPE',
         'void': 'VOID',
         'const': 'CONST',
@@ -80,7 +79,7 @@ class RTMCLexer:
         # RTOS functions
         'RTOS_CREATE_TASK': 'RTOS_CREATE_TASK',
         'RTOS_DELETE_TASK': 'RTOS_DELETE_TASK',
-        'RTOS_DELAY_MS': 'RTOS_DELAY_MS',
+        'delay_ms': 'DELAY_MS',
         'RTOS_SEMAPHORE_CREATE': 'RTOS_SEMAPHORE_CREATE',
         'RTOS_SEMAPHORE_TAKE': 'RTOS_SEMAPHORE_TAKE',
         'RTOS_SEMAPHORE_GIVE': 'RTOS_SEMAPHORE_GIVE',

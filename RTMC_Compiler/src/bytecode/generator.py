@@ -910,11 +910,23 @@ class BytecodeGenerator(ASTVisitor):
         if isinstance(node.callee, IdentifierExprNode):
             func_name = node.callee.name
             
+            rtos_functions = [
+                'RTOS_CREATE_TASK', 'RTOS_DELETE_TASK', 'delay_ms',
+                'RTOS_SEMAPHORE_CREATE', 'RTOS_SEMAPHORE_TAKE',
+                'RTOS_SEMAPHORE_GIVE', 'RTOS_YIELD', 'RTOS_SUSPEND_TASK',
+                'RTOS_RESUME_TASK', 'HW_GPIO_INIT', 'HW_GPIO_SET',
+                'HW_GPIO_GET', 'HW_TIMER_INIT', 'HW_TIMER_START',
+                'HW_TIMER_STOP', 'HW_TIMER_SET_PWM_DUTY', 'HW_ADC_INIT']
+            hw_functions = [
+                'HW_ADC_READ', 'HW_UART_WRITE', 'HW_UART_READ',
+                'HW_SPI_TRANSFER', 'HW_I2C_WRITE', 'HW_I2C_READ']
+            debug_functions = ['print', 'printf', 'DBG_BREAKPOINT']
+
             # Check if it's StartTask function
             if func_name == 'StartTask':
                 self.generate_start_task_call(node.arguments)
             # Check if it's a built-in function
-            elif func_name.startswith('RTOS_') or func_name.startswith('HW_') or func_name.startswith('DBG_') or func_name == 'print' or func_name == 'printf':
+            elif func_name in rtos_functions or func_name in hw_functions or func_name in debug_functions:
                 self.generate_builtin_call(func_name, node.arguments)
             else:
                 # Regular function call
@@ -958,7 +970,7 @@ class BytecodeGenerator(ASTVisitor):
                 self.emit(InstructionBuilder.rtos_create_task(0, 0, 0, 0, 0))  # VM will pop args
         elif func_name == 'RTOS_DELETE_TASK':
             self.emit(InstructionBuilder.rtos_delete_task(0))
-        elif func_name == 'RTOS_DELAY_MS':
+        elif func_name == 'delay_ms':
             self.emit(InstructionBuilder.rtos_delay_ms(0))
         elif func_name == 'RTOS_SEMAPHORE_CREATE':
             self.emit(InstructionBuilder.rtos_semaphore_create())

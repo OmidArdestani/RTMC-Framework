@@ -10,6 +10,6 @@ void SendUartRun()
         float adc_value = MsgADCValueQueue.recv(100);
 
         HW_UART_WRITE(4, (int)adc_value);
-        RTOS_DELAY_MS(1000);
+        delay_ms(1000);
     }
 }

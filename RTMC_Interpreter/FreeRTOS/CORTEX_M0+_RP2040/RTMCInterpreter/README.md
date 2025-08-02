@@ -52,7 +52,7 @@ The interpreter supports all RT-Micro-C bytecode instructions:
 
 #### RTOS Operations
 - `RTOS_CREATE_TASK`, `RTOS_DELETE_TASK`
-- `RTOS_DELAY_MS`, `RTOS_YIELD`
+- `delay_ms`, `RTOS_YIELD`
 - `RTOS_SEMAPHORE_CREATE`, `RTOS_SEMAPHORE_TAKE`, `RTOS_SEMAPHORE_GIVE`
 - `RTOS_SUSPEND_TASK`, `RTOS_RESUME_TASK`
 
@@ -334,7 +334,7 @@ This C implementation maintains compatibility with the Python virtual machine:
 1. **Develop RT-Micro-C Program:**
    ```c
    // blink.rtmc
-   task blink_task() {
+   void blink_task() {
        gpio_init(25, OUTPUT);
        while(1) {
            gpio_set(25, 1);

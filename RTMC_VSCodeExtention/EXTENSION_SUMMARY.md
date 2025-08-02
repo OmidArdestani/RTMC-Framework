@@ -114,9 +114,9 @@ void run() {
     HW_GPIO_INIT(ledPin, 1);
     while (1) {
         HW_GPIO_SET(ledPin, 1);
-        RTOS_DELAY_MS(500);
+        delay_ms(500);
         HW_GPIO_SET(ledPin, 0);
-        RTOS_DELAY_MS(500);
+        delay_ms(500);
     }
 }
 
@@ -155,7 +155,7 @@ HW_TIMER_SET_PWM_DUTY(timer_id, duty_cycle);
 ### RTOS Features
 ```c
 // Delays
-RTOS_DELAY_MS(milliseconds);
+delay_ms(milliseconds);
 
 // Semaphores
 int sem = RTOS_SEMAPHORE_CREATE();

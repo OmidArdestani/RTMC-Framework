@@ -68,7 +68,7 @@ class RTMCLanguageProvider implements vscode.CompletionItemProvider, vscode.Hove
         
         // RTOS Functions
         const rtosFunctions = [
-            'StartTask', 'RTOS_DELAY_MS', 'RTOS_SEMAPHORE_CREATE', 'RTOS_SEMAPHORE_TAKE', 
+            'StartTask', 'delay_ms', 'RTOS_SEMAPHORE_CREATE', 'RTOS_SEMAPHORE_TAKE', 
             'RTOS_SEMAPHORE_GIVE', 'RTOS_YIELD', 'RTOS_SUSPEND_TASK', 'RTOS_RESUME_TASK'
         ];
         
@@ -151,7 +151,7 @@ class RTMCLanguageProvider implements vscode.CompletionItemProvider, vscode.Hove
     private getHoverInfo(word: string): vscode.MarkdownString | null {
         const info: { [key: string]: string } = {
             'StartTask': 'Create and start a new RTMC task: `StartTask(stack_size, core, priority, task_id, function_name)`\n\n- stack_size: Size of the task\'s stack in bytes\n- core: CPU core to run the task (0 or 1)\n- priority: Task priority level (0-31)\n- task_id: Unique identifier for the task\n- function_name: The task function to execute',
-            'RTOS_DELAY_MS': 'Delay execution for specified milliseconds: `RTOS_DELAY_MS(ms)`',
+            'delay_ms': 'Delay execution for specified milliseconds: `delay_ms(ms)`',
             'RTOS_SEMAPHORE_CREATE': 'Create a binary semaphore: `RTOS_SEMAPHORE_CREATE()`',
             'RTOS_SEMAPHORE_TAKE': 'Take a semaphore with timeout: `RTOS_SEMAPHORE_TAKE(semaphore, timeout)`',
             'RTOS_SEMAPHORE_GIVE': 'Give/release a semaphore: `RTOS_SEMAPHORE_GIVE(semaphore)`',

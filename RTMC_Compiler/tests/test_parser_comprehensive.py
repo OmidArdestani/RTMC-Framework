@@ -180,7 +180,7 @@ class TestExpressionParsing(unittest.TestCase):
             "func()",
             "add(a, b)",
             "printf(format, arg1, arg2)",
-            "RTOS_DELAY_MS(1000)",
+            "delay_ms(1000)",
             "HW_GPIO_SET(pin, value)",
         ]
         

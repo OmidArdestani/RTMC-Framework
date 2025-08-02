@@ -23,7 +23,7 @@ void sensor_task() {
         print("Sensor value read");
         
         // Wait for next sample
-        RTOS_DELAY_MS(SAMPLE_RATE);
+        delay_ms(SAMPLE_RATE);
     }
 }
 
@@ -40,7 +40,7 @@ void main() {
     
     // Main loop
     while (1) {
-        RTOS_DELAY_MS(1000);
+        delay_ms(1000);
         print("System running");
     }
 }

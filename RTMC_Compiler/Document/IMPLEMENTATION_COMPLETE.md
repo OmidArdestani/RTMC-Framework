@@ -123,7 +123,7 @@ void main()
 {
     while (true)
     {
-        RTOS_DELAY_MS(2000);
+        delay_ms(2000);
         print("System running");
         processData();
     }

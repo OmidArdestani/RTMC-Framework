@@ -3,13 +3,13 @@
 // Test both brace styles for tasks
 void StyleOneTaskRun() {
     print("Style one task running");
-    RTOS_DELAY_MS(1000);
+    delay_ms(1000);
 }
 
 void StyleTwoTaskRun() 
 {
     print("Style two task running");
-    RTOS_DELAY_MS(1500);
+    delay_ms(1500);
 }
 
 // Test both brace styles for functions

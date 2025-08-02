@@ -12,5 +12,5 @@ void main() {
     p.y = 20;
     
     print("Simple struct example");
-    RTOS_DELAY_MS(1000);
+    delay_ms(1000);
 }

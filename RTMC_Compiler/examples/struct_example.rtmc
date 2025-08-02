@@ -35,7 +35,7 @@ void main() {
     configure_sensor();
     
     while (1) {
-        RTOS_DELAY_MS(1000);
+        delay_ms(1000);
         print("System running");
     }
 }

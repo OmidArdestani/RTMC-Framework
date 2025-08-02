@@ -78,9 +78,9 @@ void BlinkTaskRun() {
     
     while (1) {
         HW_GPIO_SET(ledPin, 1);
-        RTOS_DELAY_MS(blinkDelay);
+        delay_ms(blinkDelay);
         HW_GPIO_SET(ledPin, 0);
-        RTOS_DELAY_MS(blinkDelay);
+        delay_ms(blinkDelay);
     }
 }
 
@@ -90,7 +90,7 @@ void main() {
     print("RTMC System Starting");
     
     while (1) {
-        RTOS_DELAY_MS(5000);
+        delay_ms(5000);
         print("Main loop heartbeat");
     }
 }
@@ -119,7 +119,7 @@ StartTask(stack_size, core, priority, task_id, run);
 - **Communication**: UART, SPI, I2C interfaces
 
 ### RTOS Integration
-- **Delays**: `RTOS_DELAY_MS`
+- **Delays**: `delay_ms`
 - **Semaphores**: `RTOS_SEMAPHORE_CREATE`, `RTOS_SEMAPHORE_TAKE`, `RTOS_SEMAPHORE_GIVE`
 - **Task Management**: `RTOS_SUSPEND_TASK`, `RTOS_RESUME_TASK`
 

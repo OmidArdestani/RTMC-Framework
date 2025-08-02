@@ -687,7 +687,7 @@ class TestRTOSSemantics(unittest.TestCase):
         source = """
         void task_function() {
             while (1) {
-                RTOS_DELAY_MS(1000);
+                delay_ms(1000);
                 RTOS_YIELD();
             }
         }
@@ -705,9 +705,9 @@ class TestRTOSSemantics(unittest.TestCase):
         """Test RTOS function parameter validation"""
         source = """
         void main() {
-            RTOS_DELAY_MS(1000);        // Valid
-            RTOS_DELAY_MS(-100);        // Invalid - negative delay
-            RTOS_DELAY_MS("string");    // Invalid - string parameter
+            delay_ms(1000);        // Valid
+            delay_ms(-100);        // Invalid - negative delay
+            delay_ms("string");    // Invalid - string parameter
         }
         """
         errors, ast = self._analyze_code(source)

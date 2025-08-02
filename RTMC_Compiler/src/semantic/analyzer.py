@@ -224,7 +224,7 @@ class SemanticAnalyzer(ASTVisitor):
             'RTOS_DELETE_TASK': Symbol('RTOS_DELETE_TASK', SymbolType.FUNCTION, 'void',
                                      function_params=[Symbol('task_handle', SymbolType.PARAMETER, 'int')],
                                      function_return_type='void'),
-            'RTOS_DELAY_MS': Symbol('RTOS_DELAY_MS', SymbolType.FUNCTION, 'void',
+            'delay_ms': Symbol('delay_ms', SymbolType.FUNCTION, 'void',
                                   function_params=[Symbol('ms', SymbolType.PARAMETER, 'int')],
                                   function_return_type='void'),
             'RTOS_SEMAPHORE_CREATE': Symbol('RTOS_SEMAPHORE_CREATE', SymbolType.FUNCTION, 'int',

@@ -73,7 +73,7 @@ void task1_run_function()
         data_addr += 5;
 
         process_data(data_addr);
-        RTOS_DELAY_MS(500);
+        delay_ms(500);
     }
 }
 
@@ -92,6 +92,6 @@ void main()
         int addr     = (int)data;
 
         SBTestMsg.send(addr);
-        RTOS_DELAY_MS(500);
+        delay_ms(500);
     }
 }

@@ -108,7 +108,7 @@ void create_tasks() {
     for (int i = 0; i < MAX_TASKS; i++) {
         RTOS_CREATE_TASK(worker_task);
     }
-    RTOS_DELAY_MS(IDLE_TIMEOUT);
+    delay_ms(IDLE_TIMEOUT);
 }
 ```
 

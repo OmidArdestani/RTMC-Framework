@@ -12,9 +12,9 @@ void setup() {
 void blink_task() {
     while (1) {
         HW_GPIO_SET(LED_PIN, 1);    // Turn LED on
-        RTOS_DELAY_MS(DELAY_MS);    // Wait 500ms
+        delay_ms(DELAY_MS);    // Wait 500ms
         HW_GPIO_SET(LED_PIN, 0);    // Turn LED off
-        RTOS_DELAY_MS(DELAY_MS);    // Wait 500ms
+        delay_ms(DELAY_MS);    // Wait 500ms
     }
 }
 
@@ -26,7 +26,7 @@ void main() {
     
     // Main loop
     while (1) {
-        RTOS_DELAY_MS(1000);
+        delay_ms(1000);
         print("Main task running");
     }
 }

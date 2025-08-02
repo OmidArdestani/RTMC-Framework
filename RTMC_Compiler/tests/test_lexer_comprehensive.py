@@ -144,7 +144,7 @@ class TestTokenization(unittest.TestCase):
             ("RTOS_YIELD", "RTOS_YIELD"),
             
             # Timing
-            ("RTOS_DELAY_MS", "RTOS_DELAY_MS"),
+            ("delay_ms", "delay_ms"),
             ("RTOS_GET_TICK", "RTOS_GET_TICK"),
             
             # Synchronization

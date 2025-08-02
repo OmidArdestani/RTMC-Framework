@@ -89,9 +89,9 @@ void main() {
     
     while (1) {
         HW_GPIO_SET(LED_PIN, 1);
-        RTOS_DELAY_MS(500);
+        delay_ms(500);
         HW_GPIO_SET(LED_PIN, 0);
-        RTOS_DELAY_MS(500);
+        delay_ms(500);
     }
 }
 ```
@@ -106,7 +106,7 @@ void task1() {
         RTOS_SEMAPHORE_TAKE(semaphore, 1000);
         shared_data++;
         RTOS_SEMAPHORE_GIVE(semaphore);
-        RTOS_DELAY_MS(100);
+        delay_ms(100);
     }
 }
 
@@ -115,7 +115,7 @@ void main() {
     RTOS_CREATE_TASK(task1, "Task1", 512, 5, 0);
     
     while (1) {
-        RTOS_DELAY_MS(1000);
+        delay_ms(1000);
         print("Main running");
     }
 }
@@ -213,7 +213,7 @@ The RT-Micro-C Virtual Machine uses a stack-based instruction set with comprehen
 ### RTOS Task Management Instructions
 - **`RTOS_CREATE_TASK`** - Create new RTOS task (func_id, name_id, stack_size, priority, core)
 - **`RTOS_DELETE_TASK`** - Delete RTOS task by handle
-- **`RTOS_DELAY_MS`** - Delay current task for specified milliseconds
+- **`delay_ms`** - Delay current task for specified milliseconds
 - **`RTOS_YIELD`** - Yield control to scheduler
 - **`RTOS_SUSPEND_TASK`** - Suspend task by handle
 - **`RTOS_RESUME_TASK`** - Resume suspended task by handle

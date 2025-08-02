@@ -100,7 +100,7 @@ This directory contains a comprehensive unit test suite designed to validate all
 ### RTOS Features
 - ✅ **Task Management**: `RTOS_CREATE_TASK`, `RTOS_DELETE_TASK`, etc.
 - ✅ **Synchronization**: Semaphores, mutexes, task coordination
-- ✅ **Timing**: `RTOS_DELAY_MS`, `RTOS_GET_TICK`, precise timing
+- ✅ **Timing**: `delay_ms`, `RTOS_GET_TICK`, precise timing
 - ✅ **Scheduling**: Task priorities, cooperative multitasking
 
 ### Hardware Abstraction

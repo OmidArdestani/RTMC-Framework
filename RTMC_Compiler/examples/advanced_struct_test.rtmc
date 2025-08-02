@@ -24,7 +24,7 @@ void HighPriorityController() {
             HW_GPIO_SET(25, 0);  // Turn off emergency LED
         }
         
-        RTOS_DELAY_MS(100);  // Fast monitoring
+        delay_ms(100);  // Fast monitoring
     }
 }
 
@@ -48,7 +48,7 @@ void SensorReader() {
         globalSensors.valid = 1;          // Mark as valid
         
         print("Sensor data updated");
-        RTOS_DELAY_MS(readInterval);
+        delay_ms(readInterval);
     }
 }
 
@@ -63,7 +63,7 @@ void DisplayTask() {
             print("Waiting for sensor data...");
         }
         
-        RTOS_DELAY_MS(displayInterval);
+        delay_ms(displayInterval);
     }
 }
 
@@ -88,7 +88,7 @@ void main() {
     
     // Main system loop
     while (1) {
-        RTOS_DELAY_MS(10000);
+        delay_ms(10000);
         print("System heartbeat - all tasks running");
     }
 }

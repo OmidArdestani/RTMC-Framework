@@ -13,9 +13,9 @@ void BlinkTask() {
     HW_GPIO_INIT(ledPin, 1);
     while (1) {
         HW_GPIO_SET(ledPin, 1);
-        RTOS_DELAY_MS(500);
+        delay_ms(500);
         HW_GPIO_SET(ledPin, 0);
-        RTOS_DELAY_MS(500);
+        delay_ms(500);
     }
 }
 
@@ -132,9 +132,9 @@ void setup() {
 void blink_task() {
     while (1) {
         HW_GPIO_SET(LED_PIN, 1);
-        RTOS_DELAY_MS(500);
+        delay_ms(500);
         HW_GPIO_SET(LED_PIN, 0);
-        RTOS_DELAY_MS(500);
+        delay_ms(500);
     }
 }
 

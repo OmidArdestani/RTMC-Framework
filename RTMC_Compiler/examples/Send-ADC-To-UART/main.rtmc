@@ -80,7 +80,7 @@ void main()
     
     while(1)
     {
-        RTOS_DELAY_MS(500);
+        delay_ms(500);
         print("Main: heartbeat");
 
         counter++;

@@ -17,7 +17,7 @@ void task1() {
         // Release semaphore
         RTOS_SEMAPHORE_GIVE(semaphore_handle);
         
-        RTOS_DELAY_MS(100);
+        delay_ms(100);
         i = i + 1;
     }
 }
@@ -35,7 +35,7 @@ void task2() {
         // Release semaphore
         RTOS_SEMAPHORE_GIVE(semaphore_handle);
         
-        RTOS_DELAY_MS(150);
+        delay_ms(150);
         i = i + 1;
     }
 }
@@ -50,7 +50,7 @@ void main() {
     
     // Main loop
     while (1) {
-        RTOS_DELAY_MS(1000);
+        delay_ms(1000);
         print("Main loop");
     }
 }

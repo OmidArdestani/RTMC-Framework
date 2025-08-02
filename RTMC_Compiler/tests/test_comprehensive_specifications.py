@@ -69,7 +69,7 @@ class TestLexicalAnalysis(unittest.TestCase):
     def test_rtos_functions(self):
         """Test RTOS function keyword tokenization"""
         rtos_functions = [
-            "RTOS_DELAY_MS", "RTOS_CREATE_TASK", "RTOS_DELETE_TASK",
+            "delay_ms", "RTOS_CREATE_TASK", "RTOS_DELETE_TASK",
             "RTOS_SUSPEND_TASK", "RTOS_RESUME_TASK", "RTOS_YIELD",
             "RTOS_CREATE_SEMAPHORE", "RTOS_TAKE_SEMAPHORE", "RTOS_GIVE_SEMAPHORE"
         ]
@@ -494,7 +494,7 @@ class TestBytecodeGeneration(unittest.TestCase):
         """Test RTOS function bytecode generation"""
         source = """
         void main() {
-            RTOS_DELAY_MS(1000);
+            delay_ms(1000);
             RTOS_YIELD();
         }
         """
@@ -551,7 +551,7 @@ class TestVirtualMachine(unittest.TestCase):
         source = """
         void main() {
             print("Before delay");
-            RTOS_DELAY_MS(100);
+            delay_ms(100);
             print("After delay");
         }
         """
@@ -633,7 +633,7 @@ class TestComplexFeatures(unittest.TestCase):
                 int data_addr = SBTestMsg.recv();
                 data_addr += 5;
                 process_data(data_addr);
-                RTOS_DELAY_MS(500);
+                delay_ms(500);
             }
         }
 
@@ -648,7 +648,7 @@ class TestComplexFeatures(unittest.TestCase):
                 char data[10] = {0xAE, 0xBB, 0xBE, 0xDD, 0xEE, 0xFA, 0x00, 0x01, 0x02, 0x03};
                 int addr = (int)data;
                 SBTestMsg.send(addr);
-                RTOS_DELAY_MS(500);
+                delay_ms(500);
             }
         }
         """

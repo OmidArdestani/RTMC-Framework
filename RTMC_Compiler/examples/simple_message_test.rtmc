@@ -9,7 +9,7 @@ void sender_task_run()
     {
         TestQueue.send(42);
         print("Sender: Sent message");
-        RTOS_DELAY_MS(1000);
+        delay_ms(1000);
     }
 }
 
@@ -19,7 +19,7 @@ void receiver_task_run()
     {
         int value = TestQueue.recv();
         printf("Receiver: Got message {}", value);
-        RTOS_DELAY_MS(500);
+        delay_ms(500);
     }
 }
 
@@ -43,7 +43,7 @@ void main()
     
     while (1)
     {
-        RTOS_DELAY_MS(5000);
+        delay_ms(5000);
         print("Main: heartbeat");
     }
 }

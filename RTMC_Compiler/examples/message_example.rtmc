@@ -35,7 +35,7 @@ void sensor_task_run()
         readingId = readingId + 1;
         
         print("Sensor: Sent reading");
-        RTOS_DELAY_MS(2000);  // Read every 2 seconds
+        delay_ms(2000);  // Read every 2 seconds
     }
 }
 
@@ -122,7 +122,7 @@ void main()
     
     while (1)
     {
-        RTOS_DELAY_MS(10000);
+        delay_ms(10000);
         print("Main: System heartbeat");
     }
 }

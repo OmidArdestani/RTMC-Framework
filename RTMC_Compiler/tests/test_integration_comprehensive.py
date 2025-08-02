@@ -116,7 +116,7 @@ class TestCompleteFeatureIntegration(unittest.TestCase):
                 int data_addr = SBTestMsg.recv();
                 data_addr += 5;
                 process_data(data_addr);
-                RTOS_DELAY_MS(500);
+                delay_ms(500);
             }
         }
 
@@ -131,7 +131,7 @@ class TestCompleteFeatureIntegration(unittest.TestCase):
                 char data[10] = {0xAE, 0xBB, 0xBE, 0xDD, 0xEE, 0xFA, 0x00, 0x01, 0x02, 0x03};
                 int addr = (int)data;
                 SBTestMsg.send(addr);
-                RTOS_DELAY_MS(500);
+                delay_ms(500);
             }
         }
         """
@@ -293,7 +293,7 @@ class TestCompleteFeatureIntegration(unittest.TestCase):
             while (true) {
                 DataQueue.send(counter);
                 counter++;
-                RTOS_DELAY_MS(100);
+                delay_ms(100);
             }
         }
         
@@ -322,7 +322,7 @@ class TestCompleteFeatureIntegration(unittest.TestCase):
             while (true) {
                 sensor_data += 0.1;
                 SensorQueue.send(sensor_data);
-                RTOS_DELAY_MS(200);
+                delay_ms(200);
             }
         }
         """
@@ -431,7 +431,7 @@ class TestCompleteFeatureIntegration(unittest.TestCase):
             while (true) {
                 HW_GPIO_SET(LED_PIN, led_state ? 1 : 0);
                 led_state = !led_state;
-                RTOS_DELAY_MS(500);
+                delay_ms(500);
             }
         }
         
@@ -440,9 +440,9 @@ class TestCompleteFeatureIntegration(unittest.TestCase):
                 int button_state = HW_GPIO_GET(BUTTON_PIN);
                 if (button_state == 1) {
                     ButtonQueue.send(true);
-                    RTOS_DELAY_MS(50);  // Debounce
+                    delay_ms(50);  // Debounce
                 }
-                RTOS_DELAY_MS(10);
+                delay_ms(10);
             }
         }
         
@@ -452,7 +452,7 @@ class TestCompleteFeatureIntegration(unittest.TestCase):
                 float voltage = (float)adc_value * 3.3 / 4095.0;
                 
                 printf("ADC: {}, Voltage: {:.2f}V", adc_value, voltage);
-                RTOS_DELAY_MS(1000);
+                delay_ms(1000);
             }
         }
         
